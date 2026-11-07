@@ -18,6 +18,7 @@ export async function answerQuestion(jobId: string, key: string, answer: Record<
   const job = must(await jobById(jobId));
   const qrow = await one<{ id: number; audience: string; status: string }>("SELECT id, audience, status FROM questions WHERE job_id = $1 AND key = $2", [jobId, key]);
   if (!qrow || qrow.status !== "open") throw new Error("no open question with that key");
+  if (qrow.audience !== audience) throw new Error("This question requires the designated audience");
   await q("UPDATE questions SET status = 'answered', answer = $3, answered_by = $4, answered_at = now() WHERE job_id = $1 AND key = $2",
     [jobId, key, JSON.stringify(answer), by]);
   if (audience === "founder") {

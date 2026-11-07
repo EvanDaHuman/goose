@@ -6,7 +6,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PGBIN="${PGBIN:-/opt/homebrew/opt/postgresql@17/bin}"
 DATA="$ROOT/var/pg/data"
 PW="$ROOT/var/pg/admin-password"
-PORT="${GOOSE_PG_PORT:-54329}"
+PORT="${GOOSE_PG_PORT:-54349}"
 
 case "${1:-status}" in
   init)

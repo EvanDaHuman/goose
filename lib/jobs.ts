@@ -86,6 +86,7 @@ export async function createJob(opts: {
   title: string; slug: string; timezone: string; repoZip: string; dbFile?: string | null; costLimitUsd?: number;
   goal?: string; constraints?: string[]; constraintNotes?: string | null; documents?: { file: string; name: string }[];
   migrationRequest?: { target: string; dataChanges: string };
+  workspaceRequest?: boolean;
 }) {
   const offer = await pilotOffer();
   return await tx(async (c) => {
@@ -105,6 +106,11 @@ export async function createJob(opts: {
        opts.constraintNotes ?? null]);
     const inputs = jobDir(id, "inputs");
     fs.mkdirSync(inputs, { recursive: true });
+    if (opts.workspaceRequest) {
+      const requestFile = path.join(inputs, "workspace-request.json");
+      fs.writeFileSync(requestFile, JSON.stringify({ version: 1, goal: opts.goal }), { mode: 0o444, flag: "wx" });
+      await c.query("UPDATE jobs SET recipe='workspace-change',work_type='code' WHERE id=$1", [id]);
+    }
     if (opts.migrationRequest?.target) {
       const requestFile = path.join(inputs, "migration-request.json");
       const requestBody = JSON.stringify(opts.migrationRequest, null, 2);

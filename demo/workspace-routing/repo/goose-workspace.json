@@ -1,0 +1,195 @@
+{
+  "version": 1,
+  "title": "Move route planning to Node.js and support blocked links",
+  "source_build": [],
+  "target_build": [],
+  "checks": [
+    {
+      "id": "weighted-route",
+      "title": "Preserve weighted-route",
+      "kind": "preserve",
+      "source": {
+        "argv": [
+          "python3",
+          "planner.py"
+        ],
+        "stdin": "{\"nodes\": [\"A\", \"B\", \"C\", \"D\"], \"edges\": [[\"A\", \"B\", 2], [\"B\", \"D\", 3], [\"A\", \"C\", 4], [\"C\", \"D\", 4], [\"B\", \"C\", 1]], \"start\": \"A\", \"end\": \"D\"}"
+      },
+      "target": {
+        "argv": [
+          "node",
+          "planner.mjs"
+        ],
+        "stdin": "{\"nodes\": [\"A\", \"B\", \"C\", \"D\"], \"edges\": [[\"A\", \"B\", 2], [\"B\", \"D\", 3], [\"A\", \"C\", 4], [\"C\", \"D\", 4], [\"B\", \"C\", 1]], \"start\": \"A\", \"end\": \"D\"}"
+      },
+      "compare": "json"
+    },
+    {
+      "id": "reverse-route",
+      "title": "Preserve reverse-route",
+      "kind": "preserve",
+      "source": {
+        "argv": [
+          "python3",
+          "planner.py"
+        ],
+        "stdin": "{\"nodes\": [\"A\", \"B\", \"C\", \"D\"], \"edges\": [[\"A\", \"B\", 2], [\"B\", \"D\", 3], [\"A\", \"C\", 4], [\"C\", \"D\", 4], [\"B\", \"C\", 1]], \"start\": \"D\", \"end\": \"A\"}"
+      },
+      "target": {
+        "argv": [
+          "node",
+          "planner.mjs"
+        ],
+        "stdin": "{\"nodes\": [\"A\", \"B\", \"C\", \"D\"], \"edges\": [[\"A\", \"B\", 2], [\"B\", \"D\", 3], [\"A\", \"C\", 4], [\"C\", \"D\", 4], [\"B\", \"C\", 1]], \"start\": \"D\", \"end\": \"A\"}"
+      },
+      "compare": "json"
+    },
+    {
+      "id": "same-node",
+      "title": "Preserve same-node",
+      "kind": "preserve",
+      "source": {
+        "argv": [
+          "python3",
+          "planner.py"
+        ],
+        "stdin": "{\"nodes\": [\"A\", \"B\", \"C\", \"D\"], \"edges\": [[\"A\", \"B\", 2], [\"B\", \"D\", 3], [\"A\", \"C\", 4], [\"C\", \"D\", 4], [\"B\", \"C\", 1]], \"start\": \"A\", \"end\": \"A\"}"
+      },
+      "target": {
+        "argv": [
+          "node",
+          "planner.mjs"
+        ],
+        "stdin": "{\"nodes\": [\"A\", \"B\", \"C\", \"D\"], \"edges\": [[\"A\", \"B\", 2], [\"B\", \"D\", 3], [\"A\", \"C\", 4], [\"C\", \"D\", 4], [\"B\", \"C\", 1]], \"start\": \"A\", \"end\": \"A\"}"
+      },
+      "compare": "json"
+    },
+    {
+      "id": "unknown-node",
+      "title": "Preserve unknown-node",
+      "kind": "preserve",
+      "source": {
+        "argv": [
+          "python3",
+          "planner.py"
+        ],
+        "stdin": "{\"nodes\": [\"A\", \"B\", \"C\", \"D\"], \"edges\": [[\"A\", \"B\", 2], [\"B\", \"D\", 3], [\"A\", \"C\", 4], [\"C\", \"D\", 4], [\"B\", \"C\", 1]], \"start\": \"A\", \"end\": \"E\"}"
+      },
+      "target": {
+        "argv": [
+          "node",
+          "planner.mjs"
+        ],
+        "stdin": "{\"nodes\": [\"A\", \"B\", \"C\", \"D\"], \"edges\": [[\"A\", \"B\", 2], [\"B\", \"D\", 3], [\"A\", \"C\", 4], [\"C\", \"D\", 4], [\"B\", \"C\", 1]], \"start\": \"A\", \"end\": \"E\"}"
+      },
+      "compare": "json"
+    },
+    {
+      "id": "disconnected",
+      "title": "Preserve disconnected",
+      "kind": "preserve",
+      "source": {
+        "argv": [
+          "python3",
+          "planner.py"
+        ],
+        "stdin": "{\"nodes\": [\"A\", \"B\"], \"edges\": [], \"start\": \"A\", \"end\": \"B\"}"
+      },
+      "target": {
+        "argv": [
+          "node",
+          "planner.mjs"
+        ],
+        "stdin": "{\"nodes\": [\"A\", \"B\"], \"edges\": [], \"start\": \"A\", \"end\": \"B\"}"
+      },
+      "compare": "json"
+    },
+    {
+      "id": "invalid-weight",
+      "title": "Preserve invalid-weight",
+      "kind": "preserve",
+      "source": {
+        "argv": [
+          "python3",
+          "planner.py"
+        ],
+        "stdin": "{\"nodes\": [\"A\", \"B\"], \"edges\": [[\"A\", \"B\", -1]], \"start\": \"A\", \"end\": \"B\"}"
+      },
+      "target": {
+        "argv": [
+          "node",
+          "planner.mjs"
+        ],
+        "stdin": "{\"nodes\": [\"A\", \"B\"], \"edges\": [[\"A\", \"B\", -1]], \"start\": \"A\", \"end\": \"B\"}"
+      },
+      "compare": "json"
+    },
+    {
+      "id": "unicode",
+      "title": "Preserve unicode",
+      "kind": "preserve",
+      "source": {
+        "argv": [
+          "python3",
+          "planner.py"
+        ],
+        "stdin": "{\"nodes\": [\"caf\u00e9\", \"\u5009\u5eab\"], \"edges\": [[\"caf\u00e9\", \"\u5009\u5eab\", 2.5]], \"start\": \"caf\u00e9\", \"end\": \"\u5009\u5eab\"}"
+      },
+      "target": {
+        "argv": [
+          "node",
+          "planner.mjs"
+        ],
+        "stdin": "{\"nodes\": [\"caf\u00e9\", \"\u5009\u5eab\"], \"edges\": [[\"caf\u00e9\", \"\u5009\u5eab\", 2.5]], \"start\": \"caf\u00e9\", \"end\": \"\u5009\u5eab\"}"
+      },
+      "compare": "json"
+    },
+    {
+      "id": "blocked-reroute",
+      "title": "Support blocked-reroute",
+      "kind": "requirement",
+      "target": {
+        "argv": [
+          "node",
+          "planner.mjs"
+        ],
+        "stdin": "{\"nodes\": [\"A\", \"B\", \"C\", \"D\"], \"edges\": [[\"A\", \"B\", 2], [\"B\", \"D\", 3], [\"A\", \"C\", 4], [\"C\", \"D\", 4], [\"B\", \"C\", 1]], \"start\": \"A\", \"end\": \"D\", \"blocked_edges\": [[\"B\", \"D\"]]}"
+      },
+      "compare": "json",
+      "expected": {
+        "distance": 7,
+        "route": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      }
+    },
+    {
+      "id": "blocked-unreachable",
+      "title": "Support blocked-unreachable",
+      "kind": "requirement",
+      "target": {
+        "argv": [
+          "node",
+          "planner.mjs"
+        ],
+        "stdin": "{\"nodes\": [\"A\", \"B\", \"C\", \"D\"], \"edges\": [[\"A\", \"B\", 2], [\"B\", \"D\", 3], [\"A\", \"C\", 4], [\"C\", \"D\", 4], [\"B\", \"C\", 1]], \"start\": \"A\", \"end\": \"D\", \"blocked_edges\": [[\"A\", \"B\"], [\"A\", \"C\"]]}"
+      },
+      "compare": "json",
+      "expected": {
+        "distance": null,
+        "route": []
+      }
+    }
+  ],
+  "deliverables": [
+    "planner.mjs",
+    "README.md"
+  ],
+  "limitations": [
+    "Command-level route planning only; no robot hardware or motion controller is involved",
+    "Production load and external service integrations are not tested"
+  ]
+}

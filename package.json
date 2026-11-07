@@ -2,7 +2,7 @@
   "name": "goose",
   "version": "0.1.0",
   "private": true,
-  "description": "Goose - an agent-run software migration company that verifies code changes, data continuity and new writes before delivery.",
+  "description": "Goose: an autonomous engineering company delivering verified changes to existing software, with customer and business operations.",
   "type": "module",
   "engines": {
     "node": ">=20.9"
@@ -11,8 +11,8 @@
     "setup": "bash scripts/setup.sh",
     "start": "bash scripts/start.sh",
     "stop": "bash scripts/stop.sh",
-    "web": "next dev --port 3000",
-    "web:prod": "next build && next start --port 3000",
+    "web": "next dev --port 3100",
+    "web:prod": "next build && next start --port 3100",
     "worker": "tsx --env-file=.env worker/index.ts",
     "db:migrate": "tsx --env-file=.env scripts/migrate.ts",
     "seed": "tsx --env-file=.env scripts/seed.ts",
@@ -30,7 +30,11 @@
     "history": "tsx --env-file=.env scripts/export-history.ts",
     "typecheck": "tsc --noEmit",
     "crm": "tsx --env-file=.env scripts/crm.ts",
-    "crm:evidence": "tsx --env-file=.env scripts/crm-evidence.ts"
+    "crm:evidence": "tsx --env-file=.env scripts/crm-evidence.ts",
+    "build": "next build",
+    "serve": "next start --port 3100",
+    "workspace:demo": "tsx --env-file=.env scripts/workspace-demo.ts",
+    "workspace:evidence": "tsx --env-file=.env scripts/workspace-evidence.ts"
   },
   "dependencies": {
     "@usenaive-sdk/vetta": "0.10.0",

@@ -1,5 +1,6 @@
 import { createJob } from "@/lib/jobs";
 import { fail, json, saveUpload, wrap } from "@/lib/http";
+import { linkInquiry } from "@/lib/commerce";
 
 // A real customer submits a repository (and usually a database copy).
 export async function POST(req: Request) {
@@ -32,7 +33,10 @@ export async function POST(req: Request) {
       timezone: String(form.get("timezone") ?? "UTC"),
       repoZip: repoPath, dbFile: dbPath, goal, constraints, constraintNotes: String(form.get("notes") ?? "").slice(0, 2000) || null, documents: docs,
       migrationRequest: target ? { target, dataChanges } : undefined,
+      workspaceRequest: form.get("job_type") === "workspace",
     });
+    const inquiry = String(form.get("inquiry_id") ?? "");
+    if (inquiry) await linkInquiry(inquiry, id);
     return json({ id, t: token });
   });
 }

@@ -14,6 +14,7 @@ export type SandboxSpec = {
   readAllow: string[];      // folders inside the home folder this process may read
   writeAllow: string[];     // folders it may write
   readDeny?: string[];      // always denied, even inside readAllow (e.g. the vault)
+  network?: "none" | "loopback";
 };
 
 function sbString(p: string) {
@@ -21,14 +22,17 @@ function sbString(p: string) {
 }
 
 export function profileText(spec: SandboxSpec) {
+  const venvs = path.join(config.varDir, "venvs");
+  const resolvedVenvs = fs.existsSync(venvs) ? fs.realpathSync(venvs) : venvs;
   const lines = [
     "(version 1)",
     "(allow default)",
     "(deny network-outbound)",
-    '(allow network-outbound (remote ip "localhost:*"))',
+    ...(spec.network === "none" ? ["(deny network-inbound)"] : ['(allow network-outbound (remote ip "localhost:*"))']),
     `(deny file-read* (subpath ${sbString(config.home)}))`,
     `(allow file-read-metadata (subpath ${sbString(config.home)}))`,
     `(allow file-read* (subpath ${sbString(path.join(config.varDir, "venvs"))}))`,
+    `(allow file-read* (subpath ${sbString(resolvedVenvs)}))`,
     ...spec.readAllow.map((p) => `(allow file-read* (subpath ${sbString(p)}))`),
     ...spec.writeAllow.map((p) => `(allow file-read* (subpath ${sbString(p)}))`),
     `(deny file-write* (subpath ${sbString(config.home)}))`,
@@ -56,6 +60,7 @@ export type RunResult = { code: number | null; stdout: string; stderr: string; m
 export async function run(opts: {
   cmd: string; args: string[]; cwd: string; env: Record<string, string>; sandbox?: SandboxSpec;
   timeoutMs?: number; logFile?: string; profileFile?: string;
+  stdin?: string;
 }): Promise<RunResult> {
   let cmd = opts.cmd;
   let args = opts.args;
@@ -68,17 +73,23 @@ export async function run(opts: {
   }
   const started = Date.now();
   return await new Promise<RunResult>((resolve) => {
-    const child = spawn(cmd, args, { cwd: opts.cwd, env: opts.env as unknown as NodeJS.ProcessEnv, detached: true, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(cmd, args, { cwd: opts.cwd, env: opts.env as unknown as NodeJS.ProcessEnv, detached: true, stdio: [opts.stdin === undefined ? "ignore" : "pipe", "pipe", "pipe"] });
+    if (opts.stdin !== undefined && child.stdin) { child.stdin.on("error", () => {}); child.stdin.end(opts.stdin); }
     let stdout = "";
     let stderr = "";
     let timedOut = false;
     const log = opts.logFile ? fs.createWriteStream(opts.logFile, { flags: "a" }) : null;
-    child.stdout.on("data", (d: Buffer) => { stdout += d; log?.write(d); });
-    child.stderr.on("data", (d: Buffer) => { stderr += d; log?.write(d); });
+    child.stdout!.on("data", (d: Buffer) => { stdout = (stdout + d).slice(-2_000_000); log?.write(d); });
+    child.stderr!.on("data", (d: Buffer) => { stderr = (stderr + d).slice(-2_000_000); log?.write(d); });
     const timer = opts.timeoutMs ? setTimeout(() => {
       timedOut = true;
       try { process.kill(-child.pid!, "SIGKILL"); } catch { /* already gone */ }
     }, opts.timeoutMs) : null;
+    child.on("error", error => {
+      if (timer) clearTimeout(timer);
+      log?.end();
+      resolve({ code: -1, stdout, stderr: String(error), ms: Date.now() - started, events: [], timedOut: false });
+    });
     child.on("close", (code: number | null) => {
       if (timer) clearTimeout(timer);
       log?.end();

@@ -15,6 +15,8 @@ import { quoteFor } from "./quote";
 import { jobSpend, logEvent, recordCompute, type Origin } from "./records";
 import * as crm from "./crm";
 import * as replatform from "./replatform";
+import { isWorkspace, WORKSPACE_STAGES } from "./workspace";
+import { syncCommerceForJob } from "./commerce";
 import { contractProblems, repairEvidence } from "./migrationContract";
 import * as v1 from "./stages";
 
@@ -747,6 +749,7 @@ async function invoice(job: Job): Promise<StageResult> {
   const r = await v1.invoice(job);
   const p = (await currentPlan(job))?.plan;
   if (p?.title) await q("UPDATE invoices SET line_items = $2 WHERE job_id = $1", [job.id, JSON.stringify(agents.invoiceLines(job, job.price_cents ?? 0, p.title))]);
+  await syncCommerceForJob(job.id);
   return r;
 }
 
@@ -789,7 +792,8 @@ const V2: Record<string, (job: Job, attempt: number) => Promise<StageResult>> = 
 
 export const IMPL_ALL: Record<string, (job: Job, attempt: number) => Promise<StageResult>> = Object.fromEntries(
   [...new Set([...Object.keys(v1.IMPL), ...Object.keys(V2)])].map((stage) => [stage, (job: Job, a: number) =>
-    job.pipeline >= 2 && V2[stage] ? V2[stage](job, a) : v1.IMPL[stage](job, a)]));
+    isWorkspace(job) && stage in WORKSPACE_STAGES ? WORKSPACE_STAGES[stage as keyof typeof WORKSPACE_STAGES](job,a) :
+      job.pipeline >= 2 && V2[stage] ? V2[stage](job, a) : v1.IMPL[stage](job, a)]));
 
 export async function spendSoFar(job: Job) {
   return jobSpend(job.id);
