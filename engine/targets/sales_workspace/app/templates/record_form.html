@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_class %}is-narrow{% endblock %}
+{% block content %}
+<nav class="crumbs" aria-label="Breadcrumb">
+  <a href="{{ '/pipeline' if entity == 'deals' else '/' ~ entity }}">{{ "Pipeline" if entity == "deals" else entity|capitalize }}</a>{{ m.icon("chevron-right", 13) }}
+  {% if record %}<a href="/{{ entity }}/{{ record.id }}">{{ record.name }}</a>{{ m.icon("chevron-right", 13) }}<span>Edit</span>{% else %}<span>New {{ singular }}</span>{% endif %}
+</nav>
+<div class="page-head"><div><h1>{{ title }}</h1>{% if entity == "deals" %}<p class="page-sub">Deals above {{ cfg.rule.threshold_usd|usd0 }} need a sales manager's approval before {{ cfg.rule.won_stage }}.</p>{% endif %}</div></div>
+{% if error %}<div class="alert alert-error" role="alert" style="margin-bottom:18px">{{ m.icon("alert", 18) }}<div><strong>Not saved.</strong> {{ error }}</div></div>{% endif %}
+<form class="card" method="post" action="{{ action }}" novalidate data-once>
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {% if not record %}<input type="hidden" name="request_key" value="{{ request_key }}">{% endif %}
+  <div class="card-body">
+    <div class="form-grid">
+      {% for f in fields %}
+      <div class="field{% if f.span == 2 %} span-2{% endif %}{% if f.error %} has-error{% endif %}">
+        <label class="field-label" for="f-{{ f.name }}">{{ f.label }}{% if f.required %}<span class="req" aria-hidden="true">*</span>{% endif %}</label>
+        {% if f.kind == "select" %}
+          <select class="input" id="f-{{ f.name }}" name="{{ f.name }}"{% if f.required %} required{% endif %}{% if f.error %} aria-invalid="true" aria-describedby="e-{{ f.name }}"{% endif %}>
+            {% for value, label in f.options %}<option value="{{ value }}"{% if value == f.value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        {% elif f.kind == "textarea" %}
+          <textarea class="input" id="f-{{ f.name }}" name="{{ f.name }}" rows="4"{% if f.error %} aria-invalid="true" aria-describedby="e-{{ f.name }}"{% endif %}>{{ f.value }}</textarea>
+        {% else %}
+          <input class="input{% if f.kind in ('amount', 'number') %} tabular{% endif %}" id="f-{{ f.name }}" name="{{ f.name }}" value="{{ f.value }}"
+            type="{{ {'email': 'email', 'date': 'date', 'tel': 'tel', 'number': 'number'}.get(f.kind, 'text') }}"
+            {% if f.kind == "amount" %} inputmode="decimal" placeholder="0.00"{% elif f.placeholder %} placeholder="{{ f.placeholder }}"{% endif %}
+            {% if f.min is not none %} min="{{ f.min }}"{% endif %}{% if f.max is not none %} max="{{ f.max }}"{% endif %}
+            {% if f.required %} required{% endif %}{% if f.error %} aria-invalid="true" aria-describedby="e-{{ f.name }}"{% endif %}>
+        {% endif %}
+        {% if f.error %}<p class="field-error" id="e-{{ f.name }}">{{ f.error }}</p>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="form-actions">
+    <a class="btn" href="{{ cancel }}">Cancel</a>
+    <button class="btn btn-primary" type="submit">{{ "Save changes" if record else "Create " ~ singular }}</button>
+  </div>
+</form>
+{% endblock %}

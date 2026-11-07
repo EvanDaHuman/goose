@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Convert {{ lead.name }}{% endblock %}
+{% block content %}
+{% set company = " ".join(((lead.company or "")).split()) %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/leads">Leads</a>{{ m.icon("chevron-right", 13) }}<a href="/leads/{{ lead.id }}">{{ lead.name }}</a>{{ m.icon("chevron-right", 13) }}<span>Convert</span></nav>
+<div class="page-head">
+  <div>
+    <h1>Convert {{ lead.name }}</h1>
+    <p class="page-sub">One step: create the contact, link or create the account, and optionally open a deal.</p>
+  </div>
+</div>
+{% if error %}<div class="alert alert-error" role="alert" style="margin-bottom:18px">{{ m.icon("alert", 18) }}<div>{{ error }}</div></div>{% endif %}
+
+<form method="post" action="/leads/{{ lead.id }}/convert" class="detail-layout" style="margin-top:0" data-once>
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <input type="hidden" name="request_key" value="{{ request_key }}">
+  <div class="steps">
+    <section class="card" aria-labelledby="step-account">
+      <header class="card-head"><h2 id="step-account" class="step-title"><span class="step-num">1</span> Account</h2>
+        {% if company %}<span class="small muted">Company on the lead: <strong class="tabular">{{ company }}</strong></span>{% endif %}
+      </header>
+      <div class="card-body">
+        <fieldset>
+          <legend class="sr-only">Choose the account for this contact</legend>
+          <div class="choices">
+            {% if state.exact_matches %}<p class="match-label">Same name</p>{% endif %}
+            {% for a in state.exact_matches %}
+            <label class="choice">
+              <input type="radio" name="account_choice" value="existing:{{ a.id }}" {% if values.account_choice == "existing:" ~ a.id %}checked{% endif %}>
+              <span class="choice-main">
+                <span class="choice-title">Link to existing account: {{ a.name }} <span class="pill pill-approved">Exact match</span></span>
+                <span class="choice-sub">{{ [a.billing_city, a.owner_name, (a.team_names|join(", ")) or None]|select|join(" · ") }}{% if a.open_deals %} · {{ plural(a.open_deals, "open deal") }} ({{ a.open_pipeline_usd|usd0 }}){% endif %}{% if a.contract_renewal_date %} · {{ a.contract_renewal_date|renewal_hint }}{% endif %}</span>
+              </span>
+            </label>
+            {% endfor %}
+            {% if state.similar %}<p class="match-label">Similar names — check before choosing</p>{% endif %}
+            {% for a in state.similar %}
+            <label class="choice is-similar">
+              <input type="radio" name="account_choice" value="existing:{{ a.id }}" {% if values.account_choice == "existing:" ~ a.id %}checked{% endif %}>
+              <span class="choice-main">
+                <span class="choice-title">{{ a.name }} <span class="pill pill-requested">Similar name · {{ (a.similarity * 100)|round|int }}%</span></span>
+                <span class="choice-sub">{{ [a.billing_city, a.owner_name, (a.team_names|join(", ")) or None]|select|join(" · ") }}</span>
+                <span class="choice-warning">{{ m.icon("alert", 15) }} Different customer — not linked unless you choose it.</span>
+              </span>
+            </label>
+            {% endfor %}
+            {% if state.permissions.create_account %}
+            <label class="choice">
+              <input type="radio" name="account_choice" value="new" {% if values.account_choice == "new" %}checked{% endif %}>
+              <span class="choice-main">
+                <span class="choice-title">Create a new account</span>
+                <span class="choice-sub">{% if state.exact_matches %}Only if this really is a different customer.{% else %}No account with this name exists yet.{% endif %}</span>
+                <span class="new-name field">
+                  <span class="sr-only">New account name</span>
+                  <input class="input" name="new_account_name" value="{{ values.new_account_name }}" aria-label="New account name" maxlength="255">
+                </span>
+              </span>
+            </label>
+            {% endif %}
+          </div>
+        </fieldset>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="step-contact">
+      <header class="card-head"><h2 id="step-contact" class="step-title"><span class="step-num">2</span> Contact to create</h2></header>
+      <div class="card-body">
+        <div class="preview-grid">
+          <div><p class="pv-label">Name</p><p class="pv-value">{{ lead.name }}</p></div>
+          <div><p class="pv-label">Title</p><p class="pv-value">{{ lead.title or "—" }}</p></div>
+          <div><p class="pv-label">Owner</p><p class="pv-value">{{ lead.owner_name or me.name }}</p></div>
+          <div><p class="pv-label">E-mail</p><p class="pv-value">{{ lead.email or "—" }}</p></div>
+          <div><p class="pv-label">Phone</p><p class="pv-value">{{ lead.phone or "—" }}</p></div>
+          <div><p class="pv-label">City</p><p class="pv-value">{{ lead.city or "—" }}</p></div>
+        </div>
+      </div>
+    </section>
+
+    {% if state.permissions.create_deal %}
+    <section class="card step-deal" aria-labelledby="step-deal">
+      <header class="card-head"><h2 id="step-deal" class="step-title"><span class="step-num">3</span> Deal <span class="muted small">(optional)</span></h2></header>
+      <div class="card-body">
+        <label class="deal-toggle"><input type="checkbox" name="create_deal" value="on" {% if values.create_deal %}checked{% endif %}> Also open a deal for this account</label>
+        <div class="deal-fields form-grid">
+          <div class="field span-2"><label class="field-label" for="deal_name">Deal name</label><input class="input" id="deal_name" name="deal_name" value="{{ values.deal_name }}" maxlength="255"></div>
+          <div class="field"><label class="field-label" for="deal_amount">Amount</label><input class="input tabular" id="deal_amount" name="deal_amount" value="{{ values.deal_amount }}" inputmode="decimal" placeholder="0.00"></div>
+          <div class="field"><label class="field-label" for="deal_currency">Currency</label>
+            <select class="input" id="deal_currency" name="deal_currency">{% for code, c in currencies.items() %}<option value="{{ code }}"{% if code == values.deal_currency %} selected{% endif %}>{{ code }} · {{ c.name }}</option>{% endfor %}</select></div>
+          <div class="field"><label class="field-label" for="deal_stage">Stage</label>
+            <select class="input" id="deal_stage" name="deal_stage">{% for s in open_stages %}<option value="{{ s.key }}"{% if s.key == values.deal_stage %} selected{% endif %}>{{ s.label }}</option>{% endfor %}</select></div>
+          <div class="field"><label class="field-label" for="deal_close_date">Expected close date</label><input class="input" id="deal_close_date" type="date" name="deal_close_date" value="{{ values.deal_close_date }}"></div>
+          <p class="small muted span-2">The approval rule applies: a deal above {{ cfg.rule.threshold_usd|usd0 }} can't start as {{ cfg.rule.won_stage }} without a sales manager's approval.</p>
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
+    <div class="btn-row" style="justify-content:flex-end">
+      <a class="btn" href="/leads/{{ lead.id }}">Cancel</a>
+      <button class="btn btn-primary" type="submit">{{ m.icon("convert", 16) }} Convert lead</button>
+    </div>
+  </div>
+
+  <aside class="convert-side">
+    <section class="card">
+      <header class="card-head"><h2>{{ m.icon("sparkle", 17) }} The lead</h2></header>
+      <div class="card-body">
+        <dl class="kv">
+          <dt>Name</dt><dd>{{ lead.name }}</dd>
+          <dt>Company</dt><dd>{{ company or "—" }}</dd>
+          <dt>Status</dt><dd>{{ cfg.label("lead_statuses", lead.status) }}</dd>
+          <dt>Owner</dt><dd>{{ lead.owner_name or "—" }}</dd>
+          <dt>Source</dt><dd>{{ cfg.label("lead_sources", lead.lead_source) if lead.lead_source else "—" }}</dd>
+        </dl>
+      </div>
+    </section>
+    <section class="card">
+      <header class="card-head"><h2>{{ m.icon("info", 17) }} What happens</h2></header>
+      <div class="card-body">
+        <ul class="info-points">
+          <li>{{ m.icon("user", 16) }}<span>A contact is created from the lead, owned by {{ lead.owner_name or "the lead's owner" }}.</span></li>
+          <li>{{ m.icon("building", 16) }}<span>Similar accounts are never linked automatically — only the one you pick.</span></li>
+          <li>{{ m.icon("note", 16) }}<span>{% if cfg.conversion_activities == "donothing" %}The lead's notes and tasks stay on the lead.{% elif cfg.conversion_activities == "move" %}The lead's notes and tasks move to the new contact.{% else %}The lead's notes and tasks are copied to the new contact.{% endif %}</span></li>
+          <li>{{ m.icon("check", 16) }}<span>Converting twice is safe: a second submit shows the first result.</span></li>
+        </ul>
+      </div>
+    </section>
+  </aside>
+</form>
+{% endblock %}

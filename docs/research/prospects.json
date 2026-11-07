@@ -1,0 +1,198 @@
+[
+  {
+    "name": "Bethel University: Classifieds (and Book Exchange)",
+    "url": "https://github.com/betheluniversity/classifieds",
+    "category": "c",
+    "summary": "Campus classifieds web app run by Bethel University's in-house web/ITS team (private university, St. Paul MN). The same code also runs the university's Book Exchange. Flask + Flask-SQLAlchemy on SQLite, about 1.8k Python lines, 4 tables, 24 Jinja templates, CAS single sign-on through Apache.",
+    "evidence": [
+      {"text": "PR #58 (merged 2026-10-23) pinned dependencies so the app runs on the team's OS 8 servers.", "url": "https://github.com/betheluniversity/classifieds/pull/58"},
+      {"text": "requirements.txt pins Flask==1.1.4, Werkzeug==1.0.1, Jinja2==2.11.3 and keeps the unmaintained Flask-Classy and Flask-Script.", "url": "https://github.com/betheluniversity/classifieds/blob/master/requirements.txt"},
+      {"text": "Dependabot PR to bump Flask 1.1.4 to 3.1.3 (a security fix release), open since 2026-10-23.", "url": "https://github.com/betheluniversity/classifieds/pull/59"},
+      {"text": "Dependabot PR to bump Werkzeug 1.0.1 to 3.1.9 (a security fix release), open since 2026-10-23.", "url": "https://github.com/betheluniversity/classifieds/pull/61"},
+      {"text": "Config template points SQLAlchemy at a local SQLite file (app.db).", "url": "https://github.com/betheluniversity/classifieds/blob/master/config.py.dist"},
+      {"text": "Cron script dumps the SQLite DB every 6 hours, keeps 13 days, and covers both the classifieds and book_exchange deployments.", "url": "https://github.com/betheluniversity/classifieds/blob/master/rotate_db_file.sh"},
+      {"text": "Queries use LIKE against integer IDs and boolean columns. SQLite accepts this; PostgreSQL rejects it.", "url": "https://github.com/betheluniversity/classifieds/blob/master/app/controller.py"},
+      {"text": "Flask-Script imports flask._compat, which was removed in Flask 2.0. The project is archived.", "url": "https://github.com/smurfix/flask-script/blob/master/flask_script/__init__.py"}
+    ],
+    "scope_fit": "Strong. Small internal tool (about 1.8k Python lines, 4 tables: posts, contacts, categories, post_categories) on Flask-SQLAlchemy + SQLite. Server-rendered Jinja templates with one or two small JSON endpoints. Auth is Apache mod_auth_cas via REMOTE_USER. A nightly cron calls an expire handler, and email goes through smtplib. No tests. Two deployments (Classifieds and Book Exchange) share the code.",
+    "blockers": [
+      "Server-rendered templates use Flask-Classy endpoint names (83 url_for calls) and need compatibility shims.",
+      "CAS hand-off: REMOTE_USER from Apache/mod_wsgi does not reach an ASGI app the same way.",
+      "The team may prefer Flask 3 to FastAPI (they have a Flask house style across several apps).",
+      "The database holds names, emails and phone numbers, so a sanitized copy or on-site migration is needed.",
+      "PostgreSQL may not be their standard (other Bethel apps use Oracle or MySQL).",
+      "University procurement and data-agreement steps."
+    ],
+    "access_path": "Code is already public (no license file), so a full pre-assessment needs no access. For the pilot, Bethel would share the deployed commit and config (secrets removed) and the two SQLite files or their cron dumps, sanitized if needed.",
+    "contact_channel": "Bethel ITS service portal https://bethel.topdesk.net (listed on https://www.bethel.edu/its/apps, which also gives a general help-desk email), asking for the request to be routed to the web applications team.",
+    "fit_score": "High",
+    "last_activity": "2026-10-23",
+    "researched_on": "2026-11-04"
+  },
+  {
+    "name": "SizeSquirrel",
+    "url": "https://github.com/eddieferrer/sizesquirrel-open",
+    "category": "a",
+    "summary": "Public climbing-shoe sizing and deals site (sizesquirrel.com) with a Flask JSON API backend and a Vue front end. Maintained by its single owner, who says the site barely covers its costs and invites contributors.",
+    "evidence": [
+      {"text": "requirements.txt pins Flask==1.1.4, Werkzeug==1.0.1, Flask-Script==2.0.6, SQLAlchemy==1.4.25 and Flask-SQLAlchemy==2.5.1.", "url": "https://github.com/eddieferrer/sizesquirrel-open/blob/master/requirements.txt"},
+      {"text": "README recommends Python 3.8.2 and Node 14.16 (both end-of-life) and says no new features are planned.", "url": "https://github.com/eddieferrer/sizesquirrel-open/blob/master/README.md"},
+      {"text": "Development settings use a SQLite database; a sample dev database is committed.", "url": "https://github.com/eddieferrer/sizesquirrel-open/blob/master/dev_settings.py"},
+      {"text": "The backend is a JSON API (apiv2 routes returning jsonify).", "url": "https://github.com/eddieferrer/sizesquirrel-open/blob/master/backend/apiv2/views.py"},
+      {"text": "Management commands run through the archived Flask-Script.", "url": "https://github.com/eddieferrer/sizesquirrel-open/blob/master/manage.py"}
+    ],
+    "scope_fit": "Near-ideal technically: JSON API, Flask-SQLAlchemy with 5 models (user, gender, brand, item, user_item), about 4k Python lines (excluding about 100 data-only Alembic migrations), own user auth, batch scripts for affiliate data feeds. No tests. The production DB engine is not stated.",
+    "blockers": [
+      "Very limited budget (the owner says the site barely pays its costs).",
+      "Production database engine unverified (only the dev config shows SQLite).",
+      "Shoe catalogue data lives in Alembic data migrations, so migration history must be preserved.",
+      "Batch jobs depend on Flask-Script and need re-homing."
+    ],
+    "access_path": "Code and a sample development database are public, so a public sample assessment needs no access. A real pilot would need the production DB from the owner.",
+    "contact_channel": "GitHub issues on eddieferrer/sizesquirrel-open (the README invites discussion there).",
+    "fit_score": "Medium",
+    "last_activity": "2025-12-23 (newest issue); last commit 2025-08-01",
+    "researched_on": "2026-11-04"
+  },
+  {
+    "name": "Isso",
+    "url": "https://github.com/isso-comments/isso",
+    "category": "a",
+    "summary": "Widely used self-hosted comment server (Disqus alternative): a JSON API with hand-written SQL on raw sqlite3. Maintained by the isso-comments GitHub organisation; release 0.14.0 in March 2026.",
+    "evidence": [
+      {"text": "Issue #61, opened in 2014 by the original author, asks for a SQL abstraction layer so MySQL and PostgreSQL can be used. Still open, labelled needs-contributor and needs-decision. Third-party Postgres and MySQL forks are linked in the thread.", "url": "https://github.com/isso-comments/isso/issues/61"},
+      {"text": "Database layer uses raw sqlite3 connections and hand-written SQL.", "url": "https://github.com/isso-comments/isso/blob/master/isso/db/__init__.py"},
+      {"text": "The app is built on Werkzeug routing and middleware, not Flask.", "url": "https://github.com/isso-comments/isso/blob/master/isso/__init__.py"},
+      {"text": "An AI policy added 2026-10-25 requires a human copyright owner for each contribution and bans unsupervised agentic tools.", "url": "https://github.com/isso-comments/isso/blob/master/docs/docs/contributing/index.rst"}
+    ],
+    "scope_fit": "Partial. JSON API, raw sqlite3, about 4 tables, roughly 4-5k Python lines with tests (good). But it is Werkzeug, not Flask; upstream would want an optional PostgreSQL backend rather than a FastAPI rewrite; it sends email/webhook notifications.",
+    "blockers": [
+      "Not a Flask app (Werkzeug), so it sits outside the literal v1 job.",
+      "No built-in payer; a paid job would come from a site operator, who would then maintain a fork.",
+      "The project's AI policy restricts agent-made contributions upstream.",
+      "Maintainers value SQLite simplicity."
+    ],
+    "access_path": "Code is public, enough for a public sample assessment. A paying site operator would provide their comments database.",
+    "contact_channel": "GitHub Discussions https://github.com/isso-comments/isso/discussions or IRC #isso on Libera.Chat (both listed in the README).",
+    "fit_score": "Medium",
+    "last_activity": "2026-10-25",
+    "researched_on": "2026-11-04"
+  },
+  {
+    "name": "Wavect GmbH",
+    "url": "https://wavect.io/services/flask-development",
+    "category": "b",
+    "summary": "Austrian custom-software agency (Ampass, Tyrol and Vienna) run by two founders with a specialist network. A possible partner or subcontracting channel for client Flask apps.",
+    "evidence": [
+      {"text": "The agency's own site has a dedicated Flask development page: building Flask services, making existing ones easier to run and change, checking extension compatibility, testing API behaviour.", "url": "https://wavect.io/services/flask-development"},
+      {"text": "The homepage describes a two-founder company working with a network of specialists.", "url": "https://wavect.io/"}
+    ],
+    "scope_fit": "Partner channel rather than a direct customer. They could pass along client Flask + SQLite apps that need a fixed-scope FastAPI + PostgreSQL upgrade, with Goose delivering the mechanical part and its test evidence. No evidence about SQLite usage among their clients.",
+    "blockers": [
+      "The agency may prefer to do upgrade work itself.",
+      "Its Flask page is about keeping Flask services, not migrating away from Flask.",
+      "No proof of client demand for this specific job."
+    ],
+    "access_path": "Client code and databases would come through the agency under its client agreements.",
+    "contact_channel": "Contact page https://wavect.io/contact/",
+    "fit_score": "Medium",
+    "last_activity": "Website live when checked on 2026-11-04 (no dated post checked)",
+    "researched_on": "2026-11-04"
+  },
+  {
+    "name": "Level 12",
+    "url": "https://www.level12.io/",
+    "category": "b",
+    "summary": "Custom software consultancy in Louisville, KY that presents its team as Python developers first and has worked since 2011. Its official GitHub organisation maintains Keg, a Flask + SQLAlchemy framework.",
+    "evidence": [
+      {"text": "Keg, a framework built on Flask and SQLAlchemy, is maintained in the company's GitHub org (profile links to level12.io), pushed 2026-09-02.", "url": "https://github.com/level12/keg"},
+      {"text": "GitHub org activity continues in late 2026 (e.g. flask-hypergen pushed 2026-11-03).", "url": "https://github.com/level12"},
+      {"text": "Blog post (2025-04-25) on AI-assisted updating of a Python library.", "url": "https://www.level12.io/blog/ai-driven-library-updates-modernizing-morphi-augment-code/"},
+      {"text": "Caveat: the homepage and blog index do not mention Flask; the Flask evidence comes from the company's own GitHub org.", "url": "https://www.level12.io/blog/"}
+    ],
+    "scope_fit": "Weak as a channel for a FastAPI-only offer. Their Flask framework (Keg) is part of their identity, and they already use AI tools for modernisation work.",
+    "blockers": [
+      "A FastAPI-only offer competes with their own Flask framework.",
+      "They may see Goose as a competitor.",
+      "Unknown whether their client apps use SQLite."
+    ],
+    "access_path": "Referral or subcontract; client code and data would come through Level 12.",
+    "contact_channel": "Contact page https://www.level12.io/contact/",
+    "fit_score": "Low",
+    "last_activity": "2026-11-03 (GitHub org)",
+    "researched_on": "2026-11-04"
+  },
+  {
+    "name": "Subscribie",
+    "url": "https://github.com/Subscribie/subscribie",
+    "category": "a",
+    "summary": "Open-source subscription-payments platform with a hosted service (subscribie.co.uk) for small businesses. Built on Flask + Flask-SQLAlchemy with SQLite by default.",
+    "evidence": [
+      {"text": "Issue #738, opened in 2021 by the project's lead contributor and still open, asks for migrations to work on MySQL as groundwork for higher-availability databases without a single point of failure.", "url": "https://github.com/Subscribie/subscribie/issues/738"},
+      {"text": "Matching PR #898 has been open since 2022, last updated 2023-03-30.", "url": "https://github.com/Subscribie/subscribie/pull/898"},
+      {"text": "The default settings example uses a SQLite database.", "url": "https://github.com/Subscribie/subscribie/blob/master/settings.yaml.example"}
+    ],
+    "scope_fit": "Out of v1 range by size. About 13k Python lines and 148 HTML templates (server-rendered), Stripe payments, uWSGI multi-instance hosting. Modern Python (>=3.12). The stated target DB is MySQL, not PostgreSQL.",
+    "blockers": [
+      "Size and template count well above the v1 guideline.",
+      "Payment flows (Stripe) raise risk.",
+      "The maintainer's target is MySQL rather than PostgreSQL.",
+      "They would probably want to stay on Flask."
+    ],
+    "access_path": "Code is public. Shop databases are held by the operator.",
+    "contact_channel": "GitHub issues on Subscribie/subscribie (the hosted-service site mentions email/chat support but has no contact page).",
+    "fit_score": "Low",
+    "last_activity": "2026-07-26 (last default-branch commit); repo push 2026-10-31",
+    "researched_on": "2026-11-04"
+  },
+  {
+    "name": "OpenAlgo",
+    "url": "https://github.com/marketcalls/openalgo",
+    "category": "a",
+    "summary": "Self-hosted algorithmic-trading platform with 36 broker plugins, maintained by Marketcalls (Bangalore). Flask 3 with several SQLite databases plus DuckDB.",
+    "evidence": [
+      {"text": "Issue #2355 (opened 2026-11-03): on the default SQLite DB, the APScheduler thread crashes with 'database is locked' and all scheduled flows stop until a restart.", "url": "https://github.com/marketcalls/openalgo/issues/2355"},
+      {"text": "Earlier report of background schedulers leaking SQLite read locks (closed Aug 2026).", "url": "https://github.com/marketcalls/openalgo/issues/1738"},
+      {"text": "Fresh-install scheduler failures with 'database is locked' (closed Aug 2026).", "url": "https://github.com/marketcalls/openalgo/issues/1759"},
+      {"text": "Sample env defines five separate SQLite databases plus a DuckDB file.", "url": "https://github.com/marketcalls/openalgo/blob/main/.sample.env"}
+    ],
+    "scope_fit": "Far beyond v1: over 1,200 Python files outside tests, Flask-RESTX API, Socket.IO, APScheduler, multiple databases. They would need PostgreSQL support added rather than a FastAPI migration.",
+    "blockers": [
+      "Codebase size.",
+      "Real-money trading risk.",
+      "Many self-hosted installs, each with its own databases.",
+      "Already on modern Flask 3.1.3, so a framework change is not wanted."
+    ],
+    "access_path": "Code is public. Each trader holds their own databases; work would need the maintainer's buy-in.",
+    "contact_channel": "GitHub issues on marketcalls/openalgo, or the Discord server linked in the README.",
+    "fit_score": "Low",
+    "last_activity": "2026-11-03",
+    "researched_on": "2026-11-04"
+  },
+  {
+    "name": "MakeIt Labs authbackend",
+    "url": "https://github.com/makeitlabs/authbackend",
+    "category": "c",
+    "summary": "Membership, billing and RFID access-control backend of MakeIt Labs, a 501(c)(3) makerspace in Nashua, NH. Flask with SQLite in production.",
+    "evidence": [
+      {"text": "Repo description: membership and authorisation backend with web interface, API and Stripe billing, supporting the space's access-control devices.", "url": "https://github.com/makeitlabs/authbackend"},
+      {"text": "README describes restoring the production SQLite databases from S3 backups and calls its own docs rough as of April 2022.", "url": "https://github.com/makeitlabs/authbackend/blob/master/README.md"},
+      {"text": "requirements.txt pins 2022-era packages: Flask==2.0.2, Werkzeug==2.0.2, Flask-User==1.0.2.2, SQLAlchemy==1.4.31, oauth2client, slacker.", "url": "https://github.com/makeitlabs/authbackend/blob/master/requirements.txt"},
+      {"text": "Raw SQL schema file alongside Flask-SQLAlchemy usage.", "url": "https://github.com/makeitlabs/authbackend/blob/master/schema.sql"},
+      {"text": "Charity Navigator lists MakeIt Labs (Nashua, NH) as a 501(c)(3).", "url": "https://www.charitynavigator.org/ein/452258590"}
+    ],
+    "scope_fit": "Too large for v1. About 18k Python lines, 84 templates, mixed raw sqlite3 and Flask-SQLAlchemy, plus an MQTT daemon, Slack integration, nightly jobs, Google OAuth, Stripe and S3 backups.",
+    "blockers": [
+      "Size and number of integrations.",
+      "Door-access hardware depends on it.",
+      "Member personal data.",
+      "Volunteer-run with a small budget.",
+      "No repo activity since January 2024."
+    ],
+    "access_path": "Code is public. Volunteers would need to approve sharing a (sanitized) copy of the member database.",
+    "contact_channel": "MakeIt Labs contact page https://makeitlabs.com/contact or GitHub issues on makeitlabs/authbackend.",
+    "fit_score": "Low",
+    "last_activity": "2024-01-26 (last push and issue #49); last default-branch commit 2022-12-29",
+    "researched_on": "2026-11-04"
+  }
+]

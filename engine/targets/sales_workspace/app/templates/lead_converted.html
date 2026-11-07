@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ "Converted" if fresh else "Already converted" }} · {{ lead.name }}{% endblock %}
+{% block content %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/leads">Leads</a>{{ m.icon("chevron-right", 13) }}<a href="/leads/{{ lead.id }}">{{ lead.name }}</a>{{ m.icon("chevron-right", 13) }}<span>Conversion</span></nav>
+<div class="detail-layout" style="margin-top:0">
+  <div>
+    <section class="card">
+      <div class="done-hero">
+        <span class="done-mark{% if not fresh %} is-info{% endif %}">{{ m.icon("check" if fresh else "info", 24) }}</span>
+        <div>
+          <h1 class="record-title" style="font-size:24px">{% if fresh %}{{ lead.name }} is now a contact{% else %}Already converted{% endif %}</h1>
+          <p class="page-sub">{% if fresh %}Everything below was created or linked in one step.{% else %}{{ lead.name }} was converted{% if result.converted_at %} on {{ result.converted_at|date_fmt }}{% endif %}. Converting again changes nothing; here is what the conversion produced.{% endif %}</p>
+        </div>
+      </div>
+      <ul class="result-list">
+        <li>
+          <span class="result-icon">{{ m.icon("user", 18) }}</span>
+          <div class="result-main"><p class="result-kind">Contact · created</p>
+            {% if linked.contact %}<a class="result-name" href="/contacts/{{ linked.contact.id }}">{{ linked.contact.name }}</a><p class="cell-sub">{{ [linked.contact.title, linked.contact.email]|select|join(" · ") }}</p>{% else %}<p class="result-name muted">Not visible to you</p>{% endif %}
+          </div>
+          {% if linked.contact %}<a class="btn btn-sm" href="/contacts/{{ linked.contact.id }}">Open {{ m.icon("arrow-right", 14) }}</a>{% endif %}
+        </li>
+        <li>
+          <span class="result-icon">{{ m.icon("building", 18) }}</span>
+          <div class="result-main"><p class="result-kind">Account · {{ "created" if result.account_created else "linked (existing)" }}</p>
+            {% if linked.account %}<a class="result-name" href="/accounts/{{ linked.account.id }}">{{ linked.account.name }}</a><p class="cell-sub">{{ [linked.account.billing_city, linked.account.owner_name]|select|join(" · ") }}</p>{% elif result.account_id %}<p class="result-name muted">Not visible to you</p>{% else %}<p class="result-name muted">No account</p>{% endif %}
+          </div>
+          {% if linked.account %}<a class="btn btn-sm" href="/accounts/{{ linked.account.id }}">Open {{ m.icon("arrow-right", 14) }}</a>{% endif %}
+        </li>
+        <li>
+          <span class="result-icon">{{ m.icon("trend", 18) }}</span>
+          <div class="result-main"><p class="result-kind">Deal</p>
+            {% if linked.deal %}<a class="result-name" href="/deals/{{ linked.deal.id }}">{{ linked.deal.name }}</a>
+              <p class="pills" style="margin-top:4px">{{ m.stage_pill(linked.deal) }}{{ m.approval_pill(linked.deal.approval_status) }}<span class="money small">{{ linked.deal.amount|money(linked.deal.currency_code, linked.deal.currency_symbol) }}</span></p>
+            {% elif result.deal_id %}<p class="result-name muted">Not visible to you</p>{% else %}<p class="result-name muted">No deal was opened</p>{% endif %}
+          </div>
+          {% if linked.deal %}<a class="btn btn-sm" href="/deals/{{ linked.deal.id }}">Open {{ m.icon("arrow-right", 14) }}</a>{% endif %}
+        </li>
+      </ul>
+    </section>
+  </div>
+  <aside>
+    <section class="card">
+      <header class="card-head"><h2>{{ m.icon("sparkle", 17) }} The lead</h2></header>
+      <div class="card-body">
+        <dl class="kv">
+          <dt>Name</dt><dd><a href="/leads/{{ lead.id }}">{{ lead.name }}</a></dd>
+          <dt>Company</dt><dd>{{ (lead.company or "")|trim or "—" }}</dd>
+          <dt>Status</dt><dd><span class="pill pill-approved">{{ cfg.label("lead_statuses", lead.status) }}</span></dd>
+          <dt>Notes &amp; tasks</dt><dd>{% if cfg.conversion_activities == "donothing" %}Stay on the lead{% else %}Carried to the contact{% endif %}</dd>
+        </dl>
+      </div>
+    </section>
+  </aside>
+</div>
+{% endblock %}

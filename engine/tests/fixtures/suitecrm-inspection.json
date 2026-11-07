@@ -1,0 +1,3328 @@
+{
+ "schema_version": 2,
+ "inspected_at": "2026-11-04T21:32:23+00:00",
+ "today": "2026-11-04",
+ "stack": {
+  "language": "PHP",
+  "languages": {
+   "PHP": {
+    "files": 4316,
+    "lines": null
+   }
+  },
+  "framework": "SuiteCRM",
+  "framework_version": "7.11.23",
+  "python": null,
+  "php_supported": [
+   "5.6",
+   "7.0",
+   "7.1",
+   "7.2",
+   "7.3",
+   "7.4"
+  ],
+  "database": {
+   "engine": "mysql",
+   "copy_supplied": true,
+   "tables": 220
+  },
+  "imports": []
+ },
+ "pins": {
+  "suitecrm": "7.11.23"
+ },
+ "problems": [],
+ "size": {
+  "files": 4316,
+  "custom_files": 29,
+  "custom_code_lines": 1124,
+  "tables": 220,
+  "rows": 2087,
+  "sales_rows": 1837,
+  "components": 39,
+  "connections": 88,
+  "customizations": 2
+ },
+ "components": [
+  {
+   "id": "runtime:suitecrm",
+   "kind": "runtime",
+   "name": "SuiteCRM 7.11.23",
+   "summary": "Released 2021-11-19; the newest SuiteCRM 7 is 7.15.2 (2026-07-31)",
+   "file": "suitecrm_version.php",
+   "line": 6,
+   "group": "code",
+   "attrs": {}
+  },
+  {
+   "id": "runtime:php",
+   "kind": "runtime",
+   "name": "PHP 7.4 at most",
+   "summary": "SuiteCRM 7.11.x runs on PHP 5.6, 7.0, 7.1, 7.2, 7.3, 7.4 (7.3 from 7.11.5, 7.4 from 7.11.19); PHP 7.4 reached end of life on 2022-11-28",
+   "file": null,
+   "line": null,
+   "group": "code",
+   "attrs": {}
+  },
+  {
+   "id": "db:main",
+   "kind": "database",
+   "name": "MySQL / MariaDB database",
+   "summary": "220 tables in the copy you sent; SuiteCRM 7.11 supports MariaDB 10.3 and MySQL 8 at most",
+   "file": "config.php",
+   "line": 102,
+   "group": "data",
+   "attrs": {
+    "engine": "mysql"
+   }
+  },
+  {
+   "id": "ui:web",
+   "kind": "interface",
+   "name": "SuiteCRM web screens",
+   "summary": "index.php: list, detail and edit views for every module",
+   "file": "index.php",
+   "line": 1,
+   "group": "entry",
+   "attrs": {}
+  },
+  {
+   "id": "api:v4",
+   "kind": "interface",
+   "name": "Legacy REST API v4.1",
+   "summary": "service/v4_1/rest.php (session login)",
+   "file": "service/v4_1/rest.php",
+   "line": 1,
+   "group": "entry",
+   "attrs": {}
+  },
+  {
+   "id": "api:v8",
+   "kind": "interface",
+   "name": "REST API v8 (JSON:API, OAuth2)",
+   "summary": "Api/V8",
+   "file": null,
+   "line": null,
+   "group": "entry",
+   "attrs": {}
+  },
+  {
+   "id": "mod:Accounts",
+   "kind": "module",
+   "name": "Accounts",
+   "summary": "141 records, 2 soft-deleted",
+   "file": "modules/Accounts/vardefs.php",
+   "line": null,
+   "group": "code",
+   "attrs": {
+    "rows": 141,
+    "deleted": 2,
+    "area": "sales"
+   }
+  },
+  {
+   "id": "table:accounts",
+   "kind": "table",
+   "name": "accounts",
+   "summary": "141 rows (deleted = 0)",
+   "file": null,
+   "line": null,
+   "group": "data",
+   "attrs": {
+    "rows": 141
+   }
+  },
+  {
+   "id": "mod:Contacts",
+   "kind": "module",
+   "name": "Contacts",
+   "summary": "332 records, 3 soft-deleted",
+   "file": "modules/Contacts/vardefs.php",
+   "line": null,
+   "group": "code",
+   "attrs": {
+    "rows": 332,
+    "deleted": 3,
+    "area": "sales"
+   }
+  },
+  {
+   "id": "table:contacts",
+   "kind": "table",
+   "name": "contacts",
+   "summary": "332 rows (deleted = 0)",
+   "file": null,
+   "line": null,
+   "group": "data",
+   "attrs": {
+    "rows": 332
+   }
+  },
+  {
+   "id": "mod:Leads",
+   "kind": "module",
+   "name": "Leads",
+   "summary": "111 records",
+   "file": "modules/Leads/vardefs.php",
+   "line": null,
+   "group": "code",
+   "attrs": {
+    "rows": 111,
+    "deleted": 0,
+    "area": "sales"
+   }
+  },
+  {
+   "id": "table:leads",
+   "kind": "table",
+   "name": "leads",
+   "summary": "111 rows (deleted = 0)",
+   "file": null,
+   "line": null,
+   "group": "data",
+   "attrs": {
+    "rows": 111
+   }
+  },
+  {
+   "id": "mod:Opportunities",
+   "kind": "module",
+   "name": "Opportunities (deals)",
+   "summary": "243 records, 1 soft-deleted",
+   "file": "modules/Opportunities/vardefs.php",
+   "line": null,
+   "group": "code",
+   "attrs": {
+    "rows": 243,
+    "deleted": 1,
+    "area": "sales"
+   }
+  },
+  {
+   "id": "table:opportunities",
+   "kind": "table",
+   "name": "opportunities",
+   "summary": "243 rows (deleted = 0)",
+   "file": null,
+   "line": null,
+   "group": "data",
+   "attrs": {
+    "rows": 243
+   }
+  },
+  {
+   "id": "mod:Notes",
+   "kind": "module",
+   "name": "Notes",
+   "summary": "670 records",
+   "file": "modules/Notes/vardefs.php",
+   "line": null,
+   "group": "code",
+   "attrs": {
+    "rows": 670,
+    "deleted": 0,
+    "area": "sales"
+   }
+  },
+  {
+   "id": "table:notes",
+   "kind": "table",
+   "name": "notes",
+   "summary": "670 rows (deleted = 0)",
+   "file": null,
+   "line": null,
+   "group": "data",
+   "attrs": {
+    "rows": 670
+   }
+  },
+  {
+   "id": "mod:Tasks",
+   "kind": "module",
+   "name": "Tasks",
+   "summary": "340 records",
+   "file": "modules/Tasks/vardefs.php",
+   "line": null,
+   "group": "code",
+   "attrs": {
+    "rows": 340,
+    "deleted": 0,
+    "area": "sales"
+   }
+  },
+  {
+   "id": "table:tasks",
+   "kind": "table",
+   "name": "tasks",
+   "summary": "340 rows (deleted = 0)",
+   "file": null,
+   "line": null,
+   "group": "data",
+   "attrs": {
+    "rows": 340
+   }
+  },
+  {
+   "id": "mod:Cases",
+   "kind": "module",
+   "name": "Cases",
+   "summary": "60 records",
+   "file": "modules/Cases/vardefs.php",
+   "line": null,
+   "group": "code",
+   "attrs": {
+    "rows": 60,
+    "area": "other"
+   }
+  },
+  {
+   "id": "mod:Meetings",
+   "kind": "module",
+   "name": "Meetings",
+   "summary": "110 records",
+   "file": "modules/Meetings/vardefs.php",
+   "line": null,
+   "group": "code",
+   "attrs": {
+    "rows": 110,
+    "area": "other"
+   }
+  },
+  {
+   "id": "mod:Calls",
+   "kind": "module",
+   "name": "Calls",
+   "summary": "80 records",
+   "file": "modules/Calls/vardefs.php",
+   "line": null,
+   "group": "code",
+   "attrs": {
+    "rows": 80,
+    "area": "other"
+   }
+  },
+  {
+   "id": "role:Sales Manager",
+   "kind": "role",
+   "name": "Role: Sales Manager",
+   "summary": "2 users; sales records: view team, edit team",
+   "file": null,
+   "line": null,
+   "group": "access",
+   "attrs": {}
+  },
+  {
+   "id": "role:Salesperson",
+   "kind": "role",
+   "name": "Role: Salesperson",
+   "summary": "6 users; sales records: view team, edit own",
+   "file": null,
+   "line": null,
+   "group": "access",
+   "attrs": {}
+  },
+  {
+   "id": "role:Support",
+   "kind": "role",
+   "name": "Role: Support",
+   "summary": "1 users; sales records: view ?/all, edit ?/none/own",
+   "file": null,
+   "line": null,
+   "group": "access",
+   "attrs": {}
+  },
+  {
+   "id": "team:East Sales",
+   "kind": "team",
+   "name": "Team: East Sales",
+   "summary": "Security group with 4 members",
+   "file": null,
+   "line": null,
+   "group": "access",
+   "attrs": {}
+  },
+  {
+   "id": "team:West Sales",
+   "kind": "team",
+   "name": "Team: West Sales",
+   "summary": "Security group with 4 members",
+   "file": null,
+   "line": null,
+   "group": "access",
+   "attrs": {}
+  },
+  {
+   "id": "cfg:securitysuite",
+   "kind": "setting",
+   "name": "Security group settings",
+   "summary": "additive=True, filter_user_list=False, inherit_assigned=True, inherit_creator=True, inherit_parent=True, popup_select=False, strict_rights=False, user_popup=True, user_role_precedence=True, version=6.5.17",
+   "file": "config.php",
+   "line": 412,
+   "group": "code",
+   "attrs": {}
+  },
+  {
+   "id": "table:accounts_contacts",
+   "kind": "table",
+   "name": "accounts_contacts",
+   "summary": "324 links",
+   "file": null,
+   "line": null,
+   "group": "data",
+   "attrs": {
+    "rows": 324
+   }
+  },
+  {
+   "id": "table:accounts_opportunities",
+   "kind": "table",
+   "name": "accounts_opportunities",
+   "summary": "243 links",
+   "file": null,
+   "line": null,
+   "group": "data",
+   "attrs": {
+    "rows": 243
+   }
+  },
+  {
+   "id": "table:opportunities_contacts",
+   "kind": "table",
+   "name": "opportunities_contacts",
+   "summary": "237 links",
+   "file": null,
+   "line": null,
+   "group": "data",
+   "attrs": {
+    "rows": 237
+   }
+  },
+  {
+   "id": "table:securitygroups_records",
+   "kind": "table",
+   "name": "securitygroups_records",
+   "summary": "1,981 links",
+   "file": null,
+   "line": null,
+   "group": "data",
+   "attrs": {
+    "rows": 1981
+   }
+  },
+  {
+   "id": "table:email_addr_bean_rel",
+   "kind": "table",
+   "name": "email_addr_bean_rel",
+   "summary": "452 links",
+   "file": null,
+   "line": null,
+   "group": "data",
+   "attrs": {
+    "rows": 452
+   }
+  },
+  {
+   "id": "rule:DealApproval",
+   "kind": "rule",
+   "name": "Custom rule: Sample: manager approval before a deal above $25,000 is ma",
+   "summary": "before_save on Opportunities: deals above $25,000 (amount_usdollar) need a 'Sales Manager' on the same team before 'Closed Won'",
+   "file": "custom/modules/Opportunities/DealApproval.php",
+   "line": 30,
+   "group": "code",
+   "attrs": {
+    "custom": true
+   }
+  },
+  {
+   "id": "field:Accounts.contract_renewal_date_c",
+   "kind": "field",
+   "name": "Custom field: Contract renewal date",
+   "summary": "date on Accounts in accounts_cstm; filled for 96 of 141 records",
+   "file": null,
+   "line": null,
+   "group": "code",
+   "attrs": {
+    "custom": true
+   }
+  },
+  {
+   "id": "field:Opportunities.approval_status_c",
+   "kind": "field",
+   "name": "Custom field: approval_status_c",
+   "summary": "enum on Opportunities in opportunities_cstm; filled for 33 of 243 records",
+   "file": null,
+   "line": null,
+   "group": "code",
+   "attrs": {
+    "custom": true
+   }
+  },
+  {
+   "id": "field:Opportunities.approved_amount_c",
+   "kind": "field",
+   "name": "Custom field: approved_amount_c",
+   "summary": "decimal on Opportunities in opportunities_cstm; filled for 20 of 243 records",
+   "file": null,
+   "line": null,
+   "group": "code",
+   "attrs": {
+    "custom": true
+   }
+  },
+  {
+   "id": "field:Opportunities.approved_at_c",
+   "kind": "field",
+   "name": "Custom field: approved_at_c",
+   "summary": "datetimecombo on Opportunities in opportunities_cstm; filled for 20 of 243 records",
+   "file": null,
+   "line": null,
+   "group": "code",
+   "attrs": {
+    "custom": true
+   }
+  },
+  {
+   "id": "field:Opportunities.approved_by_c",
+   "kind": "field",
+   "name": "Custom field: approved_by_c",
+   "summary": "relate on Opportunities in opportunities_cstm",
+   "file": null,
+   "line": null,
+   "group": "code",
+   "attrs": {
+    "custom": true
+   }
+  },
+  {
+   "id": "field:Opportunities.user_id_c",
+   "kind": "field",
+   "name": "Custom field: user_id_c",
+   "summary": "id on Opportunities in opportunities_cstm; filled for 20 of 243 records",
+   "file": null,
+   "line": null,
+   "group": "code",
+   "attrs": {
+    "custom": true
+   }
+  }
+ ],
+ "edges": [
+  {
+   "from": "mod:Accounts",
+   "to": "table:accounts",
+   "kind": "stored in"
+  },
+  {
+   "from": "table:accounts",
+   "to": "db:main",
+   "kind": "stored in"
+  },
+  {
+   "from": "ui:web",
+   "to": "mod:Accounts",
+   "kind": "shows"
+  },
+  {
+   "from": "mod:Contacts",
+   "to": "table:contacts",
+   "kind": "stored in"
+  },
+  {
+   "from": "table:contacts",
+   "to": "db:main",
+   "kind": "stored in"
+  },
+  {
+   "from": "ui:web",
+   "to": "mod:Contacts",
+   "kind": "shows"
+  },
+  {
+   "from": "mod:Leads",
+   "to": "table:leads",
+   "kind": "stored in"
+  },
+  {
+   "from": "table:leads",
+   "to": "db:main",
+   "kind": "stored in"
+  },
+  {
+   "from": "ui:web",
+   "to": "mod:Leads",
+   "kind": "shows"
+  },
+  {
+   "from": "mod:Opportunities",
+   "to": "table:opportunities",
+   "kind": "stored in"
+  },
+  {
+   "from": "table:opportunities",
+   "to": "db:main",
+   "kind": "stored in"
+  },
+  {
+   "from": "ui:web",
+   "to": "mod:Opportunities",
+   "kind": "shows"
+  },
+  {
+   "from": "mod:Notes",
+   "to": "table:notes",
+   "kind": "stored in"
+  },
+  {
+   "from": "table:notes",
+   "to": "db:main",
+   "kind": "stored in"
+  },
+  {
+   "from": "ui:web",
+   "to": "mod:Notes",
+   "kind": "shows"
+  },
+  {
+   "from": "mod:Tasks",
+   "to": "table:tasks",
+   "kind": "stored in"
+  },
+  {
+   "from": "table:tasks",
+   "to": "db:main",
+   "kind": "stored in"
+  },
+  {
+   "from": "ui:web",
+   "to": "mod:Tasks",
+   "kind": "shows"
+  },
+  {
+   "from": "ui:web",
+   "to": "mod:Cases",
+   "kind": "shows"
+  },
+  {
+   "from": "ui:web",
+   "to": "mod:Meetings",
+   "kind": "shows"
+  },
+  {
+   "from": "ui:web",
+   "to": "mod:Calls",
+   "kind": "shows"
+  },
+  {
+   "from": "role:Sales Manager",
+   "to": "mod:Accounts",
+   "kind": "controls access to"
+  },
+  {
+   "from": "role:Sales Manager",
+   "to": "mod:Contacts",
+   "kind": "controls access to"
+  },
+  {
+   "from": "role:Sales Manager",
+   "to": "mod:Leads",
+   "kind": "controls access to"
+  },
+  {
+   "from": "role:Sales Manager",
+   "to": "mod:Opportunities",
+   "kind": "controls access to"
+  },
+  {
+   "from": "role:Sales Manager",
+   "to": "mod:Notes",
+   "kind": "controls access to"
+  },
+  {
+   "from": "role:Sales Manager",
+   "to": "mod:Tasks",
+   "kind": "controls access to"
+  },
+  {
+   "from": "role:Salesperson",
+   "to": "mod:Accounts",
+   "kind": "controls access to"
+  },
+  {
+   "from": "role:Salesperson",
+   "to": "mod:Contacts",
+   "kind": "controls access to"
+  },
+  {
+   "from": "role:Salesperson",
+   "to": "mod:Leads",
+   "kind": "controls access to"
+  },
+  {
+   "from": "role:Salesperson",
+   "to": "mod:Opportunities",
+   "kind": "controls access to"
+  },
+  {
+   "from": "role:Salesperson",
+   "to": "mod:Notes",
+   "kind": "controls access to"
+  },
+  {
+   "from": "role:Salesperson",
+   "to": "mod:Tasks",
+   "kind": "controls access to"
+  },
+  {
+   "from": "role:Support",
+   "to": "mod:Accounts",
+   "kind": "controls access to"
+  },
+  {
+   "from": "role:Support",
+   "to": "mod:Contacts",
+   "kind": "controls access to"
+  },
+  {
+   "from": "role:Support",
+   "to": "mod:Notes",
+   "kind": "controls access to"
+  },
+  {
+   "from": "role:Support",
+   "to": "mod:Tasks",
+   "kind": "controls access to"
+  },
+  {
+   "from": "team:East Sales",
+   "to": "mod:Accounts",
+   "kind": "groups records of"
+  },
+  {
+   "from": "team:East Sales",
+   "to": "mod:Contacts",
+   "kind": "groups records of"
+  },
+  {
+   "from": "team:East Sales",
+   "to": "mod:Leads",
+   "kind": "groups records of"
+  },
+  {
+   "from": "team:East Sales",
+   "to": "mod:Opportunities",
+   "kind": "groups records of"
+  },
+  {
+   "from": "team:East Sales",
+   "to": "mod:Notes",
+   "kind": "groups records of"
+  },
+  {
+   "from": "team:East Sales",
+   "to": "mod:Tasks",
+   "kind": "groups records of"
+  },
+  {
+   "from": "team:West Sales",
+   "to": "mod:Accounts",
+   "kind": "groups records of"
+  },
+  {
+   "from": "team:West Sales",
+   "to": "mod:Contacts",
+   "kind": "groups records of"
+  },
+  {
+   "from": "team:West Sales",
+   "to": "mod:Leads",
+   "kind": "groups records of"
+  },
+  {
+   "from": "team:West Sales",
+   "to": "mod:Opportunities",
+   "kind": "groups records of"
+  },
+  {
+   "from": "team:West Sales",
+   "to": "mod:Notes",
+   "kind": "groups records of"
+  },
+  {
+   "from": "team:West Sales",
+   "to": "mod:Tasks",
+   "kind": "groups records of"
+  },
+  {
+   "from": "mod:Contacts",
+   "to": "mod:Accounts",
+   "kind": "belongs to"
+  },
+  {
+   "from": "mod:Opportunities",
+   "to": "mod:Accounts",
+   "kind": "belongs to"
+  },
+  {
+   "from": "mod:Opportunities",
+   "to": "mod:Contacts",
+   "kind": "involves"
+  },
+  {
+   "from": "mod:Notes",
+   "to": "mod:Accounts",
+   "kind": "attached to"
+  },
+  {
+   "from": "mod:Notes",
+   "to": "mod:Opportunities",
+   "kind": "attached to"
+  },
+  {
+   "from": "mod:Tasks",
+   "to": "mod:Accounts",
+   "kind": "attached to"
+  },
+  {
+   "from": "mod:Leads",
+   "to": "mod:Contacts",
+   "kind": "converts to"
+  },
+  {
+   "from": "table:accounts_contacts",
+   "to": "db:main",
+   "kind": "stored in"
+  },
+  {
+   "from": "table:accounts_opportunities",
+   "to": "db:main",
+   "kind": "stored in"
+  },
+  {
+   "from": "table:opportunities_contacts",
+   "to": "db:main",
+   "kind": "stored in"
+  },
+  {
+   "from": "table:securitygroups_records",
+   "to": "db:main",
+   "kind": "stored in"
+  },
+  {
+   "from": "table:email_addr_bean_rel",
+   "to": "db:main",
+   "kind": "stored in"
+  },
+  {
+   "from": "mod:Contacts",
+   "to": "table:accounts_contacts",
+   "kind": "linked through"
+  },
+  {
+   "from": "mod:Opportunities",
+   "to": "table:accounts_opportunities",
+   "kind": "linked through"
+  },
+  {
+   "from": "mod:Opportunities",
+   "to": "table:opportunities_contacts",
+   "kind": "linked through"
+  },
+  {
+   "from": "mod:Contacts",
+   "to": "table:email_addr_bean_rel",
+   "kind": "e-mail addresses in"
+  },
+  {
+   "from": "mod:Cases",
+   "to": "mod:Accounts",
+   "kind": "refers to (60)"
+  },
+  {
+   "from": "mod:Meetings",
+   "to": "mod:Accounts",
+   "kind": "refers to (38)"
+  },
+  {
+   "from": "mod:Meetings",
+   "to": "mod:Opportunities",
+   "kind": "refers to (72)"
+  },
+  {
+   "from": "mod:Calls",
+   "to": "mod:Accounts",
+   "kind": "refers to (53)"
+  },
+  {
+   "from": "mod:Calls",
+   "to": "mod:Leads",
+   "kind": "refers to (27)"
+  },
+  {
+   "from": "mod:Cases",
+   "to": "mod:Contacts",
+   "kind": "refers to (60)"
+  },
+  {
+   "from": "rule:DealApproval",
+   "to": "mod:Opportunities",
+   "kind": "runs on every save of"
+  },
+  {
+   "from": "rule:DealApproval",
+   "to": "field:Opportunities.approval_status_c",
+   "kind": "writes"
+  },
+  {
+   "from": "rule:DealApproval",
+   "to": "field:Opportunities.approved_amount_c",
+   "kind": "writes"
+  },
+  {
+   "from": "rule:DealApproval",
+   "to": "field:Opportunities.approved_at_c",
+   "kind": "writes"
+  },
+  {
+   "from": "rule:DealApproval",
+   "to": "field:Opportunities.user_id_c",
+   "kind": "writes"
+  },
+  {
+   "from": "field:Accounts.contract_renewal_date_c",
+   "to": "mod:Accounts",
+   "kind": "adds a field to"
+  },
+  {
+   "from": "field:Accounts.contract_renewal_date_c",
+   "to": "table:accounts",
+   "kind": "stored beside"
+  },
+  {
+   "from": "field:Opportunities.approval_status_c",
+   "to": "mod:Opportunities",
+   "kind": "adds a field to"
+  },
+  {
+   "from": "field:Opportunities.approval_status_c",
+   "to": "table:opportunities",
+   "kind": "stored beside"
+  },
+  {
+   "from": "field:Opportunities.approved_amount_c",
+   "to": "mod:Opportunities",
+   "kind": "adds a field to"
+  },
+  {
+   "from": "field:Opportunities.approved_amount_c",
+   "to": "table:opportunities",
+   "kind": "stored beside"
+  },
+  {
+   "from": "field:Opportunities.approved_at_c",
+   "to": "mod:Opportunities",
+   "kind": "adds a field to"
+  },
+  {
+   "from": "field:Opportunities.approved_at_c",
+   "to": "table:opportunities",
+   "kind": "stored beside"
+  },
+  {
+   "from": "field:Opportunities.approved_by_c",
+   "to": "mod:Opportunities",
+   "kind": "adds a field to"
+  },
+  {
+   "from": "field:Opportunities.approved_by_c",
+   "to": "table:opportunities",
+   "kind": "stored beside"
+  },
+  {
+   "from": "field:Opportunities.user_id_c",
+   "to": "mod:Opportunities",
+   "kind": "adds a field to"
+  },
+  {
+   "from": "field:Opportunities.user_id_c",
+   "to": "table:opportunities",
+   "kind": "stored beside"
+  }
+ ],
+ "findings": [
+  {
+   "id": "F-crm-approval-rule",
+   "severity": "high",
+   "area": "customization",
+   "component_ids": [
+    "rule:DealApproval",
+    "mod:Opportunities"
+   ],
+   "title": "Custom approval rule: deals above $25,000 need a sales manager's approval before they can be won",
+   "detail": "custom/modules/Opportunities/DealApproval.php runs before every save of an opportunity, from the edit screen, inline edit, mass update, import or the API. It compares the US-dollar value (amount_usdollar), not the amount typed in. Only a user with the role 'Sales Manager' who shares a team (security group) with the deal's salesperson, or an administrator, can approve or reject. A blocked 'Closed Won' keeps the previous stage and sets the approval to Requested. Approving records who, when and the approved US-dollar amount; raising the amount afterwards withdraws the approval. In the data: 20 deals approved, 12 waiting, 1 rejected; approvals by mchen (14), ohaddad (6). 2 deals above the threshold were won without an approval, all closed before 2020: the rule checks the moment a deal is closed, it does not re-check old deals. Not part of standard SuiteCRM: added under custom/.",
+   "evidence": [
+    {
+     "file": "custom/modules/Opportunities/logic_hooks.php",
+     "line": 11,
+     "text": "'DealApproval',"
+    },
+    {
+     "file": "custom/modules/Opportunities/DealApproval.php",
+     "line": 68,
+     "text": "&& $usd > self::THRESHOLD_USD && $status !== 'approved') {"
+    },
+    {
+     "file": "custom/modules/Opportunities/DealApproval.php",
+     "line": 44,
+     "text": "$usd = (float)$bean->amount_usdollar;"
+    },
+    {
+     "file": "custom/modules/Opportunities/DealApproval.php",
+     "line": 67,
+     "text": "if ($bean->sales_stage === self::WON_STAGE && $oldStage !== self::WON_STAGE"
+    },
+    {
+     "file": "custom/modules/Opportunities/DealApproval.php",
+     "line": 69,
+     "text": "$bean->sales_stage = $oldStage !== '' ? $oldStage : 'Negotiation/Review';"
+    },
+    {
+     "file": "custom/modules/Opportunities/DealApproval.php",
+     "line": 91,
+     "text": "if (!in_array(self::MANAGER_ROLE, (array)$role->getUserRoleNames($user->id), true)) {"
+    },
+    {
+     "file": "custom/modules/Opportunities/DealApproval.php",
+     "line": 95,
+     "text": "$managerTeams = array_keys((array)SecurityGroup::getUserSecurityGroups($user->id));"
+    },
+    {
+     "file": "custom/modules/Opportunities/DealApproval.php",
+     "line": 47,
+     "text": "if ($status !== $oldStatus && in_array($status, array('approved', 'rejected'), true)"
+    },
+    {
+     "file": "custom/modules/Opportunities/DealApproval.php",
+     "line": 55,
+     "text": "$bean->approved_amount_c = $usd;"
+    },
+    {
+     "file": "custom/modules/Opportunities/DealApproval.php",
+     "line": 61,
+     "text": "if ($status === 'approved' && $usd > (float)$bean->approved_amount_c + 0.005) {"
+    },
+    {
+     "db": "SELECT approval_status_c, COUNT(*) FROM opportunities JOIN opportunities_cstm ... GROUP BY approval_status_c",
+     "result": {
+      "": 210,
+      "approved": 20,
+      "rejected": 1,
+      "requested": 12
+     }
+    }
+   ],
+   "rule": {
+    "threshold_usd": 25000.0,
+    "compares": "amount_usdollar",
+    "won_stage": "Closed Won",
+    "fallback_stage": "Negotiation/Review",
+    "manager_role": "Sales Manager",
+    "same_team_required": true,
+    "admin_can_approve": true,
+    "withdraw_if_amount_exceeds_approved": true,
+    "messages": {
+     "not_manager": "Only a sales manager on this team can approve or reject a deal.",
+     "withdrawn": "The amount is now above the approved amount, so the approval was withdrawn.",
+     "blocked": "Deals above $25,000 need approval from a sales manager before they can be marked Closed Won. Approval has been requested."
+    },
+    "lines": {
+     "usd": 44,
+     "threshold_compare": 68,
+     "won_check": 67,
+     "revert_stage": 69,
+     "fallback": 69,
+     "role_check": 91,
+     "team_check": 95,
+     "admin": 87,
+     "record_approval": 55,
+     "withdraw": 61,
+     "only_manager": 47,
+     "class": 30
+    }
+   }
+  },
+  {
+   "id": "F-crm-usd-threshold",
+   "severity": "high",
+   "area": "customization",
+   "component_ids": [
+    "rule:DealApproval",
+    "mod:Opportunities"
+   ],
+   "title": "1 open deal(s) look below $25,000 but need approval, because the rule converts to US dollars",
+   "detail": "'Blue Bird Dental Group - Euro-priced cold-chain or' is EUR 24,000, worth $26,086.96. A rebuild that compared the amount as typed would let it be won without approval. The new workspace must keep the stored US-dollar value and its conversion.",
+   "evidence": [
+    {
+     "file": "custom/modules/Opportunities/DealApproval.php",
+     "line": 44,
+     "text": "$usd = (float)$bean->amount_usdollar;"
+    },
+    {
+     "db": "SELECT name, amount, amount_usdollar, iso4217 FROM opportunities JOIN currencies ... WHERE amount <= 25000 AND amount_usdollar > 25000",
+     "result": [
+      {
+       "name": "Blue Bird Dental Group - Euro-priced cold-chain or",
+       "amount": 24000.0,
+       "usd": 26086.96,
+       "currency": "EUR"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "F-crm-renewal-field",
+   "severity": "medium",
+   "area": "customization",
+   "component_ids": [
+    "field:Accounts.contract_renewal_date_c",
+    "mod:Accounts"
+   ],
+   "title": "Custom field 'Contract renewal date' on accounts, filled for 96 of 141",
+   "detail": "Added with Studio: a date column contract_renewal_date_c in accounts_cstm (a separate table joined on id), shown on the account detail, edit and list screens. Not part of standard SuiteCRM. The values must arrive unchanged.",
+   "evidence": [
+    {
+     "db": "SELECT * FROM fields_meta_data WHERE id = 'Accountscontract_renewal_date_c'",
+     "result": {
+      "type": "date",
+      "audited": 1
+     }
+    },
+    {
+     "db": "SELECT COUNT(*) FROM accounts_cstm WHERE contract_renewal_date_c IS NOT NULL",
+     "result": 96
+    },
+    {
+     "file": "custom/modules/Accounts/metadata/detailviewdefs.php",
+     "line": 170,
+     "text": "'name' => 'contract_renewal_date_c',"
+    },
+    {
+     "file": "custom/modules/Accounts/metadata/editviewdefs.php",
+     "line": 144,
+     "text": "'name' => 'contract_renewal_date_c',"
+    },
+    {
+     "file": "custom/modules/Accounts/metadata/listviewdefs.php",
+     "line": 17,
+     "text": "'CONTRACT_RENEWAL_DATE_C' =>"
+    }
+   ]
+  },
+  {
+   "id": "F-crm-approval-fields",
+   "severity": "low",
+   "area": "customization",
+   "component_ids": [
+    "field:Opportunities.approval_status_c",
+    "field:Opportunities.approved_amount_c",
+    "field:Opportunities.approved_at_c",
+    "field:Opportunities.approved_by_c",
+    "field:Opportunities.user_id_c"
+   ],
+   "title": "5 custom fields on opportunities hold the approval state",
+   "detail": "approval_status_c (enum), approved_amount_c (decimal), approved_at_c (datetimecombo), approved_by_c (relate), user_id_c (id) in opportunities_cstm, with a custom dropdown custom_approval_status_list (Requested, Approved, Rejected).",
+   "evidence": [
+    {
+     "db": "SELECT id, type FROM fields_meta_data WHERE custom_module = 'Opportunities'",
+     "result": [
+      "Opportunitiesapproval_status_c",
+      "Opportunitiesapproved_amount_c",
+      "Opportunitiesapproved_at_c",
+      "Opportunitiesapproved_by_c",
+      "Opportunitiesuser_id_c"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "F-crm-similar-names",
+   "severity": "high",
+   "area": "data",
+   "component_ids": [
+    "mod:Accounts"
+   ],
+   "title": "19 accounts in 9 groups have near-identical names but are different customers",
+   "detail": "For example 'Bluebird Dental' (East Sales, 3 contacts, 2 deals), 'Blue Bird Dental Group' (West Sales, 4 contacts, 2 deals). Each has its own contacts and deals. Moving the data must keep them apart, and converting a lead must not link it to a look-alike account.",
+   "evidence": [
+    {
+     "db": "accounts whose normalised names are equal, or at least 0.8 alike with the same first five letters",
+     "result": [
+      [
+       "Bluebird Dental",
+       "Blue Bird Dental Group"
+      ],
+      [
+       "St. Mary's Clinic",
+       "Saint Marys Clinic"
+      ],
+      [
+       "Sterling Point Construction",
+       "Sterling Line Construction"
+      ],
+      [
+       "Sandpiper Mill Packaging",
+       "Sandpiper Ridge Packaging"
+      ],
+      [
+       "Juniper Grove Manufacturing",
+       "Juniper Bay Manufacturing"
+      ],
+      [
+       "Acme Supplies Ltd",
+       "Acme Supply",
+       "ACME Supply Co."
+      ],
+      [
+       "Northgate Trading",
+       "Northgate Traders"
+      ],
+      [
+       "Fairview Hills Hospitality Group",
+       "Fairview Landing Hospitality Group"
+      ],
+      [
+       "Cobalt Park Auto Group",
+       "Cobalt Harbor Auto Group"
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "F-crm-same-name-contacts",
+   "severity": "low",
+   "area": "data",
+   "component_ids": [
+    "mod:Contacts"
+   ],
+   "title": "36 contact names appear at more than one account",
+   "detail": "Nadia Adeyemi (2 accounts), Amara Adeyemi (2 accounts), Victor Adeyemi (2 accounts), Olivia Bennett (2 accounts), Mei Brennan (2 accounts), Lucia Cohen (2 accounts) and 30 more. Each is linked to its own account; they must not be merged.",
+   "evidence": [
+    {
+     "db": "SELECT first_name, last_name, COUNT(DISTINCT account_id) FROM contacts JOIN accounts_contacts ... HAVING > 1",
+     "result": [
+      {
+       "first_name": "Nadia",
+       "last_name": "Adeyemi",
+       "accounts": 2
+      },
+      {
+       "first_name": "Amara",
+       "last_name": "Adeyemi",
+       "accounts": 2
+      },
+      {
+       "first_name": "Victor",
+       "last_name": "Adeyemi",
+       "accounts": 2
+      },
+      {
+       "first_name": "Olivia",
+       "last_name": "Bennett",
+       "accounts": 2
+      },
+      {
+       "first_name": "Mei",
+       "last_name": "Brennan",
+       "accounts": 2
+      },
+      {
+       "first_name": "Lucia",
+       "last_name": "Cohen",
+       "accounts": 2
+      },
+      {
+       "first_name": "Lucas",
+       "last_name": "Fischer",
+       "accounts": 2
+      },
+      {
+       "first_name": "Iris",
+       "last_name": "Gallagher",
+       "accounts": 2
+      },
+      {
+       "first_name": "Zara",
+       "last_name": "Ibrahim",
+       "accounts": 2
+      },
+      {
+       "first_name": "Nadia",
+       "last_name": "Ibrahim",
+       "accounts": 2
+      },
+      {
+       "first_name": "David",
+       "last_name": "Kim",
+       "accounts": 2
+      },
+      {
+       "first_name": "Chloe",
+       "last_name": "Larsen",
+       "accounts": 2
+      },
+      {
+       "first_name": "Ethan",
+       "last_name": "Lindqvist",
+       "accounts": 2
+      },
+      {
+       "first_name": "Bianca",
+       "last_name": "Lindqvist",
+       "accounts": 2
+      },
+      {
+       "first_name": "Maria",
+       "last_name": "Lopez",
+       "accounts": 2
+      },
+      {
+       "first_name": "Samuel",
+       "last_name": "Lopez",
+       "accounts": 2
+      },
+      {
+       "first_name": "Naomi",
+       "last_name": "Lopez",
+       "accounts": 2
+      },
+      {
+       "first_name": "Lucia",
+       "last_name": "Mendes",
+       "accounts": 2
+      },
+      {
+       "first_name": "Naomi",
+       "last_name": "Moreau",
+       "accounts": 2
+      },
+      {
+       "first_name": "Bianca",
+       "last_name": "Murphy",
+       "accounts": 3
+      },
+      {
+       "first_name": "Samuel",
+       "last_name": "Murphy",
+       "accounts": 2
+      },
+      {
+       "first_name": "Esther",
+       "last_name": "Nguyen",
+       "accounts": 2
+      },
+      {
+       "first_name": "Hugo",
+       "last_name": "Nguyen",
+       "accounts": 2
+      },
+      {
+       "first_name": "Samuel",
+       "last_name": "Nguyen",
+       "accounts": 2
+      },
+      {
+       "first_name": "Arjun",
+       "last_name": "Novak",
+       "accounts": 2
+      },
+      {
+       "first_name": "Nadia",
+       "last_name": "Novak",
+       "accounts": 2
+      },
+      {
+       "first_name": "Mei",
+       "last_name": "Novak",
+       "accounts": 2
+      },
+      {
+       "first_name": "Wei",
+       "last_name": "Okoro",
+       "accounts": 2
+      },
+      {
+       "first_name": "Lucas",
+       "last_name": "Patel",
+       "accounts": 2
+      },
+      {
+       "first_name": "Ethan",
+       "last_name": "Rahman",
+       "accounts": 2
+      },
+      {
+       "first_name": "Sofia",
+       "last_name": "Sato",
+       "accounts": 2
+      },
+      {
+       "first_name": "Owen",
+       "last_name": "Tanaka",
+       "accounts": 2
+      },
+      {
+       "first_name": "Ingrid",
+       "last_name": "Walsh",
+       "accounts": 2
+      },
+      {
+       "first_name": "Kenji",
+       "last_name": "Yilmaz",
+       "accounts": 2
+      },
+      {
+       "first_name": "Pavel",
+       "last_name": "Yilmaz",
+       "accounts": 2
+      },
+      {
+       "first_name": "Ethan",
+       "last_name": "Yilmaz",
+       "accounts": 2
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "F-crm-access",
+   "severity": "high",
+   "area": "access",
+   "component_ids": [
+    "role:Sales Manager",
+    "role:Salesperson",
+    "role:Support",
+    "team:East Sales",
+    "team:West Sales"
+   ],
+   "title": "Access is limited by 3 roles and 2 teams",
+   "detail": "Sales Manager: view team, edit team, delete team (accounts); Salesperson: view team, edit own, delete none (accounts); Support: view all, edit none, delete none (accounts). 'team' means the record belongs to one of the user's security groups or is assigned to them; 'own' means assigned to them. Records join a team when created (settings: additive=True, inherit_assigned=True, inherit_creator=True, inherit_parent=True). 1,791 sales records are in a team. These restrictions are standard SuiteCRM features, configured by the customer.",
+   "evidence": [
+    {
+     "db": "SELECT r.name, a.category, a.name, ra.access_override FROM acl_roles_actions ra JOIN acl_actions a ... JOIN acl_roles r ...",
+     "result": {
+      "Sales Manager": {
+       "access": "enabled",
+       "view": "team",
+       "list": "team",
+       "edit": "team",
+       "delete": "team",
+       "import": "none",
+       "export": "team",
+       "massupdate": "team"
+      },
+      "Salesperson": {
+       "access": "enabled",
+       "view": "team",
+       "list": "team",
+       "edit": "own",
+       "delete": "none",
+       "import": "none",
+       "export": "none",
+       "massupdate": "none"
+      },
+      "Support": {
+       "access": "enabled",
+       "view": "all",
+       "list": "all",
+       "edit": "none",
+       "delete": "none",
+       "import": "none",
+       "export": "none",
+       "massupdate": "none"
+      }
+     }
+    },
+    {
+     "file": "config.php",
+     "line": 415,
+     "text": "'securitysuite_inherit_creator' => true,"
+    }
+   ]
+  },
+  {
+   "id": "F-crm-boundary",
+   "severity": "medium",
+   "area": "boundary",
+   "component_ids": [
+    "mod:Cases",
+    "mod:Meetings",
+    "mod:Meetings",
+    "mod:Calls",
+    "mod:Calls",
+    "mod:Cases",
+    "mod:Leads"
+   ],
+   "title": "Support cases, meetings and calls point at sales records",
+   "detail": "Cases \u2192 Accounts: 60 (on 47 accounts); Meetings \u2192 Accounts: 38; Meetings \u2192 Opportunities: 72; Calls \u2192 Accounts: 53; Calls \u2192 Leads: 27; Notes on cases \u2192 Cases: 30; Tasks on cases \u2192 Cases: 20; Cases \u2192 Contacts: 60. If the sales records move, these links cross the boundary between the new workspace and SuiteCRM.",
+   "evidence": [
+    {
+     "db": "SELECT COUNT(*) FROM cases JOIN accounts ON accounts.id = cases.account_id WHERE cases.deleted = 0",
+     "result": 60
+    },
+    {
+     "db": "SELECT parent_type, COUNT(*) FROM meetings WHERE deleted = 0 GROUP BY parent_type",
+     "result": 38
+    },
+    {
+     "db": "SELECT parent_type, COUNT(*) FROM meetings WHERE deleted = 0 GROUP BY parent_type",
+     "result": 72
+    },
+    {
+     "db": "SELECT parent_type, COUNT(*) FROM calls WHERE deleted = 0 GROUP BY parent_type",
+     "result": 53
+    },
+    {
+     "db": "SELECT parent_type, COUNT(*) FROM calls WHERE deleted = 0 GROUP BY parent_type",
+     "result": 27
+    },
+    {
+     "db": "SELECT COUNT(*) FROM notes WHERE deleted = 0 AND parent_type = 'Cases'",
+     "result": 30
+    },
+    {
+     "db": "SELECT COUNT(*) FROM tasks WHERE deleted = 0 AND parent_type = 'Cases'",
+     "result": 20
+    },
+    {
+     "db": "SELECT COUNT(*) FROM contacts_cases WHERE deleted = 0",
+     "result": 60
+    },
+    {
+     "db": "SELECT COUNT(*) FROM leads WHERE campaign_id <> ''",
+     "result": 0
+    },
+    {
+     "db": "SELECT COUNT(*) FROM aos_quotes WHERE opportunity_id <> ''",
+     "result": 0
+    }
+   ]
+  },
+  {
+   "id": "F-crm-inactive-owner",
+   "severity": "low",
+   "area": "data",
+   "component_ids": [
+    "mod:Accounts",
+    "mod:Contacts",
+    "mod:Leads",
+    "mod:Opportunities",
+    "mod:Notes",
+    "mod:Tasks"
+   ],
+   "title": "231 sales records belong to users who are no longer active",
+   "detail": "Accounts: 20, Contacts: 46, Leads: 2, Opportunities: 34, Notes: 87, Tasks: 42. SuiteCRM keeps them assigned; their team can still see them.",
+   "evidence": [
+    {
+     "db": "SELECT COUNT(*) FROM <table> JOIN users ON users.id = assigned_user_id WHERE users.status <> 'Active'",
+     "result": {
+      "Accounts": 20,
+      "Contacts": 46,
+      "Leads": 2,
+      "Opportunities": 34,
+      "Notes": 87,
+      "Tasks": 42
+     }
+    }
+   ]
+  },
+  {
+   "id": "F-crm-deleted",
+   "severity": "low",
+   "area": "data",
+   "component_ids": [
+    "mod:Accounts",
+    "mod:Contacts",
+    "mod:Opportunities"
+   ],
+   "title": "6 soft-deleted records are still in the database",
+   "detail": "SuiteCRM marks deleted records with deleted = 1 and hides them: Accounts: 2, Contacts: 3, Opportunities: 1.",
+   "evidence": [
+    {
+     "db": "SELECT COUNT(*) FROM <table> WHERE deleted = 1",
+     "result": {
+      "Accounts": 2,
+      "Contacts": 3,
+      "Opportunities": 1
+     }
+    }
+   ]
+  },
+  {
+   "id": "F-crm-lead-conversion",
+   "severity": "medium",
+   "area": "workflow",
+   "component_ids": [
+    "mod:Leads",
+    "mod:Contacts"
+   ],
+   "title": "Lead conversion: 22 leads converted; activities stay on the lead",
+   "detail": "Converting a lead creates a contact and links or creates an account, optionally a deal (7 of the converted leads have one). The setting lead_conv_activity_opt = 'donothing' leaves the lead's notes and tasks on the lead.",
+   "evidence": [
+    {
+     "file": "config.php",
+     "line": 322,
+     "text": "'lead_conv_activity_opt' => 'donothing',"
+    },
+    {
+     "db": "SELECT COUNT(*) FROM leads WHERE converted = 1",
+     "result": 22
+    }
+   ]
+  },
+  {
+   "id": "F-crm-runtime",
+   "severity": "high",
+   "area": "runtime",
+   "component_ids": [
+    "runtime:suitecrm",
+    "runtime:php",
+    "db:main"
+   ],
+   "title": "SuiteCRM 7.11.23 needs PHP 7.4 or older and MariaDB 10.3 / MySQL 8.0 or older",
+   "detail": "7.11.23 (2021-11-19) is the last 7.11 release. PHP 7.4 reached end of life on 2022-11-28 and MariaDB 10.3 on 2023-05-25. SuiteCRM 7 itself is now at 7.15.2.",
+   "evidence": [
+    {
+     "file": "suitecrm_version.php",
+     "line": 6,
+     "text": "$suitecrm_version = '7.11.23';"
+    },
+    {
+     "doc": "https://docs.suitecrm.com/admin/compatibility-matrix/ (read 2026-11-04)",
+     "result": {
+      "php": [
+       "5.6",
+       "7.0",
+       "7.1",
+       "7.2",
+       "7.3",
+       "7.4"
+      ],
+      "php_note": "7.3 from 7.11.5, 7.4 from 7.11.19",
+      "mariadb": [
+       "5.5",
+       "10",
+       "10.1",
+       "10.2",
+       "10.3"
+      ],
+      "mysql": [
+       "5.5",
+       "5.6",
+       "5.7",
+       "8"
+      ],
+      "mysql_note": "8 from 7.11.16",
+      "last_release": "7.11.23",
+      "last_release_date": "2021-11-19"
+     }
+    }
+   ]
+  },
+  {
+   "id": "F-crm-secret",
+   "severity": "medium",
+   "area": "security",
+   "component_ids": [
+    "db:main"
+   ],
+   "title": "config.php contains the database password in plain text",
+   "detail": "Normal for SuiteCRM, but the file must not be shared or committed. We redacted it in everything we store; rotate it after the move.",
+   "evidence": [
+    {
+     "file": "config.php",
+     "line": 100,
+     "text": "(value redacted)"
+    }
+   ]
+  },
+  {
+   "id": "F-crm-core-files",
+   "severity": "low",
+   "area": "code",
+   "component_ids": [
+    "runtime:suitecrm"
+   ],
+   "title": "No SuiteCRM file was changed; 18 customer files under custom/ (field settings 6, layout 6, labels 4, code 1, hook registration 1)",
+   "detail": "Checked 9,546 files against the checksums SuiteCRM ships in files.md5. Customizations live in custom/ (1124 lines written by the customer or Studio, plus files compiled by Quick Repair).",
+   "evidence": [
+    {
+     "file": "custom/Extension/application/Ext/Language/en_us.custom_lists.php",
+     "line": 1,
+     "text": "labels, 8 lines"
+    },
+    {
+     "file": "custom/Extension/modules/Accounts/Ext/Language/en_us.custom_renewal.php",
+     "line": 1,
+     "text": "labels, 3 lines"
+    },
+    {
+     "file": "custom/Extension/modules/Accounts/Ext/Vardefs/_override_sugarfield_contract_renewal_date_c.php",
+     "line": 1,
+     "text": "field settings, 5 lines"
+    },
+    {
+     "file": "custom/Extension/modules/Opportunities/Ext/Language/en_us.custom_approval.php",
+     "line": 1,
+     "text": "labels, 7 lines"
+    },
+    {
+     "file": "custom/Extension/modules/Opportunities/Ext/Vardefs/_override_sugarfield_approval_status_c.php",
+     "line": 1,
+     "text": "field settings, 5 lines"
+    },
+    {
+     "file": "custom/Extension/modules/Opportunities/Ext/Vardefs/_override_sugarfield_approved_amount_c.php",
+     "line": 1,
+     "text": "field settings, 5 lines"
+    },
+    {
+     "file": "custom/Extension/modules/Opportunities/Ext/Vardefs/_override_sugarfield_approved_at_c.php",
+     "line": 1,
+     "text": "field settings, 5 lines"
+    },
+    {
+     "file": "custom/Extension/modules/Opportunities/Ext/Vardefs/_override_sugarfield_approved_by_c.php",
+     "line": 1,
+     "text": "field settings, 5 lines"
+    },
+    {
+     "file": "custom/Extension/modules/Opportunities/Ext/Vardefs/_override_sugarfield_user_id_c.php",
+     "line": 1,
+     "text": "field settings, 5 lines"
+    },
+    {
+     "file": "custom/modules/Accounts/metadata/detailviewdefs.php",
+     "line": 1,
+     "text": "layout, 239 lines"
+    },
+    {
+     "file": "custom/modules/Accounts/metadata/editviewdefs.php",
+     "line": 1,
+     "text": "layout, 172 lines"
+    },
+    {
+     "file": "custom/modules/Accounts/metadata/listviewdefs.php",
+     "line": 1,
+     "text": "layout, 190 lines"
+    }
+   ]
+  },
+  {
+   "id": "F-crm-unused",
+   "severity": "low",
+   "area": "scope",
+   "component_ids": [],
+   "title": "11 SuiteCRM modules hold no records",
+   "detail": "Campaigns, Quotes, Contracts, Invoices, Documents, Projects, Reports, Workflows, Emails, Bugs, Targets.",
+   "evidence": [
+    {
+     "db": "SELECT COUNT(*) FROM <module table> WHERE deleted = 0",
+     "result": 0
+    }
+   ]
+  }
+ ],
+ "facts": {
+  "files": {
+   "stock_checked": 9546,
+   "stock_modified": [],
+   "stock_missing": 0,
+   "added_outside_custom": [],
+   "customer_custom_files": [
+    {
+     "file": "custom/Extension/application/Ext/Language/en_us.custom_lists.php",
+     "kind": "labels",
+     "lines": 8,
+     "new": true
+    },
+    {
+     "file": "custom/Extension/modules/Accounts/Ext/Language/en_us.custom_renewal.php",
+     "kind": "labels",
+     "lines": 3,
+     "new": true
+    },
+    {
+     "file": "custom/Extension/modules/Accounts/Ext/Vardefs/_override_sugarfield_contract_renewal_date_c.php",
+     "kind": "field settings",
+     "lines": 5,
+     "new": true
+    },
+    {
+     "file": "custom/Extension/modules/Opportunities/Ext/Language/en_us.custom_approval.php",
+     "kind": "labels",
+     "lines": 7,
+     "new": true
+    },
+    {
+     "file": "custom/Extension/modules/Opportunities/Ext/Vardefs/_override_sugarfield_approval_status_c.php",
+     "kind": "field settings",
+     "lines": 5,
+     "new": true
+    },
+    {
+     "file": "custom/Extension/modules/Opportunities/Ext/Vardefs/_override_sugarfield_approved_amount_c.php",
+     "kind": "field settings",
+     "lines": 5,
+     "new": true
+    },
+    {
+     "file": "custom/Extension/modules/Opportunities/Ext/Vardefs/_override_sugarfield_approved_at_c.php",
+     "kind": "field settings",
+     "lines": 5,
+     "new": true
+    },
+    {
+     "file": "custom/Extension/modules/Opportunities/Ext/Vardefs/_override_sugarfield_approved_by_c.php",
+     "kind": "field settings",
+     "lines": 5,
+     "new": true
+    },
+    {
+     "file": "custom/Extension/modules/Opportunities/Ext/Vardefs/_override_sugarfield_user_id_c.php",
+     "kind": "field settings",
+     "lines": 5,
+     "new": true
+    },
+    {
+     "file": "custom/application/Ext/Language/en_us.lang.ext.php",
+     "kind": "compiled",
+     "lines": 13,
+     "new": true
+    },
+    {
+     "file": "custom/modules/Accounts/Ext/Language/en_us.lang.ext.php",
+     "kind": "compiled",
+     "lines": 8,
+     "new": true
+    },
+    {
+     "file": "custom/modules/Accounts/Ext/Vardefs/vardefs.ext.php",
+     "kind": "compiled",
+     "lines": 29,
+     "new": false
+    },
+    {
+     "file": "custom/modules/Accounts/metadata/detailviewdefs.php",
+     "kind": "layout",
+     "lines": 239,
+     "new": true
+    },
+    {
+     "file": "custom/modules/Accounts/metadata/editviewdefs.php",
+     "kind": "layout",
+     "lines": 172,
+     "new": true
+    },
+    {
+     "file": "custom/modules/Accounts/metadata/listviewdefs.php",
+     "kind": "layout",
+     "lines": 190,
+     "new": true
+    },
+    {
+     "file": "custom/modules/Cases/Ext/Vardefs/vardefs.ext.php",
+     "kind": "compiled",
+     "lines": 24,
+     "new": false
+    },
+    {
+     "file": "custom/modules/Contacts/Ext/Vardefs/vardefs.ext.php",
+     "kind": "compiled",
+     "lines": 24,
+     "new": false
+    },
+    {
+     "file": "custom/modules/Leads/Ext/Vardefs/vardefs.ext.php",
+     "kind": "compiled",
+     "lines": 24,
+     "new": false
+    },
+    {
+     "file": "custom/modules/Meetings/Ext/Vardefs/vardefs.ext.php",
+     "kind": "compiled",
+     "lines": 24,
+     "new": false
+    },
+    {
+     "file": "custom/modules/Opportunities/Ext/Language/en_us.lang.ext.php",
+     "kind": "compiled",
+     "lines": 12,
+     "new": true
+    },
+    {
+     "file": "custom/modules/Opportunities/Ext/Vardefs/vardefs.ext.php",
+     "kind": "compiled",
+     "lines": 49,
+     "new": false
+    },
+    {
+     "file": "custom/modules/Opportunities/DealApproval.php",
+     "kind": "code",
+     "lines": 99,
+     "new": true
+    },
+    {
+     "file": "custom/modules/Opportunities/language/en_us.lang.php",
+     "kind": "labels",
+     "lines": 5,
+     "new": true
+    },
+    {
+     "file": "custom/modules/Opportunities/logic_hooks.php",
+     "kind": "hook registration",
+     "lines": 13,
+     "new": false
+    },
+    {
+     "file": "custom/modules/Opportunities/metadata/detailviewdefs.php",
+     "kind": "layout",
+     "lines": 147,
+     "new": true
+    },
+    {
+     "file": "custom/modules/Opportunities/metadata/editviewdefs.php",
+     "kind": "layout",
+     "lines": 101,
+     "new": true
+    },
+    {
+     "file": "custom/modules/Opportunities/metadata/listviewdefs.php",
+     "kind": "layout",
+     "lines": 110,
+     "new": true
+    },
+    {
+     "file": "custom/modules/Project/Ext/Vardefs/vardefs.ext.php",
+     "kind": "compiled",
+     "lines": 24,
+     "new": false
+    },
+    {
+     "file": "custom/modules/Prospects/Ext/Vardefs/vardefs.ext.php",
+     "kind": "compiled",
+     "lines": 24,
+     "new": false
+    }
+   ]
+  },
+  "module_counts": {
+   "Accounts": {
+    "rows": 141,
+    "deleted": 2
+   },
+   "Contacts": {
+    "rows": 332,
+    "deleted": 3
+   },
+   "Leads": {
+    "rows": 111,
+    "deleted": 0
+   },
+   "Opportunities": {
+    "rows": 243,
+    "deleted": 1
+   },
+   "Notes": {
+    "rows": 670,
+    "deleted": 0
+   },
+   "Tasks": {
+    "rows": 340,
+    "deleted": 0
+   },
+   "Cases": {
+    "rows": 60,
+    "deleted": 0
+   },
+   "Meetings": {
+    "rows": 110,
+    "deleted": 0
+   },
+   "Calls": {
+    "rows": 80,
+    "deleted": 0
+   },
+   "Campaigns": {
+    "rows": 0,
+    "deleted": 0
+   },
+   "AOS_Quotes": {
+    "rows": 0,
+    "deleted": 0
+   },
+   "AOS_Contracts": {
+    "rows": 0,
+    "deleted": 0
+   },
+   "AOS_Invoices": {
+    "rows": 0,
+    "deleted": 0
+   },
+   "Documents": {
+    "rows": 0,
+    "deleted": 0
+   },
+   "Project": {
+    "rows": 0,
+    "deleted": 0
+   },
+   "AOR_Reports": {
+    "rows": 0,
+    "deleted": 0
+   },
+   "AOW_WorkFlow": {
+    "rows": 0,
+    "deleted": 0
+   },
+   "Emails": {
+    "rows": 0,
+    "deleted": 0
+   },
+   "Bugs": {
+    "rows": 0,
+    "deleted": 0
+   },
+   "Prospects": {
+    "rows": 0,
+    "deleted": 0
+   }
+  },
+  "unused_modules": [
+   "Campaigns",
+   "Quotes",
+   "Contracts",
+   "Invoices",
+   "Documents",
+   "Projects",
+   "Reports",
+   "Workflows",
+   "Emails",
+   "Bugs",
+   "Targets"
+  ],
+  "custom_fields": [
+   {
+    "id": "Accountscontract_renewal_date_c",
+    "name": "contract_renewal_date_c",
+    "custom_module": "Accounts",
+    "type": "date",
+    "ext1": "",
+    "ext2": "",
+    "ext3": "",
+    "audited": 1,
+    "default_value": null,
+    "table": "accounts_cstm",
+    "filled": 96,
+    "of": 141
+   },
+   {
+    "id": "Opportunitiesapproval_status_c",
+    "name": "approval_status_c",
+    "custom_module": "Opportunities",
+    "type": "enum",
+    "ext1": "custom_approval_status_list",
+    "ext2": "",
+    "ext3": "",
+    "audited": 1,
+    "default_value": null,
+    "table": "opportunities_cstm",
+    "filled": 33,
+    "of": 243
+   },
+   {
+    "id": "Opportunitiesapproved_amount_c",
+    "name": "approved_amount_c",
+    "custom_module": "Opportunities",
+    "type": "decimal",
+    "ext1": "",
+    "ext2": "",
+    "ext3": "",
+    "audited": 1,
+    "default_value": null,
+    "table": "opportunities_cstm",
+    "filled": 20,
+    "of": 243
+   },
+   {
+    "id": "Opportunitiesapproved_at_c",
+    "name": "approved_at_c",
+    "custom_module": "Opportunities",
+    "type": "datetimecombo",
+    "ext1": "",
+    "ext2": "",
+    "ext3": "",
+    "audited": 1,
+    "default_value": null,
+    "table": "opportunities_cstm",
+    "filled": 20,
+    "of": 243
+   },
+   {
+    "id": "Opportunitiesapproved_by_c",
+    "name": "approved_by_c",
+    "custom_module": "Opportunities",
+    "type": "relate",
+    "ext1": "",
+    "ext2": "Users",
+    "ext3": "user_id_c",
+    "audited": 1,
+    "default_value": null,
+    "table": "opportunities_cstm",
+    "filled": null,
+    "of": 243
+   },
+   {
+    "id": "Opportunitiesuser_id_c",
+    "name": "user_id_c",
+    "custom_module": "Opportunities",
+    "type": "id",
+    "ext1": "",
+    "ext2": "",
+    "ext3": "",
+    "audited": 0,
+    "default_value": null,
+    "table": "opportunities_cstm",
+    "filled": 20,
+    "of": 243
+   }
+  ],
+  "custom_hooks": [
+   {
+    "hook": {
+     "module": "Opportunities",
+     "event": "before_save",
+     "order": 10,
+     "label": "Sample: manager approval before a deal above $25,000 is marked Closed Won",
+     "file": "custom/modules/Opportunities/DealApproval.php",
+     "class": "DealApproval",
+     "method": "beforeSave",
+     "declared_in": "custom/modules/Opportunities/logic_hooks.php"
+    },
+    "analysis": {
+     "file": "custom/modules/Opportunities/DealApproval.php",
+     "lines": 99,
+     "constants": {
+      "THRESHOLD_USD": {
+       "value": 25000.0,
+       "line": 32
+      },
+      "WON_STAGE": {
+       "value": "Closed Won",
+       "line": 33
+      },
+      "MANAGER_ROLE": {
+       "value": "Sales Manager",
+       "line": 34
+      }
+     },
+     "messages": [
+      {
+       "text": "Only a sales manager on this team can approve or reject a deal.",
+       "line": 50
+      },
+      {
+       "text": "The amount is now above the approved amount, so the approval was withdrawn.",
+       "line": 63
+      },
+      {
+       "text": "Deals above $25,000 need approval from a sales manager before they can be marked Closed Won. Approval has been requested.",
+       "line": 73
+      }
+     ],
+     "reads": [
+      "amount_usdollar",
+      "approval_status_c",
+      "approved_amount_c",
+      "approved_at_c",
+      "assigned_user_id",
+      "fetched_row",
+      "sales_stage",
+      "user_id_c"
+     ],
+     "writes": [
+      "approval_status_c",
+      "approved_amount_c",
+      "approved_at_c",
+      "sales_stage",
+      "user_id_c"
+     ],
+     "evidence": {
+      "usd": 44,
+      "threshold_compare": 68,
+      "won_check": 67,
+      "revert_stage": 69,
+      "fallback": 69,
+      "role_check": 91,
+      "team_check": 95,
+      "admin": 87,
+      "record_approval": 55,
+      "withdraw": 61,
+      "only_manager": 47,
+      "class": 30
+     },
+     "recognised_as": "approval_rule",
+     "rule": {
+      "threshold_usd": 25000.0,
+      "compares": "amount_usdollar",
+      "won_stage": "Closed Won",
+      "fallback_stage": "Negotiation/Review",
+      "manager_role": "Sales Manager",
+      "same_team_required": true,
+      "admin_can_approve": true,
+      "withdraw_if_amount_exceeds_approved": true,
+      "messages": {
+       "not_manager": "Only a sales manager on this team can approve or reject a deal.",
+       "withdrawn": "The amount is now above the approved amount, so the approval was withdrawn.",
+       "blocked": "Deals above $25,000 need approval from a sales manager before they can be marked Closed Won. Approval has been requested."
+      },
+      "lines": {
+       "usd": 44,
+       "threshold_compare": 68,
+       "won_check": 67,
+       "revert_stage": 69,
+       "fallback": 69,
+       "role_check": 91,
+       "team_check": 95,
+       "admin": 87,
+       "record_approval": 55,
+       "withdraw": 61,
+       "only_manager": 47,
+       "class": 30
+      }
+     }
+    },
+    "declared_line": 11
+   }
+  ],
+  "custom_lists": {
+   "custom_approval_status_list": {
+    "": "",
+    "requested": "Requested",
+    "approved": "Approved",
+    "rejected": "Rejected"
+   }
+  },
+  "access": {
+   "roles": [
+    {
+     "id": "d58ff913-c644-24d6-a7a0-6aeba0f18138",
+     "name": "Sales Manager",
+     "description": "Team managers: see and edit their team's sales records, delete and export them, approve large deals (Sample rule).",
+     "modules": {
+      "Accounts": {
+       "access": "enabled",
+       "view": "team",
+       "list": "team",
+       "edit": "team",
+       "delete": "team",
+       "import": "none",
+       "export": "team",
+       "massupdate": "team"
+      },
+      "Contacts": {
+       "access": "enabled",
+       "view": "team",
+       "list": "team",
+       "edit": "team",
+       "delete": "team",
+       "import": "none",
+       "export": "team",
+       "massupdate": "team"
+      },
+      "Leads": {
+       "access": "enabled",
+       "view": "team",
+       "list": "team",
+       "edit": "team",
+       "delete": "team",
+       "import": "none",
+       "export": "team",
+       "massupdate": "team"
+      },
+      "Opportunities": {
+       "access": "enabled",
+       "view": "team",
+       "list": "team",
+       "edit": "team",
+       "delete": "team",
+       "import": "none",
+       "export": "team",
+       "massupdate": "team"
+      },
+      "Notes": {
+       "access": "enabled",
+       "view": "team",
+       "list": "team",
+       "edit": "team",
+       "delete": "team",
+       "import": "none",
+       "export": "team",
+       "massupdate": "team"
+      },
+      "Tasks": {
+       "access": "enabled",
+       "view": "team",
+       "list": "team",
+       "edit": "team",
+       "delete": "team",
+       "import": "none",
+       "export": "team",
+       "massupdate": "team"
+      },
+      "Cases": {
+       "access": "enabled",
+       "view": "team",
+       "list": "team",
+       "edit": "none",
+       "delete": "none",
+       "import": "none",
+       "export": "none",
+       "massupdate": "none"
+      },
+      "Calls": {
+       "access": "enabled",
+       "view": "team",
+       "list": "team",
+       "edit": "team",
+       "delete": "team",
+       "import": "none",
+       "export": "none",
+       "massupdate": "none"
+      },
+      "Meetings": {
+       "access": "enabled",
+       "view": "team",
+       "list": "team",
+       "edit": "team",
+       "delete": "team",
+       "import": "none",
+       "export": "none",
+       "massupdate": "none"
+      }
+     }
+    },
+    {
+     "id": "c49a9287-fd93-281c-0c72-6aeba084282e",
+     "name": "Salesperson",
+     "description": "Account executives: see their team's sales records, edit their own, no delete, import or export.",
+     "modules": {
+      "Accounts": {
+       "access": "enabled",
+       "view": "team",
+       "list": "team",
+       "edit": "own",
+       "delete": "none",
+       "import": "none",
+       "export": "none",
+       "massupdate": "none"
+      },
+      "Contacts": {
+       "access": "enabled",
+       "view": "team",
+       "list": "team",
+       "edit": "own",
+       "delete": "none",
+       "import": "none",
+       "export": "none",
+       "massupdate": "none"
+      },
+      "Leads": {
+       "access": "enabled",
+       "view": "team",
+       "list": "team",
+       "edit": "own",
+       "delete": "none",
+       "import": "none",
+       "export": "none",
+       "massupdate": "none"
+      },
+      "Opportunities": {
+       "access": "enabled",
+       "view": "team",
+       "list": "team",
+       "edit": "own",
+       "delete": "none",
+       "import": "none",
+       "export": "none",
+       "massupdate": "none"
+      },
+      "Notes": {
+       "access": "enabled",
+       "view": "team",
+       "list": "team",
+       "edit": "own",
+       "delete": "none",
+       "import": "none",
+       "export": "none",
+       "massupdate": "none"
+      },
+      "Tasks": {
+       "access": "enabled",
+       "view": "team",
+       "list": "team",
+       "edit": "own",
+       "delete": "none",
+       "import": "none",
+       "export": "none",
+       "massupdate": "none"
+      },
+      "Cases": {
+       "access": "enabled",
+       "view": "team",
+       "list": "team",
+       "edit": "none",
+       "delete": "none",
+       "import": "none",
+       "export": "none",
+       "massupdate": "none"
+      },
+      "Calls": {
+       "access": "enabled",
+       "view": "team",
+       "list": "team",
+       "edit": "own",
+       "delete": "own",
+       "import": "none",
+       "export": "none",
+       "massupdate": "none"
+      },
+      "Meetings": {
+       "access": "enabled",
+       "view": "team",
+       "list": "team",
+       "edit": "own",
+       "delete": "own",
+       "import": "none",
+       "export": "none",
+       "massupdate": "none"
+      }
+     }
+    },
+    {
+     "id": "e4f5fecb-7324-b325-bcb2-6aeba0b03984",
+     "name": "Support",
+     "description": "Support desk: works cases; can read accounts and contacts; no access to deals or leads.",
+     "modules": {
+      "Cases": {
+       "access": "enabled",
+       "view": "all",
+       "list": "all",
+       "edit": "all",
+       "delete": "none",
+       "import": "none",
+       "export": "none",
+       "massupdate": "all"
+      },
+      "Accounts": {
+       "access": "enabled",
+       "view": "all",
+       "list": "all",
+       "edit": "none",
+       "delete": "none",
+       "import": "none",
+       "export": "none",
+       "massupdate": "none"
+      },
+      "Contacts": {
+       "access": "enabled",
+       "view": "all",
+       "list": "all",
+       "edit": "none",
+       "delete": "none",
+       "import": "none",
+       "export": "none",
+       "massupdate": "none"
+      },
+      "Notes": {
+       "access": "enabled",
+       "view": "all",
+       "list": "all",
+       "edit": "own",
+       "delete": "none",
+       "import": "none",
+       "export": "none",
+       "massupdate": "none"
+      },
+      "Tasks": {
+       "access": "enabled",
+       "view": "all",
+       "list": "all",
+       "edit": "own",
+       "delete": "none",
+       "import": "none",
+       "export": "none",
+       "massupdate": "none"
+      },
+      "Opportunities": {
+       "access": "disabled"
+      },
+      "Leads": {
+       "access": "disabled"
+      }
+     }
+    }
+   ],
+   "users": [
+    {
+     "id": "1",
+     "user_name": "admin",
+     "name": "Administrator",
+     "status": "Active",
+     "is_admin": 1,
+     "reports_to_id": null,
+     "title": "Administrator",
+     "roles": [],
+     "teams": []
+    },
+    {
+     "id": "ab053750-b0b7-cbac-fb58-6aeba00065aa",
+     "user_name": "dkim",
+     "name": "Dana Kim",
+     "status": "Active",
+     "is_admin": 0,
+     "reports_to_id": null,
+     "title": "Support Lead",
+     "roles": [
+      "Support"
+     ],
+     "teams": []
+    },
+    {
+     "id": "272fcdcc-b8c0-ac73-4fb6-6aeba067029d",
+     "user_name": "jweber",
+     "name": "Jonah Weber",
+     "status": "Active",
+     "is_admin": 0,
+     "reports_to_id": "ee5f00ac-1d58-6985-666f-6aeba008ec56",
+     "title": "Account Executive",
+     "roles": [
+      "Salesperson"
+     ],
+     "teams": [
+      "East Sales"
+     ]
+    },
+    {
+     "id": "3ce5830f-e9a7-692e-cc7f-6aeba0fd7313",
+     "user_name": "lortiz",
+     "name": "Lena Ortiz",
+     "status": "Active",
+     "is_admin": 0,
+     "reports_to_id": "ee5f00ac-1d58-6985-666f-6aeba008ec56",
+     "title": "Account Executive",
+     "roles": [
+      "Salesperson"
+     ],
+     "teams": [
+      "East Sales"
+     ]
+    },
+    {
+     "id": "ee5f00ac-1d58-6985-666f-6aeba008ec56",
+     "user_name": "mchen",
+     "name": "Maya Chen",
+     "status": "Active",
+     "is_admin": 0,
+     "reports_to_id": null,
+     "title": "Sales Manager, East",
+     "roles": [
+      "Sales Manager"
+     ],
+     "teams": [
+      "East Sales"
+     ]
+    },
+    {
+     "id": "53282cfa-670c-fbb9-68a7-6aeba0db86d5",
+     "user_name": "ohaddad",
+     "name": "Omar Haddad",
+     "status": "Active",
+     "is_admin": 0,
+     "reports_to_id": null,
+     "title": "Sales Manager, West",
+     "roles": [
+      "Sales Manager"
+     ],
+     "teams": [
+      "West Sales"
+     ]
+    },
+    {
+     "id": "10e18a65-43ea-5ab4-8f7f-6aeba0daa46f",
+     "user_name": "pnair",
+     "name": "Priya Nair",
+     "status": "Active",
+     "is_admin": 0,
+     "reports_to_id": "ee5f00ac-1d58-6985-666f-6aeba008ec56",
+     "title": "Account Executive",
+     "roles": [
+      "Salesperson"
+     ],
+     "teams": [
+      "East Sales"
+     ]
+    },
+    {
+     "id": "7e554f7f-7623-1e10-86c1-6aeba052831a",
+     "user_name": "rellis",
+     "name": "Ruth Ellis",
+     "status": "Active",
+     "is_admin": 0,
+     "reports_to_id": "53282cfa-670c-fbb9-68a7-6aeba0db86d5",
+     "title": "Account Executive",
+     "roles": [
+      "Salesperson"
+     ],
+     "teams": [
+      "West Sales"
+     ]
+    },
+    {
+     "id": "68c47cd8-343c-b0c9-85a3-6aeba0a685c7",
+     "user_name": "sokafor",
+     "name": "Sam Okafor",
+     "status": "Active",
+     "is_admin": 0,
+     "reports_to_id": "53282cfa-670c-fbb9-68a7-6aeba0db86d5",
+     "title": "Account Executive",
+     "roles": [
+      "Salesperson"
+     ],
+     "teams": [
+      "West Sales"
+     ]
+    },
+    {
+     "id": "951c61bc-aa30-7cde-f57c-6aeba0e7b266",
+     "user_name": "treyes",
+     "name": "Tom Reyes",
+     "status": "Inactive",
+     "is_admin": 0,
+     "reports_to_id": "53282cfa-670c-fbb9-68a7-6aeba0db86d5",
+     "title": "Account Executive (left 2025)",
+     "roles": [
+      "Salesperson"
+     ],
+     "teams": [
+      "West Sales"
+     ]
+    }
+   ],
+   "teams": [
+    {
+     "id": "c38ea677-7f2f-c5ad-3204-6aeba08ed25e",
+     "name": "East Sales",
+     "members": 4
+    },
+    {
+     "id": "c405c11f-a7c6-962d-e708-6aeba0539d38",
+     "name": "West Sales",
+     "members": 4
+    }
+   ],
+   "records_in_teams": {
+    "Accounts": 143,
+    "Calls": 80,
+    "Contacts": 333,
+    "Leads": 111,
+    "Meetings": 110,
+    "Notes": 640,
+    "Opportunities": 244,
+    "Tasks": 320
+   },
+   "settings": {
+    "securitysuite_additive": true,
+    "securitysuite_filter_user_list": false,
+    "securitysuite_inherit_assigned": true,
+    "securitysuite_inherit_creator": true,
+    "securitysuite_inherit_parent": true,
+    "securitysuite_popup_select": false,
+    "securitysuite_strict_rights": false,
+    "securitysuite_user_popup": true,
+    "securitysuite_user_role_precedence": true,
+    "securitysuite_version": "6.5.17"
+   }
+  },
+  "relationships": {
+   "account_contact": 324,
+   "contacts_with_several_accounts": 0,
+   "account_deal": 243,
+   "deals_with_several_accounts": 0,
+   "deal_contact": 237,
+   "notes_by_parent": {
+    "Accounts": 262,
+    "Cases": 30,
+    "Contacts": 100,
+    "Leads": 37,
+    "Opportunities": 241
+   },
+   "tasks_by_parent": {
+    "Accounts": 133,
+    "Cases": 20,
+    "Contacts": 56,
+    "Leads": 12,
+    "Opportunities": 119
+   },
+   "notes_with_contact": 295,
+   "converted_leads": 22,
+   "converted_with_deal": 7,
+   "email_links": 443,
+   "audit": {
+    "accounts_audit": 0,
+    "contacts_audit": 0,
+    "opportunities_audit": 126,
+    "leads_audit": 22
+   }
+  },
+  "similar_accounts": [
+   [
+    {
+     "id": "8e7c00dc-f9d0-5c10-8a90-7ddea8a30ef6",
+     "name": "Bluebird Dental",
+     "team": "East Sales",
+     "contacts": 3,
+     "deals": 2
+    },
+    {
+     "id": "cd643b0b-2b62-552e-91e5-c26b1cc7d60d",
+     "name": "Blue Bird Dental Group",
+     "team": "West Sales",
+     "contacts": 4,
+     "deals": 2
+    }
+   ],
+   [
+    {
+     "id": "9740a685-b128-53dd-9ae1-35030c5d1fd0",
+     "name": "St. Mary's Clinic",
+     "team": "West Sales",
+     "contacts": 4,
+     "deals": 4
+    },
+    {
+     "id": "d9acace0-3203-5ea7-ae79-4a32e2a6d8c4",
+     "name": "Saint Marys Clinic",
+     "team": "East Sales",
+     "contacts": 3,
+     "deals": 4
+    }
+   ],
+   [
+    {
+     "id": "230fd9f2-7265-5256-90b2-50c2c8740c9d",
+     "name": "Sterling Point Construction",
+     "team": "East Sales",
+     "contacts": 5,
+     "deals": 2
+    },
+    {
+     "id": "68b1057d-0312-51d4-ad74-72ededa2ff8a",
+     "name": "Sterling Line Construction",
+     "team": "East Sales",
+     "contacts": 1,
+     "deals": 1
+    }
+   ],
+   [
+    {
+     "id": "b026bb2c-dd6a-5535-a167-3c7229bdb744",
+     "name": "Sandpiper Mill Packaging",
+     "team": "East Sales",
+     "contacts": 2,
+     "deals": 2
+    },
+    {
+     "id": "f70ece2c-f0fc-502f-863b-f762b73eea00",
+     "name": "Sandpiper Ridge Packaging",
+     "team": "East Sales",
+     "contacts": 2,
+     "deals": 3
+    }
+   ],
+   [
+    {
+     "id": "7c5e51e3-db4f-5a4c-aaf4-989beb432cd5",
+     "name": "Juniper Grove Manufacturing",
+     "team": "West Sales",
+     "contacts": 1,
+     "deals": 1
+    },
+    {
+     "id": "92e30675-5efb-5f31-84dc-c85491765f28",
+     "name": "Juniper Bay Manufacturing",
+     "team": "West Sales",
+     "contacts": 2,
+     "deals": 1
+    }
+   ],
+   [
+    {
+     "id": "8521d55e-a8c3-5253-9853-ebabb4b3cc21",
+     "name": "Acme Supplies Ltd",
+     "team": "East Sales",
+     "contacts": 1,
+     "deals": 1
+    },
+    {
+     "id": "a289ab19-279c-57d8-9919-3e398c97f535",
+     "name": "Acme Supply",
+     "team": "East Sales",
+     "contacts": 2,
+     "deals": 2
+    },
+    {
+     "id": "f3b848d6-e6bb-5df2-bf0e-b991471a6de0",
+     "name": "ACME Supply Co.",
+     "team": "West Sales",
+     "contacts": 3,
+     "deals": 2
+    }
+   ],
+   [
+    {
+     "id": "036bea45-3ecf-548d-9fb1-d222c999cfc6",
+     "name": "Northgate Trading",
+     "team": "West Sales",
+     "contacts": 2,
+     "deals": 1
+    },
+    {
+     "id": "d22ee633-70d2-5a9f-bca2-e555530912be",
+     "name": "Northgate Traders",
+     "team": "East Sales",
+     "contacts": 4,
+     "deals": 2
+    }
+   ],
+   [
+    {
+     "id": "3f9fc6e9-f724-577d-b74a-fce60377956b",
+     "name": "Fairview Hills Hospitality Group",
+     "team": "West Sales",
+     "contacts": 1,
+     "deals": 1
+    },
+    {
+     "id": "d701571e-f252-5497-a112-d0b5cb129521",
+     "name": "Fairview Landing Hospitality Group",
+     "team": "East Sales",
+     "contacts": 2,
+     "deals": 0
+    }
+   ],
+   [
+    {
+     "id": "5cf265ae-32f0-5d5c-b95f-5e7227f47a84",
+     "name": "Cobalt Park Auto Group",
+     "team": "West Sales",
+     "contacts": 2,
+     "deals": 2
+    },
+    {
+     "id": "8886349d-0c33-5d9a-9145-fc437faa63ec",
+     "name": "Cobalt Harbor Auto Group",
+     "team": "East Sales",
+     "contacts": 2,
+     "deals": 1
+    }
+   ]
+  ],
+  "same_name_contacts": [
+   {
+    "first_name": "Nadia",
+    "last_name": "Adeyemi",
+    "accounts": 2
+   },
+   {
+    "first_name": "Amara",
+    "last_name": "Adeyemi",
+    "accounts": 2
+   },
+   {
+    "first_name": "Victor",
+    "last_name": "Adeyemi",
+    "accounts": 2
+   },
+   {
+    "first_name": "Olivia",
+    "last_name": "Bennett",
+    "accounts": 2
+   },
+   {
+    "first_name": "Mei",
+    "last_name": "Brennan",
+    "accounts": 2
+   },
+   {
+    "first_name": "Lucia",
+    "last_name": "Cohen",
+    "accounts": 2
+   },
+   {
+    "first_name": "Lucas",
+    "last_name": "Fischer",
+    "accounts": 2
+   },
+   {
+    "first_name": "Iris",
+    "last_name": "Gallagher",
+    "accounts": 2
+   },
+   {
+    "first_name": "Zara",
+    "last_name": "Ibrahim",
+    "accounts": 2
+   },
+   {
+    "first_name": "Nadia",
+    "last_name": "Ibrahim",
+    "accounts": 2
+   },
+   {
+    "first_name": "David",
+    "last_name": "Kim",
+    "accounts": 2
+   },
+   {
+    "first_name": "Chloe",
+    "last_name": "Larsen",
+    "accounts": 2
+   },
+   {
+    "first_name": "Ethan",
+    "last_name": "Lindqvist",
+    "accounts": 2
+   },
+   {
+    "first_name": "Bianca",
+    "last_name": "Lindqvist",
+    "accounts": 2
+   },
+   {
+    "first_name": "Maria",
+    "last_name": "Lopez",
+    "accounts": 2
+   },
+   {
+    "first_name": "Samuel",
+    "last_name": "Lopez",
+    "accounts": 2
+   },
+   {
+    "first_name": "Naomi",
+    "last_name": "Lopez",
+    "accounts": 2
+   },
+   {
+    "first_name": "Lucia",
+    "last_name": "Mendes",
+    "accounts": 2
+   },
+   {
+    "first_name": "Naomi",
+    "last_name": "Moreau",
+    "accounts": 2
+   },
+   {
+    "first_name": "Bianca",
+    "last_name": "Murphy",
+    "accounts": 3
+   },
+   {
+    "first_name": "Samuel",
+    "last_name": "Murphy",
+    "accounts": 2
+   },
+   {
+    "first_name": "Esther",
+    "last_name": "Nguyen",
+    "accounts": 2
+   },
+   {
+    "first_name": "Hugo",
+    "last_name": "Nguyen",
+    "accounts": 2
+   },
+   {
+    "first_name": "Samuel",
+    "last_name": "Nguyen",
+    "accounts": 2
+   },
+   {
+    "first_name": "Arjun",
+    "last_name": "Novak",
+    "accounts": 2
+   },
+   {
+    "first_name": "Nadia",
+    "last_name": "Novak",
+    "accounts": 2
+   },
+   {
+    "first_name": "Mei",
+    "last_name": "Novak",
+    "accounts": 2
+   },
+   {
+    "first_name": "Wei",
+    "last_name": "Okoro",
+    "accounts": 2
+   },
+   {
+    "first_name": "Lucas",
+    "last_name": "Patel",
+    "accounts": 2
+   },
+   {
+    "first_name": "Ethan",
+    "last_name": "Rahman",
+    "accounts": 2
+   },
+   {
+    "first_name": "Sofia",
+    "last_name": "Sato",
+    "accounts": 2
+   },
+   {
+    "first_name": "Owen",
+    "last_name": "Tanaka",
+    "accounts": 2
+   },
+   {
+    "first_name": "Ingrid",
+    "last_name": "Walsh",
+    "accounts": 2
+   },
+   {
+    "first_name": "Kenji",
+    "last_name": "Yilmaz",
+    "accounts": 2
+   },
+   {
+    "first_name": "Pavel",
+    "last_name": "Yilmaz",
+    "accounts": 2
+   },
+   {
+    "first_name": "Ethan",
+    "last_name": "Yilmaz",
+    "accounts": 2
+   }
+  ],
+  "currencies": [
+   {
+    "id": "-99",
+    "name": "US Dollars",
+    "iso4217": "USD",
+    "conversion_rate": 1.0,
+    "deals": 222
+   },
+   {
+    "id": "bd891f76-e5f4-7f98-a346-6aeba0de2192",
+    "name": "Euro",
+    "iso4217": "EUR",
+    "conversion_rate": 0.92,
+    "deals": 21
+   }
+  ],
+  "owned_by_inactive_users": {
+   "Accounts": 20,
+   "Contacts": 46,
+   "Leads": 2,
+   "Opportunities": 34,
+   "Notes": 87,
+   "Tasks": 42
+  },
+  "deleted_records": {
+   "Accounts": 2,
+   "Contacts": 3,
+   "Opportunities": 1
+  },
+  "boundary": [
+   {
+    "from": "Cases",
+    "to": "Accounts",
+    "rows": 60,
+    "distinct": 47,
+    "column": "cases.account_id",
+    "query": "SELECT COUNT(*) FROM cases JOIN accounts ON accounts.id = cases.account_id WHERE cases.deleted = 0"
+   },
+   {
+    "from": "Meetings",
+    "to": "Accounts",
+    "rows": 38,
+    "column": "meetings.parent_type/parent_id",
+    "query": "SELECT parent_type, COUNT(*) FROM meetings WHERE deleted = 0 GROUP BY parent_type"
+   },
+   {
+    "from": "Meetings",
+    "to": "Opportunities",
+    "rows": 72,
+    "column": "meetings.parent_type/parent_id",
+    "query": "SELECT parent_type, COUNT(*) FROM meetings WHERE deleted = 0 GROUP BY parent_type"
+   },
+   {
+    "from": "Calls",
+    "to": "Accounts",
+    "rows": 53,
+    "column": "calls.parent_type/parent_id",
+    "query": "SELECT parent_type, COUNT(*) FROM calls WHERE deleted = 0 GROUP BY parent_type"
+   },
+   {
+    "from": "Calls",
+    "to": "Leads",
+    "rows": 27,
+    "column": "calls.parent_type/parent_id",
+    "query": "SELECT parent_type, COUNT(*) FROM calls WHERE deleted = 0 GROUP BY parent_type"
+   },
+   {
+    "from": "Notes on cases",
+    "to": "Cases",
+    "rows": 30,
+    "column": "notes.parent_type = 'Cases'",
+    "stays": true,
+    "query": "SELECT COUNT(*) FROM notes WHERE deleted = 0 AND parent_type = 'Cases'"
+   },
+   {
+    "from": "Tasks on cases",
+    "to": "Cases",
+    "rows": 20,
+    "column": "tasks.parent_type = 'Cases'",
+    "stays": true,
+    "query": "SELECT COUNT(*) FROM tasks WHERE deleted = 0 AND parent_type = 'Cases'"
+   },
+   {
+    "from": "Cases",
+    "to": "Contacts",
+    "rows": 60,
+    "column": "contacts_cases",
+    "query": "SELECT COUNT(*) FROM contacts_cases WHERE deleted = 0"
+   },
+   {
+    "from": "Leads",
+    "to": "Campaigns",
+    "rows": 0,
+    "column": "leads.campaign_id",
+    "query": "SELECT COUNT(*) FROM leads WHERE campaign_id <> ''"
+   },
+   {
+    "from": "Quotes",
+    "to": "Opportunities",
+    "rows": 0,
+    "column": "aos_quotes.opportunity_id",
+    "query": "SELECT COUNT(*) FROM aos_quotes WHERE opportunity_id <> ''"
+   }
+  ],
+  "approvals": {
+   "by_status": {
+    "": 210,
+    "approved": 20,
+    "rejected": 1,
+    "requested": 12
+   },
+   "won_above_without_approval": [
+    {
+     "id": "1b7bc3cf-00fa-5207-b104-455c8ab73790",
+     "name": "Cobalt Grove Fitness - Fleet supplies 2020",
+     "usd": 45000.0,
+     "date_closed": "2020-09-15"
+    },
+    {
+     "id": "5bdcce1f-68d6-5aba-bd51-cd7974352cc4",
+     "name": "Sandpiper Ridge Packaging - Fleet supplies 2020",
+     "usd": 38000.0,
+     "date_closed": "2020-09-15"
+    }
+   ],
+   "approvers": {
+    "mchen": 14,
+    "ohaddad": 6
+   },
+   "non_usd_near_threshold": [
+    {
+     "id": "1cafe7d4-53f0-595e-a227-5db729c09e56",
+     "name": "Blue Bird Dental Group - Euro-priced cold-chain or",
+     "amount": 24000.0,
+     "usd": 26086.956522,
+     "iso4217": "EUR"
+    }
+   ],
+   "boundary_deals": [
+    {
+     "id": "1518fde2-17fd-537d-8efe-b0235a8adc51",
+     "name": "Bluebird Dental - Exactly-threshold order 2026",
+     "usd": 25000.0,
+     "sales_stage": "Closed Won"
+    },
+    {
+     "id": "58eca3bc-1b01-585d-bc82-2ff09d899ff9",
+     "name": "Saint Marys Clinic - Just-above-threshold order 20",
+     "usd": 25000.01,
+     "sales_stage": "Negotiation/Review"
+    }
+   ]
+  },
+  "lead_conversion": {
+   "lead_conv_activity_opt": "donothing"
+  },
+  "lists": {
+   "sales_stage_dom": {
+    "Prospecting": "Prospecting",
+    "Qualification": "Qualification",
+    "Needs Analysis": "Needs Analysis",
+    "Value Proposition": "Value Proposition",
+    "Id. Decision Makers": "Identifying Decision Makers",
+    "Perception Analysis": "Perception Analysis",
+    "Proposal/Price Quote": "Proposal/Price Quote",
+    "Negotiation/Review": "Negotiation/Review",
+    "Closed Won": "Closed Won",
+    "Closed Lost": "Closed Lost"
+   },
+   "sales_probability_dom": {
+    "Prospecting": "10",
+    "Qualification": "20",
+    "Needs Analysis": "25",
+    "Value Proposition": "30",
+    "Id. Decision Makers": "40",
+    "Perception Analysis": "50",
+    "Proposal/Price Quote": "65",
+    "Negotiation/Review": "80",
+    "Closed Won": "100",
+    "Closed Lost": "0"
+   },
+   "lead_status_dom": {
+    "": "",
+    "New": "New",
+    "Assigned": "Assigned",
+    "In Process": "In Process",
+    "Converted": "Converted",
+    "Recycled": "Recycled",
+    "Dead": "Dead"
+   },
+   "task_status_dom": {
+    "Not Started": "Not Started",
+    "In Progress": "In Progress",
+    "Completed": "Completed",
+    "Pending Input": "Pending Input",
+    "Deferred": "Deferred"
+   },
+   "task_priority_dom": {
+    "High": "High",
+    "Medium": "Medium",
+    "Low": "Low"
+   },
+   "account_type_dom": {
+    "": "",
+    "Analyst": "Analyst",
+    "Competitor": "Competitor",
+    "Customer": "Customer",
+    "Integrator": "Integrator",
+    "Investor": "Investor",
+    "Partner": "Partner",
+    "Press": "Press",
+    "Prospect": "Prospect",
+    "Reseller": "Reseller",
+    "Other": "Other"
+   },
+   "industry_dom": {
+    "": "",
+    "Apparel": "Apparel",
+    "Banking": "Banking",
+    "Biotechnology": "Biotechnology",
+    "Chemicals": "Chemicals",
+    "Communications": "Communications",
+    "Construction": "Construction",
+    "Consulting": "Consulting",
+    "Education": "Education",
+    "Electronics": "Electronics",
+    "Energy": "Energy",
+    "Engineering": "Engineering",
+    "Entertainment": "Entertainment",
+    "Environmental": "Environmental",
+    "Finance": "Finance",
+    "Government": "Government",
+    "Healthcare": "Healthcare",
+    "Hospitality": "Hospitality",
+    "Insurance": "Insurance",
+    "Machinery": "Machinery",
+    "Manufacturing": "Manufacturing",
+    "Media": "Media",
+    "Not For Profit": "Not For Profit",
+    "Recreation": "Recreation",
+    "Retail": "Retail",
+    "Shipping": "Shipping",
+    "Technology": "Technology",
+    "Telecommunications": "Telecommunications",
+    "Transportation": "Transportation",
+    "Utilities": "Utilities",
+    "Other": "Other"
+   },
+   "lead_source_dom": {
+    "": "",
+    "Cold Call": "Cold Call",
+    "Existing Customer": "Existing Customer",
+    "Self Generated": "Self Generated",
+    "Employee": "Employee",
+    "Partner": "Partner",
+    "Public Relations": "Public Relations",
+    "Direct Mail": "Direct Mail",
+    "Conference": "Conference",
+    "Trade Show": "Trade Show",
+    "Web Site": "Web Site",
+    "Word of mouth": "Word of mouth",
+    "Email": "Email",
+    "Campaign": "Campaign",
+    "Other": "Other"
+   },
+   "opportunity_relationship_type_dom": {
+    "": "",
+    "Primary Decision Maker": "Primary Decision Maker",
+    "Business Decision Maker": "Business Decision Maker",
+    "Business Evaluator": "Business Evaluator",
+    "Technical Decision Maker": "Technical Decision Maker",
+    "Technical Evaluator": "Technical Evaluator",
+    "Executive Sponsor": "Executive Sponsor",
+    "Influencer": "Influencer",
+    "Other": "Other"
+   }
+  },
+  "config": {
+   "site_url": "http://localhost:8081",
+   "system_name": "Sample CRM (synthetic demo data)",
+   "default_currency_iso4217": "USD",
+   "default_currency_name": "US Dollars",
+   "lead_conv_activity_opt": "donothing",
+   "aod": {
+    "enable_aod": false
+   },
+   "datef": "m/d/Y",
+   "timef": "H:i"
+  },
+  "date_range": {
+   "accounts": {
+    "first": "2019-03-07 06:09:00",
+    "last": "2025-11-21 23:56:00"
+   },
+   "opportunities": {
+    "first": "2019-05-31 18:22:00",
+    "last": "2026-10-02 11:00:00"
+   },
+   "notes": {
+    "first": "2019-05-31 10:51:00",
+    "last": "2026-10-30 18:27:00"
+   }
+  }
+ }
+}

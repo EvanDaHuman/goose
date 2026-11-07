@@ -1,0 +1,7 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>{% block title %}Sample Clinic{% endblock %}</title></head>
+<body>
+<header><a href="/">Sample Clinic bookings</a></header>
+{% if messages %}<ul class="messages">{% for m in messages %}<li>{{ m }}</li>{% endfor %}</ul>{% endif %}
+<main>{% block content %}{% endblock %}</main>
+</body></html>

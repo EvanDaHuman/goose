@@ -1,0 +1,44 @@
+{
+  "workspace_name": "Sample Sales",
+  "customer": "Sample Customer (made-up business, synthetic data)",
+  "synthetic": true,
+  "job_id": "GS-EXAMPLE",
+  "source_system": {"name": "SuiteCRM", "version": "7.11.23", "base_url": "http://localhost:8081", "snapshot_taken_at": "2026-11-04T21:00:00Z"},
+  "stages": [
+    {"key": "Prospecting", "label": "Prospecting", "probability": 10},
+    {"key": "Qualification", "label": "Qualification", "probability": 20},
+    {"key": "Needs Analysis", "label": "Needs Analysis", "probability": 25},
+    {"key": "Value Proposition", "label": "Value Proposition", "probability": 30},
+    {"key": "Id. Decision Makers", "label": "Id. Decision Makers", "probability": 40},
+    {"key": "Perception Analysis", "label": "Perception Analysis", "probability": 50},
+    {"key": "Proposal/Price Quote", "label": "Proposal/Price Quote", "probability": 65},
+    {"key": "Negotiation/Review", "label": "Negotiation/Review", "probability": 80},
+    {"key": "Closed Won", "label": "Closed Won", "probability": 100, "won": true},
+    {"key": "Closed Lost", "label": "Closed Lost", "probability": 0, "lost": true}
+  ],
+  "lead_statuses": [{"key": "New", "label": "New"}, {"key": "Assigned", "label": "Assigned"}, {"key": "In Process", "label": "In Process"},
+                    {"key": "Converted", "label": "Converted"}, {"key": "Recycled", "label": "Recycled"}, {"key": "Dead", "label": "Dead"}],
+  "task_statuses": [{"key": "Not Started", "label": "Not Started"}, {"key": "In Progress", "label": "In Progress"}, {"key": "Completed", "label": "Completed"},
+                    {"key": "Pending Input", "label": "Pending Input"}, {"key": "Deferred", "label": "Deferred"}],
+  "task_priorities": [{"key": "High", "label": "High"}, {"key": "Medium", "label": "Medium"}, {"key": "Low", "label": "Low"}],
+  "account_types": [{"key": "Customer", "label": "Customer"}, {"key": "Prospect", "label": "Prospect"}, {"key": "Partner", "label": "Partner"}, {"key": "Reseller", "label": "Reseller"}, {"key": "Other", "label": "Other"}],
+  "industries": [{"key": "Healthcare", "label": "Healthcare"}, {"key": "Manufacturing", "label": "Manufacturing"}, {"key": "Retail", "label": "Retail"}, {"key": "Other", "label": "Other"}],
+  "lead_sources": [{"key": "Web Site", "label": "Web Site"}, {"key": "Trade Show", "label": "Trade Show"}, {"key": "Cold Call", "label": "Cold Call"}, {"key": "Existing Customer", "label": "Existing Customer"}],
+  "contact_roles": [{"key": "Primary Decision Maker", "label": "Primary Decision Maker"}, {"key": "Business Decision Maker", "label": "Business Decision Maker"},
+                    {"key": "Technical Evaluator", "label": "Technical Evaluator"}, {"key": "Influencer", "label": "Influencer"}, {"key": "Other", "label": "Other"}],
+  "approval_rule": {
+    "enabled": true, "threshold_usd": 25000, "won_stage": "Closed Won", "fallback_stage": "Negotiation/Review",
+    "manager_role": "Sales Manager", "same_team_required": true, "admin_can_approve": true, "withdraw_if_amount_exceeds_approved": true,
+    "messages": {
+      "not_manager": "Only a sales manager on this team can approve or reject a deal.",
+      "withdrawn": "The amount is now above the approved amount, so the approval was withdrawn.",
+      "blocked": "Deals above $25,000 need approval from a sales manager before they can be marked Closed Won. Approval has been requested."
+    },
+    "source": {"file": "custom/modules/Opportunities/DealApproval.php"}
+  },
+  "access": {"additive": true, "inherit_creator": true, "inherit_assigned": true, "inherit_parent": true},
+  "lead_conversion": {"activities": "donothing", "account_match": "exact_suggest", "similar_threshold": 0.8, "default_contact_role": "Primary Decision Maker"},
+  "custom_fields": [{"entity": "accounts", "column": "contract_renewal_date", "label": "Contract renewal date", "type": "date", "source": "accounts_cstm.contract_renewal_date_c"}],
+  "renewal_window_days": 90,
+  "external": {"record_url": "http://localhost:8081/index.php?module={module}&action=DetailView&record={id}"}
+}

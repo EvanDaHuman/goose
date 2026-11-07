@@ -1,0 +1,29 @@
+CREATE TABLE clients (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  full_name TEXT NOT NULL,
+  email TEXT,
+  city TEXT
+);
+CREATE TABLE coffees (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT UNIQUE NOT NULL,
+  title TEXT NOT NULL,
+  unit_cost REAL NOT NULL,
+  qty_on_hand INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE purchases (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  client_id INTEGER NOT NULL REFERENCES clients (id),
+  state TEXT NOT NULL DEFAULT 'open',
+  placed_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  gross REAL NOT NULL,
+  discount_amount REAL NOT NULL,
+  amount_due REAL NOT NULL
+);
+CREATE TABLE purchase_lines (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  purchase_id INTEGER NOT NULL REFERENCES purchases (id),
+  coffee_id INTEGER NOT NULL REFERENCES coffees (id),
+  qty INTEGER NOT NULL,
+  price_each REAL NOT NULL
+);

@@ -1,0 +1,9 @@
+{% extends "bookings/base.html" %}
+{% block content %}
+<h1>{{ date|date:"l j F Y" }}</h1>
+<table><tr><th>Time</th><th>Clinician</th><th>Patient</th><th>Phone</th><th>Status</th></tr>
+{% for b in bookings %}<tr><td>{{ b.slot.starts_at|time:"H:i" }}</td><td>{{ b.slot.clinician.name }}</td>
+<td><a href="/bookings/{{ b.id }}/">{{ b.patient.name }}</a></td><td>{{ b.patient.phone }}</td><td>{{ b.status }}</td></tr>
+{% empty %}<tr><td colspan="5">No bookings.</td></tr>{% endfor %}
+</table>
+{% endblock %}

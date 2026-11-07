@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Pipeline{% endblock %}
+{% block page_class %}is-wide{% endblock %}
+{% block content %}
+<div class="pipeline-head">
+  <div>
+    <h1 class="record-title" style="font-size:27px">Pipeline</h1>
+    <p class="page-sub">{% if scope == "mine" %}Deals you own{% elif scope == "team" %}Deals in {{ me.team_names|join(" and ") or "your teams" }}{% else %}Every deal you can see{% endif %} · USD values at today's rates</p>
+  </div>
+  <div class="pipeline-summary">
+    <div class="ps-item"><span class="ps-label">Open pipeline</span><span class="ps-value" data-summary="open">{{ p.open_total_usd|usd0 }}</span></div>
+    <div class="ps-item"><span class="ps-label">Weighted</span><span class="ps-value">{{ p.weighted_usd|usd0 }}</span></div>
+    <div class="ps-item"><span class="ps-label">Open deals</span><span class="ps-value" data-summary="open-count">{{ p.open_count }}</span></div>
+    <nav class="segmented" aria-label="Whose deals">
+      {% for key, label in [("mine", "Mine"), ("team", "My team"), ("all", "All")] %}
+      <a href="/pipeline?scope={{ key }}" class="{% if scope == key %}is-active{% endif %}"{% if scope == key %} aria-current="page"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </nav>
+    {% if can("deals", "edit") %}<a class="btn btn-primary" href="/deals/new">{{ m.icon("plus", 16) }} New deal</a>{% endif %}
+  </div>
+</div>
+
+<div id="page-rule" class="page-rule" aria-live="assertive"></div>
+
+<div class="board" role="list" aria-label="Pipeline stages">
+  {% for col in p.stages %}
+  {% set closed = col.won or col.lost %}
+  {% set cards = (col.deals|reverse|list)[:8] if closed else col.deals %}
+  <section class="column{% if col.won %} is-won{% elif col.lost %} is-lost{% endif %}" role="listitem" aria-label="{{ col.label }}" data-stage="{{ col.key }}" data-total="{{ col.total_usd }}" data-count="{{ col.count }}">
+    <header class="column-head">
+      <p class="column-title"><span>{{ col.label|wbr }}</span><span class="column-count" data-col-count>{{ col.count }}</span></p>
+      <p class="column-total" data-col-total>{{ col.total_usd|usd0 }}</p>
+      <p class="column-meta">{% if col.probability is not none %}{{ col.probability }}%{% endif %}{% if not closed and col.weighted_usd %} · {{ col.weighted_usd|usd_compact }} weighted{% endif %}</p>
+    </header>
+    <div class="column-cards" data-cards>
+      {% for d in cards %}
+      {% set blocked = blocked_deals.get(d.id) %}
+      <article class="deal-card{% if blocked %} is-blocked{% endif %}" data-deal-id="{{ d.id }}" data-amount-usd="{{ d.amount_usd }}" data-stage="{{ d.stage }}">
+        <a class="deal-card-name" href="/deals/{{ d.id }}">{{ d.name }}</a>
+        <p class="deal-card-account">{{ d.account_name or "No account" }}</p>
+        <p class="deal-card-amount">{{ d.amount|money(d.currency_code, d.currency_symbol, 0) }}{% if d.currency_code != "USD" %}<span class="money-usd">≈ {{ d.amount_usd|usd0 }}</span>{% endif %}</p>
+        <div class="deal-card-status" data-approval>{{ m.approval_pill(d.approval_status) }}</div>
+        <div class="deal-card-foot">
+          <span class="deal-card-owner">{{ m.avatar(d.owner_name, "xs") }}<span>{{ d.owner_name or "Unassigned" }}</span></span>
+        </div>
+        <div class="card-rule" data-card-rule>{% if blocked %}{{ m.rule_banner(blocked.text, title="Not moved: approval needed", compact=true) }}{% endif %}</div>
+        {% if d.can_edit %}
+        <details class="move">
+          <summary>Move stage {{ m.icon("chevron-down", 13) }}</summary>
+          <form method="post" action="/deals/{{ d.id }}/stage" data-enhance="stage-move" data-id="{{ d.id }}">
+            <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="next" value="/pipeline?scope={{ scope }}">
+            <label class="sr-only" for="move-{{ d.id }}">Move {{ d.name }} to stage</label>
+            <select class="input" id="move-{{ d.id }}" name="stage">
+              {% for s in stages %}<option value="{{ s.key }}"{% if s.key == d.stage %} selected{% endif %}>{{ s.label }}</option>{% endfor %}
+            </select>
+            <button class="btn btn-xs btn-primary" type="submit">Move</button>
+          </form>
+        </details>
+        {% endif %}
+      </article>
+      {% endfor %}
+      {% if closed and col.count > cards|length %}
+      <a class="column-more" href="/deals?status={{ 'won' if col.won else 'lost' }}">+ {{ col.count - cards|length }} more</a>
+      {% endif %}
+      {% if not col.deals %}<p class="column-more muted" data-empty-col>No deals</p>{% endif %}
+    </div>
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}

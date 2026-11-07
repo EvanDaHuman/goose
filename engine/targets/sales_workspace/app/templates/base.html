@@ -1,0 +1,56 @@
+{% import "_macros.html" as m with context %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %} · {{ cfg.workspace_name }}</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/app.css?v={{ asset_version }}">
+  {% if csrf %}<meta name="csrf-token" content="{{ csrf }}">{% endif %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="/" aria-label="{{ cfg.workspace_name }} home">
+      <span class="brand-mark" aria-hidden="true">{{ cfg.workspace_name|initials }}</span>
+      <span class="brand-name">{{ cfg.workspace_name }}</span>
+    </a>
+    {% if cfg.synthetic %}<span class="badge-synthetic" title="{{ cfg.customer }}">Synthetic demo data</span>{% endif %}
+    {% if me %}
+    <nav class="mainnav" aria-label="Main">
+      {% for item in nav %}
+      <a href="{{ item.href }}" class="{% if item.active %}is-active{% endif %}"{% if item.active %} aria-current="page"{% endif %}>{{ item.label }}{% if item.count is defined and item.count %}<span class="nav-count" id="nav-approvals-count" aria-label="{{ item.count }} waiting">{{ item.count }}</span>{% elif item.count is defined %}<span class="nav-count is-zero" id="nav-approvals-count" hidden>0</span>{% endif %}</a>
+      {% endfor %}
+    </nav>
+    <form class="search" role="search" action="/search" method="get">
+      <label class="sr-only" for="global-search">Search accounts, contacts, leads and deals</label>
+      <span class="search-icon">{{ m.icon("search", 16) }}</span>
+      <input id="global-search" type="search" name="q" value="{{ search_q }}" placeholder="Search accounts, contacts, deals…" autocomplete="off">
+      <kbd class="search-kbd" aria-hidden="true">/</kbd>
+    </form>
+    <div class="usermenu">
+      {{ m.avatar(me.name, "md") }}
+      <div class="user-meta">
+        <span class="user-name">{{ me.name }}</span>
+        <span class="user-role">{{ role_line }}</span>
+      </div>
+      <form method="post" action="/logout">
+        <button class="btn btn-ghost btn-sm signout" type="submit" title="Sign out">{{ m.icon("logout", 16) }}<span>Sign out</span></button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</header>
+<main id="main" class="page {% block page_class %}{% endblock %}" tabindex="-1">
+  {% block flashes %}<div class="flashes" id="flashes" aria-live="polite">{{ m.flash_list(flashes) }}</div>{% endblock %}
+  {% block content %}{% endblock %}
+</main>
+<footer class="footer">
+  <p>Delivered by Goose · job {{ footer.job }} · data migrated from {{ footer.system }} {{ footer.version }} snapshot {{ footer.snapshot }}</p>
+</footer>
+<div class="toast-region" id="toasts" aria-live="polite" aria-atomic="false"></div>
+<script src="/static/app.js?v={{ asset_version }}" defer></script>
+</body>
+</html>

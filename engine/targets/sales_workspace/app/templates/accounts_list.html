@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Accounts{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Accounts</h1>
+    <p class="page-sub">{{ plural(result.total, "account") }} you can see{% if q %} matching “{{ q }}”{% endif %}.</p>
+  </div>
+  <div class="page-actions">
+    {% if can("accounts", "edit") %}<a class="btn btn-primary" href="/accounts/new">{{ m.icon("plus", 16) }} New account</a>{% endif %}
+  </div>
+</div>
+<section class="card">
+  <form class="toolbar" method="get" action="/accounts" role="search">
+    <div class="search-local">
+      {{ m.icon("search", 16) }}
+      <label class="sr-only" for="accounts-q">Search accounts</label>
+      <input class="input" id="accounts-q" type="search" name="q" value="{{ q }}" placeholder="Search by name, city or website">
+    </div>
+    {% if owner %}<input type="hidden" name="owner" value="{{ owner }}">{% endif %}
+    <button class="btn" type="submit">Search</button>
+    <span class="toolbar-spacer"></span>
+    <nav class="segmented" aria-label="Owner filter">
+      <a href="/accounts{% if q %}?q={{ q|urlencode }}{% endif %}" class="{% if not owner %}is-active{% endif %}">All</a>
+      <a href="/accounts?owner=me{% if q %}&q={{ q|urlencode }}{% endif %}" class="{% if owner == 'me' %}is-active{% endif %}">Mine</a>
+    </nav>
+  </form>
+  {% if result["items"] %}
+  <div class="table-wrap">
+  <table class="table">
+    <thead>
+      <tr><th>Account</th><th>Location</th><th>Owner</th><th>Team</th><th>{{ cfg.field_label("accounts", "contract_renewal_date", "Contract renewal") }}</th><th class="num">Open pipeline</th></tr>
+    </thead>
+    <tbody>
+    {% for a in result["items"] %}
+      <tr>
+        <td>
+          <a class="cell-title" href="/accounts/{{ a.id }}">{{ a.name }}</a>
+          <span class="cell-sub">{{ [cfg.label("account_types", a.account_type) if a.account_type else None, cfg.label("industries", a.industry) if a.industry else None]|select|join(" · ") or "—" }}</span>
+        </td>
+        <td>{{ [a.billing_city, a.billing_state]|select|join(", ") or "—" }}</td>
+        <td>{{ m.person(a.owner_name) }}</td>
+        <td>{% for t in a.team_names %}<span class="team-tag">{{ t }}</span>{% else %}<span class="muted">—</span>{% endfor %}</td>
+        <td>{{ m.renewal_cell(a.contract_renewal_date) }}</td>
+        <td class="num"><span class="money">{{ a.open_pipeline_usd|usd0 }}</span><span class="cell-sub">{{ plural(a.open_deals, "open deal") }}</span></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {{ m.pager_nav(pager, "accounts") }}
+  {% else %}
+  <div class="card-body">{{ m.empty("No accounts found.", "Try another search." if q else None, "building") }}</div>
+  {% endif %}
+</section>
+{% endblock %}

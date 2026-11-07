@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<section class="card error-card">
+  <p class="error-code">{{ status_code }}</p>
+  <h1>{{ title }}</h1>
+  <p>{{ detail }}</p>
+  {% if status_code == 404 %}<p class="small muted">It may have been deleted, or it belongs to a team whose records you can't see.</p>{% endif %}
+  <div class="btn-row">
+    <a class="btn btn-primary" href="/">Go to home</a>
+    {% if me %}<a class="btn" href="/search">Search</a>{% else %}<a class="btn" href="/login">Sign in</a>{% endif %}
+  </div>
+</section>
+{% endblock %}

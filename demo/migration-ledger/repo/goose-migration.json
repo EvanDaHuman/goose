@@ -1,0 +1,341 @@
+{
+  "version": 1,
+  "id": "ledger-rust-v1",
+  "target": "rust",
+  "source": {
+    "runtime": "flask",
+    "entry": "app.py",
+    "database_env": "APP_DB"
+  },
+  "data_changes": [
+    {
+      "op": "add_column",
+      "table": "customers",
+      "column": {
+        "name": "tier",
+        "type": "TEXT",
+        "required": true,
+        "default": "standard"
+      }
+    },
+    {
+      "op": "create_table",
+      "table": "segments",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "primary_key": true
+        },
+        {
+          "name": "label",
+          "type": "TEXT",
+          "required": true,
+          "unique": true
+        }
+      ]
+    },
+    {
+      "op": "insert_rows",
+      "table": "segments",
+      "rows": [
+        {
+          "id": 1,
+          "label": "standard"
+        },
+        {
+          "id": 2,
+          "label": "vip"
+        }
+      ]
+    }
+  ],
+  "legacy_requests": [
+    {
+      "id": "health",
+      "method": "GET",
+      "path": "/"
+    },
+    {
+      "id": "list",
+      "method": "GET",
+      "path": "/customers"
+    },
+    {
+      "id": "missing",
+      "method": "GET",
+      "path": "/customers/999999"
+    },
+    {
+      "id": "invalid",
+      "method": "POST",
+      "path": "/customers",
+      "body": {}
+    },
+    {
+      "id": "create",
+      "method": "POST",
+      "path": "/customers",
+      "body": {
+        "name": "Legacy 🪿",
+        "email": "legacy@example.test"
+      },
+      "save": {
+        "legacy_id": "/id"
+      }
+    },
+    {
+      "id": "read",
+      "method": "GET",
+      "path": "/customers/{legacy_id}"
+    },
+    {
+      "id": "update",
+      "method": "PATCH",
+      "path": "/customers/{legacy_id}",
+      "body": {
+        "name": "Legacy updated"
+      }
+    },
+    {
+      "id": "read_updated",
+      "method": "GET",
+      "path": "/customers/{legacy_id}"
+    },
+    {
+      "id": "bad_update",
+      "method": "PATCH",
+      "path": "/customers/{legacy_id}",
+      "body": {
+        "name": ""
+      }
+    },
+    {
+      "id": "missing_update",
+      "method": "PATCH",
+      "path": "/customers/999999",
+      "body": {
+        "name": "Missing"
+      }
+    },
+    {
+      "id": "note",
+      "method": "POST",
+      "path": "/notes",
+      "body": {
+        "customer_id": "{legacy_id}",
+        "body": "A new related note"
+      },
+      "save": {
+        "note_id": "/id"
+      }
+    },
+    {
+      "id": "notes",
+      "method": "GET",
+      "path": "/customers/{legacy_id}/notes"
+    },
+    {
+      "id": "invalid_note",
+      "method": "POST",
+      "path": "/notes",
+      "body": {}
+    },
+    {
+      "id": "orphan",
+      "method": "POST",
+      "path": "/notes",
+      "body": {
+        "customer_id": 999999,
+        "body": "Must reject"
+      }
+    }
+  ],
+  "new_requests": [
+    {
+      "id": "old_tier",
+      "method": "GET",
+      "path": "/v2/customers/{legacy_id}",
+      "expect": {
+        "status": 200,
+        "body": {
+          "id": "{legacy_id}",
+          "tier": "standard",
+          "name": "Legacy updated"
+        }
+      }
+    },
+    {
+      "id": "segments",
+      "method": "GET",
+      "path": "/v2/segments",
+      "expect": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "label": "standard"
+          },
+          {
+            "id": 2,
+            "label": "vip"
+          }
+        ]
+      }
+    },
+    {
+      "id": "new_create",
+      "method": "POST",
+      "path": "/v2/customers",
+      "body": {
+        "name": "New 客戶",
+        "email": null,
+        "tier": "vip"
+      },
+      "save": {
+        "fresh_id": "/id"
+      },
+      "expect": {
+        "status": 201,
+        "body": {
+          "id": "{fresh_id}"
+        }
+      }
+    },
+    {
+      "id": "new_get",
+      "method": "GET",
+      "path": "/v2/customers/{fresh_id}",
+      "expect": {
+        "status": 200,
+        "body": {
+          "id": "{fresh_id}",
+          "name": "New 客戶",
+          "email": null,
+          "tier": "vip"
+        }
+      }
+    },
+    {
+      "id": "new_edit",
+      "method": "PATCH",
+      "path": "/v2/customers/{fresh_id}",
+      "body": {
+        "tier": "standard"
+      },
+      "expect": {
+        "status": 200,
+        "body": {
+          "updated": true
+        }
+      }
+    },
+    {
+      "id": "bad_tier",
+      "method": "POST",
+      "path": "/v2/customers",
+      "body": {
+        "name": "Must not exist",
+        "tier": "invalid"
+      },
+      "expect": {
+        "status": 400,
+        "body": {
+          "error": "invalid tier"
+        }
+      }
+    },
+    {
+      "id": "default_tier",
+      "method": "POST",
+      "path": "/v2/customers",
+      "body": {
+        "name": "Default tier"
+      },
+      "save": {
+        "default_id": "/id"
+      },
+      "expect": {
+        "status": 201,
+        "body": {
+          "id": "{default_id}"
+        }
+      }
+    },
+    {
+      "id": "v2_list",
+      "method": "GET",
+      "path": "/v2/customers",
+      "expect": {
+        "status": 200,
+        "array_match": "contains",
+        "body": [
+          {
+            "id": "{fresh_id}",
+            "name": "New 客戶",
+            "tier": "standard"
+          },
+          {
+            "id": "{default_id}",
+            "name": "Default tier",
+            "tier": "standard"
+          }
+        ]
+      }
+    }
+  ],
+  "persistence_requests": [
+    {
+      "id": "restart_fresh",
+      "method": "GET",
+      "path": "/v2/customers/{fresh_id}",
+      "expect": {
+        "status": 200,
+        "body": {
+          "id": "{fresh_id}",
+          "name": "New 客戶",
+          "tier": "standard"
+        }
+      }
+    },
+    {
+      "id": "restart_default",
+      "method": "GET",
+      "path": "/v2/customers/{default_id}",
+      "expect": {
+        "status": 200,
+        "body": {
+          "id": "{default_id}",
+          "tier": "standard"
+        }
+      }
+    }
+  ],
+  "data_assertions": [
+    {
+      "table": "customers",
+      "where": {
+        "id": "{fresh_id}"
+      },
+      "values": {
+        "name": "New 客戶",
+        "email": null,
+        "tier": "standard"
+      }
+    },
+    {
+      "table": "customers",
+      "where": {
+        "id": "{default_id}"
+      },
+      "values": {
+        "name": "Default tier",
+        "tier": "standard"
+      }
+    }
+  ],
+  "limitations": [
+    "Synthetic fixture; not a production deployment",
+    "No concurrent-writer, external-integration or production-load claims"
+  ]
+}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Contacts{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Contacts</h1>
+    <p class="page-sub">{{ plural(result.total, "contact") }} you can see{% if q %} matching “{{ q }}”{% endif %}.</p>
+  </div>
+  <div class="page-actions">
+    {% if can("contacts", "edit") %}<a class="btn btn-primary" href="/contacts/new">{{ m.icon("plus", 16) }} New contact</a>{% endif %}
+  </div>
+</div>
+<section class="card">
+  <form class="toolbar" method="get" action="/contacts" role="search">
+    <div class="search-local">
+      {{ m.icon("search", 16) }}
+      <label class="sr-only" for="contacts-q">Search contacts</label>
+      <input class="input" id="contacts-q" type="search" name="q" value="{{ q }}" placeholder="Search by name, e-mail, city or account">
+    </div>
+    <button class="btn" type="submit">Search</button>
+  </form>
+  {% if result["items"] %}
+  <div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>Name</th><th>Account</th><th>E-mail</th><th>Phone</th><th>City</th><th>Owner</th></tr></thead>
+    <tbody>
+    {% for c in result["items"] %}
+      <tr>
+        <td><span class="person">{{ m.avatar(c.name, "md") }}<span class="person-name"><a class="cell-title" href="/contacts/{{ c.id }}">{{ c.name }}</a><span class="person-sub">{{ c.title or "—" }}</span></span></span></td>
+        <td>{% if c.account_name %}<a href="/accounts/{{ c.account_id }}">{{ c.account_name }}</a>{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td>{% if c.email %}<a href="mailto:{{ c.email }}">{{ c.email }}</a>{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td class="nowrap">{{ c.phone or "—" }}</td>
+        <td>{{ c.city or "—" }}</td>
+        <td>{{ m.person(c.owner_name) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {{ m.pager_nav(pager, "contacts") }}
+  {% else %}
+  <div class="card-body">{{ m.empty("No contacts found.", "Try another search." if q else None, "users") }}</div>
+  {% endif %}
+</section>
+{% endblock %}

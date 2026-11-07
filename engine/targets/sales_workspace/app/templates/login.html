@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Sign in{% endblock %}
+{% block body_class %}login-body{% endblock %}
+{% block flashes %}{% endblock %}
+{% block content %}
+<div class="login-wrap">
+  <aside class="login-aside" aria-hidden="true">
+    <div>
+      <h2>Accounts, deals and renewals in one calm place.</h2>
+      <p class="lead-in">Your records, relationships and access rules came across from {{ cfg.source_system.name or "SuiteCRM" }} unchanged.</p>
+    </div>
+    <ul class="login-points">
+      <li>{{ m.icon("users", 18) }}<span>You see your team's records and edit the ones you own, exactly as before.</span></li>
+      <li>{{ m.icon("shield", 18) }}<span>Deals above {{ cfg.rule.threshold_usd|usd0 }} still need a sales manager's approval before {{ cfg.rule.won_stage }}.</span></li>
+      <li>{{ m.icon("external", 18) }}<span>Support cases, meetings and calls stay in {{ cfg.source_system.name or "SuiteCRM" }}, one click away.</span></li>
+    </ul>
+  </aside>
+  <section class="login-card">
+    <div>
+      <h1>Sign in to {{ cfg.workspace_name }}</h1>
+      <p class="page-sub">Use your {{ cfg.source_system.name or "SuiteCRM" }} user name and password.</p>
+    </div>
+    {% if error %}<div class="alert alert-error" role="alert">{{ m.icon("alert", 18) }}<div>{{ error }}</div></div>{% endif %}
+    <form method="post" action="/login" novalidate>
+      {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+      <div class="field">
+        <label class="field-label" for="user_name">User name</label>
+        <input class="input" id="user_name" name="user_name" value="{{ user_name }}" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
+      </div>
+      <div class="field">
+        <label class="field-label" for="password">Password</label>
+        <input class="input" id="password" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <button class="btn btn-primary" type="submit">Sign in</button>
+    </form>
+    {% if cfg.synthetic %}<p class="login-hint">{{ cfg.customer }}</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

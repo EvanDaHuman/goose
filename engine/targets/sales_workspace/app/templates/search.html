@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Search{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{% if results.q %}Results for “{{ results.q }}”{% else %}Search{% endif %}</h1>
+    <p class="page-sub">{% if results.q %}{{ plural(total, "match") }} across accounts, contacts, leads and deals you can see (up to 10 of each).{% else %}Find accounts, contacts, leads and deals by name, company, e-mail or city.{% endif %}</p>
+  </div>
+</div>
+
+{% if not results.q %}
+<section class="card"><div class="card-body">
+  <form action="/search" method="get" class="btn-row" role="search">
+    <label class="sr-only" for="search-page-q">Search</label>
+    <input class="input" id="search-page-q" type="search" name="q" placeholder="Try “Acme” or “Albany”" style="max-width:480px" autofocus>
+    <button class="btn btn-primary" type="submit">Search</button>
+  </form>
+</div></section>
+{% elif total == 0 %}
+<section class="card"><div class="card-body">{{ m.empty("Nothing matches “" ~ results.q ~ "”.", "Search looks at names, companies, e-mail addresses and cities.", "search") }}</div></section>
+{% else %}
+<div class="grid-2-even">
+  <div class="stack">
+    {% if results.accounts %}
+    <section class="card search-group">
+      <header class="card-head"><h2>{{ m.icon("building", 17) }} Accounts <span class="count-chip">{{ results.accounts|length }}</span></h2></header>
+      <ul class="list-rows">
+        {% for a in results.accounts %}
+        <li class="list-row">
+          <div class="list-row-main"><a class="list-row-title" href="/accounts/{{ a.id }}">{{ a.name }}</a>
+            <span class="list-row-sub">{{ [a.account_type, a.billing_city, a.owner_name]|select|join(" · ") }}</span></div>
+          <div class="list-row-side">{% for t in a.team_names %}<span class="team-tag">{{ t }}</span>{% endfor %}</div>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+    {% if results.contacts %}
+    <section class="card search-group">
+      <header class="card-head"><h2>{{ m.icon("user", 17) }} Contacts <span class="count-chip">{{ results.contacts|length }}</span></h2></header>
+      <ul class="list-rows">
+        {% for c in results.contacts %}
+        <li class="list-row">{{ m.avatar(c.name, "md") }}
+          <div class="list-row-main"><a class="list-row-title" href="/contacts/{{ c.id }}">{{ c.name }}</a>
+            <span class="list-row-sub">{{ [c.title, c.account_name, c.email]|select|join(" · ") }}</span></div>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  </div>
+  <div class="stack">
+    {% if results.deals %}
+    <section class="card search-group">
+      <header class="card-head"><h2>{{ m.icon("trend", 17) }} Deals <span class="count-chip">{{ results.deals|length }}</span></h2></header>
+      <ul class="list-rows">
+        {% for d in results.deals %}
+        <li class="list-row">
+          <div class="list-row-main"><a class="list-row-title" href="/deals/{{ d.id }}">{{ d.name }}</a>
+            <span class="list-row-sub">{{ [d.account_name, d.owner_name]|select|join(" · ") }}</span></div>
+          <div class="list-row-side"><span class="money">{{ d.amount|money(d.currency_code, d.currency_symbol) }}</span><span class="pills">{{ m.stage_pill(d) }}{{ m.approval_pill(d.approval_status) }}</span></div>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+    {% if results.leads %}
+    <section class="card search-group">
+      <header class="card-head"><h2>{{ m.icon("sparkle", 17) }} Leads <span class="count-chip">{{ results.leads|length }}</span></h2></header>
+      <ul class="list-rows">
+        {% for l in results.leads %}
+        <li class="list-row">{{ m.avatar(l.name, "md") }}
+          <div class="list-row-main"><a class="list-row-title" href="/leads/{{ l.id }}">{{ l.name }}</a>
+            <span class="list-row-sub">{{ [(l.company or "")|trim, l.city, l.email]|select|join(" · ") }}</span></div>
+          <div class="list-row-side"><span class="pill pill-neutral">{{ cfg.label("lead_statuses", l.status) }}</span></div>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

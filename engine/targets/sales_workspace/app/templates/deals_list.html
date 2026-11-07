@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Deals{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Deals</h1>
+    <p class="page-sub">{{ plural(result.total, "deal") }}{% if q %} matching “{{ q }}”{% endif %}.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="/pipeline">{{ m.icon("layers", 16) }} Board view</a>
+    {% if can("deals", "edit") %}<a class="btn btn-primary" href="/deals/new">{{ m.icon("plus", 16) }} New deal</a>{% endif %}
+  </div>
+</div>
+<section class="card">
+  <form class="toolbar" method="get" action="/deals" role="search">
+    <div class="search-local">
+      {{ m.icon("search", 16) }}
+      <label class="sr-only" for="deals-q">Search deals</label>
+      <input class="input" id="deals-q" type="search" name="q" value="{{ q }}" placeholder="Search by deal or account name">
+    </div>
+    <input type="hidden" name="status" value="{{ deal_status }}">
+    <button class="btn" type="submit">Search</button>
+    <span class="toolbar-spacer"></span>
+    <nav class="segmented" aria-label="Deal status">
+      {% for key, label in [("open", "Open"), ("won", "Won"), ("lost", "Lost"), ("all", "All")] %}
+      <a href="/deals?status={{ key }}{% if q %}&q={{ q|urlencode }}{% endif %}" class="{% if deal_status == key %}is-active{% endif %}">{{ label }}</a>
+      {% endfor %}
+    </nav>
+  </form>
+  {% if result["items"] %}
+  <div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>Deal</th><th>Stage</th><th>Approval</th><th class="num">Amount</th><th>Close date</th><th>Owner</th></tr></thead>
+    <tbody>
+    {% for d in result["items"] %}
+      <tr>
+        <td><a class="cell-title" href="/deals/{{ d.id }}">{{ d.name }}</a>{% if d.account_name %}<span class="cell-sub">{{ d.account_name }}</span>{% endif %}</td>
+        <td>{{ m.stage_pill(d) }}</td>
+        <td>{{ m.approval_pill(d.approval_status) or '<span class="muted">—</span>'|safe }}</td>
+        <td class="num">{{ m.amount(d) }}</td>
+        <td>{{ m.date_hint(d.close_date) }}</td>
+        <td>{{ m.person(d.owner_name) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {{ m.pager_nav(pager, "deals") }}
+  {% else %}
+  <div class="card-body">{{ m.empty("No deals here.", None, "trend") }}</div>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Approvals{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Approvals</h1>
+    <p class="page-sub">Deals waiting for a sales manager's decision{% if me.team_names and not me.is_admin %} in {{ me.team_names|join(" and ") }}{% endif %}. Deals above {{ cfg.rule.threshold_usd|usd0 }} can't be marked {{ cfg.rule.won_stage }} until approved.</p>
+  </div>
+</div>
+<section class="card">
+  <header class="card-head">
+    <h2>{{ m.icon("shield", 17) }} Waiting for you <span class="count-chip" data-queue-count>{{ result.total }}</span></h2>
+    <span class="small muted">Approving records you, the time and the approved USD amount. Raising the amount later withdraws the approval.</span>
+  </header>
+  {% if result["items"] %}
+  <div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>Deal</th><th>Owner</th><th>Stage</th><th class="num">Amount</th><th>Requested</th><th>Close date</th><th class="num">Decision</th></tr></thead>
+    <tbody>
+    {% for d in result["items"] %}
+      <tr class="queue-row" data-deal-id="{{ d.id }}">
+        <td><a class="cell-title" href="/deals/{{ d.id }}">{{ d.name }}</a>{% if d.account_name %}<span class="cell-sub">{{ d.account_name }}</span>{% endif %}</td>
+        <td>{{ m.person(d.owner_name, (d.team_names|join(", ")) or None) }}</td>
+        <td>{{ m.stage_pill(d) }}</td>
+        <td class="num"><span class="queue-amount money">{{ d.amount|money(d.currency_code, d.currency_symbol) }}</span>{% if d.currency_code != "USD" %}<span class="money-usd">{{ d.amount_usd|usd }} USD</span>{% endif %}</td>
+        <td>{% if d.requested_at %}<span class="date">{{ d.requested_at|ago }}</span><span class="date-hint">{{ d.requested_at|date_fmt }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td>{{ m.date_hint(d.close_date) }}</td>
+        <td class="num">
+          <div class="queue-actions">
+            <form method="post" action="/deals/{{ d.id }}/approval" data-enhance="approval" data-id="{{ d.id }}" data-decision="approved">
+              <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="decision" value="approved"><input type="hidden" name="next" value="/approvals">
+              <button class="btn btn-sm btn-approve" type="submit" aria-label="Approve {{ d.name }}">{{ m.icon("check", 15) }} Approve</button>
+            </form>
+            <form method="post" action="/deals/{{ d.id }}/approval" data-enhance="approval" data-id="{{ d.id }}" data-decision="rejected">
+              <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="decision" value="rejected"><input type="hidden" name="next" value="/approvals">
+              <button class="btn btn-sm btn-reject" type="submit" aria-label="Reject {{ d.name }}">{{ m.icon("x", 15) }} Reject</button>
+            </form>
+          </div>
+          <p class="row-error" data-row-error hidden></p>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% endif %}
+  <div class="card-body" data-queue-empty{% if result["items"] %} hidden{% endif %}>{{ m.empty("Nothing is waiting for approval.", "When a salesperson on your team requests approval, the deal appears here.", "shield") }}</div>
+</section>
+{% endblock %}

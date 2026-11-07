@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Leads{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Leads</h1>
+    <p class="page-sub">{{ plural(result.total, "lead") }}{% if show == "open" %} not yet converted{% elif show == "converted" %} converted{% endif %}{% if q %} matching “{{ q }}”{% endif %}.</p>
+  </div>
+  <div class="page-actions">
+    {% if can("leads", "edit") %}<a class="btn btn-primary" href="/leads/new">{{ m.icon("plus", 16) }} New lead</a>{% endif %}
+  </div>
+</div>
+<section class="card">
+  <form class="toolbar" method="get" action="/leads" role="search">
+    <div class="search-local">
+      {{ m.icon("search", 16) }}
+      <label class="sr-only" for="leads-q">Search leads</label>
+      <input class="input" id="leads-q" type="search" name="q" value="{{ q }}" placeholder="Search by name, company, e-mail or city">
+    </div>
+    <input type="hidden" name="show" value="{{ show }}">
+    <button class="btn" type="submit">Search</button>
+    <span class="toolbar-spacer"></span>
+    <nav class="segmented" aria-label="Lead filter">
+      {% for key, label in [("open", "To work"), ("converted", "Converted"), ("all", "All")] %}
+      <a href="/leads?show={{ key }}{% if q %}&q={{ q|urlencode }}{% endif %}" class="{% if show == key %}is-active{% endif %}">{{ label }}</a>
+      {% endfor %}
+    </nav>
+  </form>
+  {% if result["items"] %}
+  <div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>Lead</th><th>Company</th><th>Status</th><th>Source</th><th>Owner</th><th>Created</th><th></th></tr></thead>
+    <tbody>
+    {% for l in result["items"] %}
+      <tr>
+        <td><span class="person">{{ m.avatar(l.name, "md") }}<span class="person-name"><a class="cell-title" href="/leads/{{ l.id }}">{{ l.name }}</a><span class="person-sub">{{ l.title or "—" }}</span></span></span></td>
+        <td>{{ (l.company or "")|trim or "—" }}{% if l.city %}<span class="cell-sub">{{ l.city }}</span>{% endif %}</td>
+        <td>{% if l.converted %}<span class="pill pill-approved">Converted</span>{% else %}<span class="pill pill-neutral">{{ cfg.label("lead_statuses", l.status) }}</span>{% endif %}</td>
+        <td>{{ cfg.label("lead_sources", l.lead_source) if l.lead_source else "—" }}</td>
+        <td>{{ m.person(l.owner_name) }}</td>
+        <td><span class="date">{{ l.created_at|date_fmt }}</span><span class="date-hint">{{ l.created_at|ago }}</span></td>
+        <td class="num">{% if not l.converted and can("contacts", "edit") %}<a class="btn btn-sm" href="/leads/{{ l.id }}/convert">{{ m.icon("convert", 14) }} Convert</a>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {{ m.pager_nav(pager, "leads") }}
+  {% else %}
+  <div class="card-body">{{ m.empty("No leads here.", "Try another filter or search." if q or show != "all" else None, "sparkle") }}</div>
+  {% endif %}
+</section>
+{% endblock %}

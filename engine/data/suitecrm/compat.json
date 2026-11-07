@@ -1,0 +1,17 @@
+{
+  "_sources": {
+    "compatibility_matrix": "https://docs.suitecrm.com/admin/compatibility-matrix/ (read 2026-11-04)",
+    "releases": "https://github.com/SuiteCRM/SuiteCRM/releases (read 2026-11-04)",
+    "release_notes_7_11": "https://docs.suitecrm.com/admin/releases/7.11.x/ (read 2026-11-04)",
+    "php_eol": "https://www.php.net/supported-versions.php / https://www.php.net/eol.php",
+    "mariadb_eol": "https://mariadb.org/about/#maintenance-policy"
+  },
+  "lines": {
+    "7.11": {"php": ["5.6", "7.0", "7.1", "7.2", "7.3", "7.4"], "php_note": "7.3 from 7.11.5, 7.4 from 7.11.19",
+             "mariadb": ["5.5", "10", "10.1", "10.2", "10.3"], "mysql": ["5.5", "5.6", "5.7", "8"], "mysql_note": "8 from 7.11.16",
+             "last_release": "7.11.23", "last_release_date": "2021-11-19"},
+    "7.15": {"php": ["8.1", "8.2", "8.3", "8.4"], "mariadb": ["10.6", "10.11", "11.4", "11.8"], "mysql": ["8.0", "8.4"]}
+  },
+  "latest_suitecrm_7": {"version": "7.15.2", "date": "2026-07-31"},
+  "eol": {"php 7.4": "2022-11-28", "mariadb 10.3": "2023-05-25"}
+}

@@ -1,0 +1,51 @@
+{
+  "name": "goose",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Goose - an agent-run software migration company that verifies code changes, data continuity and new writes before delivery.",
+  "type": "module",
+  "engines": {
+    "node": ">=20.9"
+  },
+  "scripts": {
+    "setup": "bash scripts/setup.sh",
+    "start": "bash scripts/start.sh",
+    "stop": "bash scripts/stop.sh",
+    "web": "next dev --port 3000",
+    "web:prod": "next build && next start --port 3000",
+    "worker": "tsx --env-file=.env worker/index.ts",
+    "db:migrate": "tsx --env-file=.env scripts/migrate.ts",
+    "seed": "tsx --env-file=.env scripts/seed.ts",
+    "reset": "bash scripts/reset.sh",
+    "founder": "tsx --env-file=.env scripts/founder.ts",
+    "growth": "tsx --env-file=.env scripts/growth.ts",
+    "naive:status": "tsx --env-file=.env scripts/naive-status.ts",
+    "naive:provision": "tsx --env-file=.env scripts/naive-provision.ts",
+    "naive:smoke": "tsx --env-file=.env scripts/naive-smoke.ts",
+    "migration:demo": "tsx --env-file=.env scripts/migration-demo.ts",
+    "migration:evidence": "tsx --env-file=.env scripts/migration-evidence.ts",
+    "test": "tsx --env-file=.env scripts/test-integration.ts",
+    "test:engine": "var/venvs/engine/bin/python -m pytest -q engine/tests",
+    "test:e2e": "playwright test",
+    "history": "tsx --env-file=.env scripts/export-history.ts",
+    "typecheck": "tsc --noEmit",
+    "crm": "tsx --env-file=.env scripts/crm.ts",
+    "crm:evidence": "tsx --env-file=.env scripts/crm-evidence.ts"
+  },
+  "dependencies": {
+    "@usenaive-sdk/vetta": "0.10.0",
+    "next": "16.4.5",
+    "pg": "8.23.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "22.20.1",
+    "@types/pg": "8.23.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
+  }
+}

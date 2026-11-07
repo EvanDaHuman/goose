@@ -1,0 +1,12 @@
+{% extends "bookings/base.html" %}
+{% block content %}
+<h1>Week of {{ start|date:"j F Y" }}</h1>
+{% for day, slots in days %}
+<h2><a href="/day/{{ day|date:"Y-m-d" }}/">{{ day|date:"l j F" }}</a></h2>
+<ul>{% for s in slots %}
+  <li>{{ s.starts_at|time:"H:i" }} - {{ s.clinician.name }} ({{ s.minutes }} min)
+    {% if s.is_free %}<a href="/slots/{{ s.id }}/">book</a>{% else %}taken{% endif %}</li>
+{% endfor %}</ul>
+{% empty %}<p>No appointments this week.</p>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ deal.name }}{% endblock %}
+{% block flashes %}{% endblock %}
+{% block content %}
+{% set here = "/deals/" ~ deal.id %}
+{% set ap = d.approval %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/pipeline">Pipeline</a>{{ m.icon("chevron-right", 13) }}{% if d.account %}<a href="/accounts/{{ d.account.id }}">{{ d.account.name }}</a>{{ m.icon("chevron-right", 13) }}{% endif %}<span>{{ deal.name }}</span></nav>
+
+<div class="flashes" id="flashes" aria-live="assertive">{{ m.flash_list(flashes) }}</div>
+
+<section class="card">
+  <div class="record-head">
+    <div class="record-main">
+      <div class="record-title-row">
+        <h1 class="record-title">{{ deal.name }}</h1>
+        <span class="pills">{{ m.stage_pill(deal) }}{{ m.approval_pill(deal.approval_status, short=false) }}</span>
+      </div>
+      <div class="record-facts">
+        {% if d.account %}<a href="/accounts/{{ d.account.id }}">{{ m.icon("building", 15) }} {{ d.account.name }}</a>{% endif %}
+        <span>{{ m.icon("calendar", 15) }} Close {{ deal.close_date|date_fmt }}{% if deal.close_date %} <span class="muted">· {{ deal.close_date|relative_day }}</span>{% endif %}</span>
+        {% if deal.probability is not none %}<span>{{ m.icon("trend", 15) }} {{ deal.probability }}% probability</span>{% endif %}
+        {% if deal.next_step %}<span>{{ m.icon("arrow-right", 15) }} {{ deal.next_step }}</span>{% endif %}
+      </div>
+      <div class="record-people">
+        <span><span class="label">Owner</span>{{ m.person(d.owner.name if d.owner else None) }}</span>
+        <span><span class="label">Team</span>{% for t in d.teams %}<span class="team-tag">{{ t.name }}</span>{% else %}<span class="muted">—</span>{% endfor %}</span>
+      </div>
+    </div>
+    <div class="record-side">
+      <div style="text-align:right">
+        <p class="deal-amount-big">{{ deal.amount|money(deal.currency_code, deal.currency_symbol) }}</p>
+        {% if deal.currency_code != "USD" %}<p class="deal-amount-usd">{{ deal.amount_usd|usd }} USD at today's rate</p>{% else %}<p class="deal-amount-usd">US dollars</p>{% endif %}
+      </div>
+      <div class="btn-row">
+        {{ m.suitecrm_link(d.source_url) }}
+        {% if d.permissions.edit %}<a class="btn btn-sm" href="{{ here }}/edit">{{ m.icon("edit", 14) }} Edit</a>{% endif %}
+        {% if d.permissions.delete %}<form method="post" action="{{ here }}/delete" data-confirm="Delete {{ deal.name }}?"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn btn-sm btn-danger" type="submit">{{ m.icon("trash", 14) }} Delete</button></form>{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="card-body" style="border-top:1px solid var(--border)">
+    {% set keys = cfg.stage_keys %}
+    {% set cur = keys.index(deal.stage) if deal.stage in keys else -1 %}
+    <div class="stage-control-wrap" style="display:flex;gap:24px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+      <div style="flex:1;min-width:420px">
+        <div class="stage-track" aria-hidden="true">
+          {% for s in cfg.stages if not s.lost %}
+          <span class="stage-step{% if s.key == deal.stage %}{{ ' is-won' if s.won else ' is-current' }}{% elif loop.index0 < cur %} is-done{% endif %}" title="{{ s.label }}"></span>
+          {% endfor %}
+        </div>
+        <div class="stage-track-labels"><span>{{ cfg.stages[0].label }}</span><span><strong style="color:var(--text)">{{ deal.stage_label }}</strong></span><span>{{ cfg.rule.won_stage }}</span></div>
+      </div>
+      {% if d.permissions.edit %}
+      <form class="stage-control" method="post" action="{{ here }}/stage">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="next" value="{{ here }}">
+        <label class="field-label" for="stage-select">Move to</label>
+        <select class="input" id="stage-select" name="stage">
+          {% for s in cfg.stages %}<option value="{{ s.key }}"{% if s.key == deal.stage %} selected{% endif %}>{{ s.label }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-primary" type="submit">Move</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<div class="detail-layout">
+  <div>
+    <section class="card" aria-labelledby="d-details">
+      <header class="card-head"><h2 id="d-details">{{ m.icon("info", 17) }} Details</h2>{% if d.permissions.edit %}<a class="card-link" href="{{ here }}/edit">Edit {{ m.icon("chevron-right", 14) }}</a>{% endif %}</header>
+      <div class="card-body">
+        <dl class="kv">
+          <dt>Amount</dt><dd class="money">{{ deal.amount|money(deal.currency_code, deal.currency_symbol) }}{% if deal.currency_code != "USD" %} <span class="muted">· {{ deal.amount_usd|usd }} USD</span>{% endif %}</dd>
+          <dt>Stage</dt><dd>{{ deal.stage_label }}</dd>
+          <dt>Expected close</dt><dd>{{ deal.close_date|date_fmt }}</dd>
+          <dt>Lead source</dt><dd>{{ cfg.label("lead_sources", deal.lead_source) if deal.lead_source else "—" }}</dd>
+          <dt>Next step</dt><dd>{{ deal.next_step or "—" }}</dd>
+          {% if deal.description %}<dt>Description</dt><dd>{{ deal.description }}</dd>{% endif %}
+          <dt>Created</dt><dd>{{ deal.created_at|date_fmt }}</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="d-contacts">
+      <header class="card-head"><h2 id="d-contacts">{{ m.icon("users", 17) }} Contacts <span class="count-chip">{{ d.contacts|length }}</span></h2></header>
+      {% if d.contacts %}
+      <ul class="contact-list">
+        {% for c in d.contacts %}
+        <li>{{ m.avatar(c.name, "md") }}<div class="c-main"><a class="c-name" href="/contacts/{{ c.id }}">{{ c.name }}</a><p class="c-sub">{{ [c.title, c.email]|select|join(" · ") }}</p></div>{% if c.role %}<span class="pill pill-accent pill-plain">{{ cfg.label("contact_roles", c.role) }}</span>{% endif %}</li>
+        {% endfor %}
+      </ul>
+      {% else %}<div class="card-body">{{ m.empty("No contacts on this deal.", None, "users") }}</div>{% endif %}
+    </section>
+
+    {{ m.notes_card(d.notes, parent, csrf, request_key, contact_options) }}
+
+    <section class="card" aria-labelledby="d-history">
+      <header class="card-head"><h2 id="d-history">{{ m.icon("clock", 17) }} History</h2></header>
+      {% if d.history %}
+      <ul class="history">
+        {% for h in d.history %}
+        <li><span class="h-when">{{ h.changed_at|datetime_fmt }}</span>
+          <span class="h-change"><span class="h-field">{{ h.label }}</span>
+            {% if h.field == "deleted_at" %} deleted{% else %}<span class="muted">{{ h.before if h.before not in (None, "") else "empty" }}</span><span class="h-arrow">→</span>{{ h.after if h.after not in (None, "") else "empty" }}{% endif %}
+            <span class="muted"> · {{ h.changed_by_name or "system" }}</span>{% if h.source == "suitecrm" %}<span class="h-src">SuiteCRM</span>{% endif %}</span></li>
+        {% endfor %}
+      </ul>
+      {% else %}<div class="card-body">{{ m.empty("No changes recorded yet.", None, "clock") }}</div>{% endif %}
+    </section>
+  </div>
+
+  <div>
+    <section class="card approval-panel" id="approval" aria-labelledby="ap-title">
+      <header class="card-head"><h2 id="ap-title">{{ m.icon("shield", 17) }} Manager approval</h2></header>
+      <div class="card-body">
+        <div class="ap-status">
+          <span>{% if ap.status %}{{ m.approval_pill(ap.status, short=false) }}{% else %}<span class="pill pill-neutral">Not requested</span>{% endif %}</span>
+          {% if ap.needs_approval %}<span class="small muted">Above {{ ap.threshold_usd|usd0 }}</span>{% endif %}
+        </div>
+        <p class="ap-threshold">{% if ap.needs_approval %}This deal is worth {{ deal.amount_usd|usd }}, so it needs a sales manager's approval before it can be marked {{ ap.won_stage }}.{% else %}Deals up to {{ ap.threshold_usd|usd0 }} can be marked {{ ap.won_stage }} without approval.{% endif %}</p>
+        <dl class="kv" style="margin-top:14px;grid-template-columns:130px minmax(0,1fr)">
+          <dt>Approved by</dt><dd>{{ ap.approved_by.name if ap.approved_by else "—" }}</dd>
+          <dt>Approved amount</dt><dd class="money">{{ ap.approved_amount_usd|usd if ap.approved_amount_usd is not none else "—" }}</dd>
+          <dt>Approved at</dt><dd>{{ ap.approved_at|datetime_fmt if ap.approved_at else "—" }}</dd>
+          {% if ap.requested_at and ap.status == "requested" %}<dt>Requested</dt><dd>{{ ap.requested_at|ago }}</dd>{% endif %}
+        </dl>
+        {% if ap.can_request or (ap.can_decide and ap.status != "approved") or (ap.can_decide and ap.status != "rejected") %}
+        <div class="ap-actions">
+          {% if ap.can_decide and ap.status != "approved" %}
+          <form method="post" action="{{ here }}/approval"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="decision" value="approved"><input type="hidden" name="next" value="{{ here }}">
+            <button class="btn btn-approve" type="submit">{{ m.icon("check", 16) }} Approve</button></form>
+          {% endif %}
+          {% if ap.can_decide and ap.status != "rejected" %}
+          <form method="post" action="{{ here }}/approval"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="decision" value="rejected"><input type="hidden" name="next" value="{{ here }}">
+            <button class="btn btn-reject" type="submit">{{ m.icon("x", 16) }} Reject</button></form>
+          {% endif %}
+          {% if ap.can_request %}
+          <form method="post" action="{{ here }}/approval"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="decision" value="requested"><input type="hidden" name="next" value="{{ here }}">
+            <button class="btn" type="submit">{{ m.icon("shield", 16) }} Request approval</button></form>
+          {% endif %}
+        </div>
+        {% endif %}
+        {% if ap.explanation %}<p class="ap-explain">{{ m.icon("lock", 15) }}<span>{{ ap.explanation }}</span></p>{% endif %}
+      </div>
+    </section>
+
+    {{ m.tasks_card(d.tasks, parent, csrf, request_key, here) }}
+    {{ m.external_card(d.external_links, d.source_url) }}
+  </div>
+</div>
+{% endblock %}

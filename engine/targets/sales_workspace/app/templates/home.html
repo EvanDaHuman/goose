@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<div class="page-head greeting">
+  <div>
+    <h1>{{ greeting }}, {{ me.first_name or me.name }}</h1>
+    <p class="page-sub">{{ today_label }}{% if me.team_names %} · {{ me.team_names|join(", ") }}{% endif %}</p>
+  </div>
+  <div class="page-actions">
+    {% if can("deals", "list") %}<a class="btn" href="/pipeline">{{ m.icon("layers", 16) }} Open pipeline</a>{% endif %}
+    {% if can("deals", "edit") %}<a class="btn btn-primary" href="/deals/new">{{ m.icon("plus", 16) }} New deal</a>{% endif %}
+  </div>
+</div>
+
+{% if kpis %}
+<div class="kpis">
+  {% for k in kpis %}
+  <a class="kpi{% if k.attention %} is-attention{% endif %}" href="{{ k.href }}" >
+    <span class="kpi-label">{{ m.icon(k.icon, 15) }} {{ k.label }}</span>
+    <span class="kpi-value">{{ k.value }}</span>
+    <span class="kpi-sub">{{ k.sub }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="grid-2">
+  <div class="stack">
+    {% if can("deals", "list") %}
+    <section class="card" aria-labelledby="my-deals">
+      <header class="card-head">
+        <h2 id="my-deals">{{ m.icon("trend", 17) }} My open deals <span class="count-chip">{{ my_deals.total }}</span></h2>
+        <a class="card-link" href="/deals?status=open">All deals {{ m.icon("chevron-right", 14) }}</a>
+      </header>
+      {% if my_deals["items"] %}
+      <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Deal</th><th>Stage</th><th>Approval</th><th class="num">Amount</th><th>Close date</th></tr></thead>
+        <tbody>
+        {% for d in my_deals["items"] %}
+          <tr>
+            <td><a class="cell-title" href="/deals/{{ d.id }}">{{ d.name }}</a>{% if d.account_name %}<span class="cell-sub">{{ d.account_name }}</span>{% endif %}</td>
+            <td>{{ m.stage_pill(d) }}</td>
+            <td>{{ m.approval_pill(d.approval_status) or '<span class="muted">—</span>'|safe }}</td>
+            <td class="num">{{ m.amount(d) }}</td>
+            <td>{{ m.date_hint(d.close_date) }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% else %}<div class="card-body">{{ m.empty("No open deals.", "Deals you own appear here.", "trend") }}</div>{% endif %}
+    </section>
+    {% endif %}
+
+    {% if can("accounts", "list") %}
+    <section class="card" aria-labelledby="renewals">
+      <header class="card-head">
+        <h2 id="renewals">{{ m.icon("calendar", 17) }} Renewals in the next {{ cfg.renewal_window_days }} days <span class="count-chip">{{ renewals.total }}</span></h2>
+        <a class="card-link" href="/accounts">All accounts {{ m.icon("chevron-right", 14) }}</a>
+      </header>
+      {% if renewals["items"] %}
+      <ul class="list-rows">
+        {% for a in renewals["items"] %}
+        {% set tone = a.contract_renewal_date|renewal_tone(cfg.renewal_window_days) %}
+        <li class="list-row">
+          <span class="renewal-badge tone-{{ tone }}"><span class="rb-day">{{ a.contract_renewal_date.day }}</span><span class="rb-mon">{{ a.contract_renewal_date.strftime("%b") }}</span></span>
+          <div class="list-row-main">
+            <a class="list-row-title" href="/accounts/{{ a.id }}">{{ a.name }}</a>
+            <span class="list-row-sub">{{ a.owner_name or "Unassigned" }}{% if a.billing_city %} · {{ a.billing_city }}{% endif %}{% if a.open_deals %} · {{ plural(a.open_deals, "open deal") }} ({{ a.open_pipeline_usd|usd0 }}){% endif %}</span>
+          </div>
+          <div class="list-row-side"><span class="days-left tone-{{ tone }}">{{ a.contract_renewal_date|renewal_hint }}</span><span class="date-hint">{{ a.contract_renewal_date|date_fmt }}</span></div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<div class="card-body">{{ m.empty("No renewals in the next " ~ cfg.renewal_window_days ~ " days.", None, "calendar") }}</div>{% endif %}
+    </section>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    {% if approvals is not none %}
+    <section class="card" aria-labelledby="approvals-h">
+      <header class="card-head">
+        <h2 id="approvals-h">{{ m.icon("shield", 17) }} Approvals waiting <span class="count-chip">{{ approvals.total }}</span></h2>
+        <a class="card-link" href="/approvals">Queue {{ m.icon("chevron-right", 14) }}</a>
+      </header>
+      {% if approvals["items"] %}
+      <ul class="list-rows">
+        {% for d in approvals["items"] %}
+        <li class="list-row">
+          <div class="list-row-main">
+            <a class="list-row-title" href="/deals/{{ d.id }}">{{ d.name }}</a>
+            <span class="list-row-sub">{{ d.owner_name or "Unassigned" }} · {{ d.stage_label }}</span>
+          </div>
+          <div class="list-row-side"><span class="money">{{ d.amount|money(d.currency_code, d.currency_symbol) }}</span>{{ m.approval_pill(d.approval_status) }}</div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<div class="card-body">{{ m.empty("Nothing waiting for you.", "Requests from your team appear here.", "shield") }}</div>{% endif %}
+    </section>
+    {% endif %}
+
+    <section class="card" aria-labelledby="my-tasks">
+      <header class="card-head"><h2 id="my-tasks">{{ m.icon("task", 17) }} My open tasks <span class="count-chip">{{ tasks.total }}</span></h2></header>
+      {% if tasks["items"] %}
+      <ul class="task-list">{% for t in tasks["items"] %}{{ m.task_item(t, csrf, "/", show_parent=true) }}{% endfor %}</ul>
+      {% else %}<div class="card-body">{{ m.empty("You're all caught up.", None, "task") }}</div>{% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

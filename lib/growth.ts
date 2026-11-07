@@ -1,0 +1,221 @@
+// The growth cycle: the company finding its own work.
+//   research       the research agent finds organisations with outdated software from public sources (live agents only)
+//   qualify        every prospect not yet qualified is scored against today's recipes (agent, or local rules)
+//   draft          every High or Medium prospect without a draft gets an outreach draft (agent, or the fixed template)
+// Internal only: prospects and drafts are stored in the pipeline; nothing is sent (no e-mail provider is connected).
+// Every agent result passes the guards in lib/growthRules.ts first; a rejected or failed result falls back to the local rule,
+// and both are recorded. The cycle has its own daily spending limit (settings: growth.daily_limit_usd), checked before each
+// agent session. The worker runs it on a schedule (settings: growth.every_hours) or when the operator asks (/ops/company).
+import { config } from "./config";
+import { one, q } from "./db";
+import { getSetting, pilotOffer } from "./jobs";
+import { naiveClient } from "./naive/client";
+import { runAgentTask } from "./naive/run";
+import { logEvent, usd } from "./records";
+import {
+  type Candidate, draftByTemplate, FIT, guardCandidates, guardDraft, guardQualification, type Qualification, qualifyByRules, RECIPES,
+} from "./growthRules";
+
+export type GrowthSettings = { enabled: boolean; every_hours: number; research_per_cycle: number; daily_limit_usd: number };
+const DEFAULTS: GrowthSettings = { enabled: true, every_hours: 24, research_per_cycle: 3, daily_limit_usd: 2 };
+const FLOOR_MICRO_USD = 50_000;
+const ROLES_USED = ["research", "qualification", "outreach"];
+
+export async function growthSettings(): Promise<GrowthSettings> {
+  return { ...DEFAULTS, ...(await getSetting<Partial<GrowthSettings>>("growth", {})) };
+}
+
+/** What the growth agents spent in the last 24 hours (metered Naive sessions; company work has no job). */
+export async function growthSpentToday() {
+  const r = await one<{ micro: string }>(`SELECT COALESCE(SUM(micro_usd), 0)::bigint AS micro FROM cost_entries
+    WHERE job_id IS NULL AND actor = ANY($1) AND at > now() - interval '24 hours'`, [ROLES_USED]);
+  return Number(r?.micro ?? 0);
+}
+
+async function budgetLeft(s: GrowthSettings) {
+  return Math.max(0, Math.round(s.daily_limit_usd * 1_000_000) - (await growthSpentToday()));
+}
+
+const S = { type: "string" } as const;
+const obj = (props: Record<string, unknown>, required = Object.keys(props)) => ({ type: "object", additionalProperties: false, required, properties: props });
+const EVIDENCE = { type: "array", items: obj({ text: S, url: S }) };
+const RESEARCH_SCHEMA = obj({ prospects: { type: "array", items: obj({ name: S, url: S, category: { type: "string", enum: ["a", "b", "c"] },
+  summary: S, evidence: EVIDENCE, contact_channel: S }) } });
+const QUALIFY_SCHEMA = obj({ fit_score: { type: "string", enum: [...FIT] }, recipe: { type: "string", enum: [...Object.keys(RECIPES), "none"] },
+  scope_fit: S, blockers: { type: "array", items: S }, reasons: EVIDENCE });
+const DRAFT_SCHEMA = obj({ subject: S, body: S });
+
+type Ctx = { cycle: number; settings: GrowthSettings };
+const live = () => config.mode === "naive";
+
+async function agentTask(ctx: Ctx, role: "research" | "qualification" | "outreach", purpose: string, title: string, message: string,
+  outputSchema: Record<string, unknown>, timeoutMs: number) {
+  const left = await budgetLeft(ctx.settings);
+  if (left < FLOOR_MICRO_USD) return { ok: false as const, reason: "budget", message: `the growth agents' daily limit of $${ctx.settings.daily_limit_usd} is used up` };
+  return runAgentTask(naiveClient(), { jobId: null, stage: "growth", attempt: ctx.cycle, role, purpose, title, message, outputSchema,
+    budgetMicroUsd: left, timeoutMs });
+}
+
+// ------------------------------------------------------------------ research
+
+async function research(ctx: Ctx) {
+  if (!live()) {
+    await logEvent(null, "research", "status", "Research skipped: finding new prospects needs the live research agent on Naive (this run is local mode).",
+      undefined, { origin: "tool", originDetail: { tool: "growth cycle" } });
+    return 0;
+  }
+  const known = (await q<{ url: string }>("SELECT url FROM prospects")).map((r) => r.url);
+  const n = ctx.settings.research_per_cycle;
+  const r = await agentTask(ctx, "research", "research", `Find up to ${n} new prospects`, [
+    `Today is ${new Date().toISOString().slice(0, 10)}. Find up to ${n} NEW organisations that Goose could help now.`,
+    `What Goose can carry out today (only these): ${JSON.stringify(RECIPES)}`,
+    `Already known (skip these URLs): ${JSON.stringify(known)}`,
+    "category: \"a\" = an open-source application an organisation runs, \"b\" = a software agency or consultancy (a partner channel), " +
+      "\"c\" = an organisation with an internal tool. Use web_search to find candidates and web_fetch to confirm each piece of evidence " +
+      "on the page itself (for example the requirements file with the pinned version). Report only what you confirmed.",
+  ].join("\n\n"), RESEARCH_SCHEMA, 15 * 60_000);
+  if (!r.ok) {
+    await logEvent(null, "research", "status", `Research found nothing this cycle: ${r.message}`, { reason: r.reason }, { important: true,
+      origin: "agent", originDetail: { session_id: (r as any).sessionId ?? null } });
+    return 0;
+  }
+  const { kept, rejected } = guardCandidates(r.output.prospects, known, n);
+  for (const c of kept) await addProspect(c, r.sessionId);
+  await logEvent(null, "research", "decision", `Research agent found ${kept.length} new prospect(s)` +
+    (kept.length ? `: ${kept.map((c) => c.name).join("; ")}` : "") + (rejected.length ? `. The guard rejected ${rejected.length}: ` +
+      rejected.slice(0, 4).map((x) => `${x.name} (${x.why})`).join("; ") : "") + ".",
+    { kept: kept.map((c) => c.url), rejected, cost_micro_usd: r.consumedMicroUsd }, { important: true, origin: "agent", originDetail: { session_id: r.sessionId } });
+  return kept.length;
+}
+
+async function addProspect(c: Candidate, sessionId: string) {
+  await q(`INSERT INTO prospects (name, url, category, summary, evidence, contact_channel, researched_on, status, found_by, found_session_id)
+           VALUES ($1,$2,$3,$4,$5,$6,current_date,'researched','research agent',$7) ON CONFLICT (url) DO NOTHING`,
+    [c.name, c.url, c.category, c.summary, JSON.stringify(c.evidence), c.contact_channel, sessionId]);
+}
+
+// ------------------------------------------------------------------ qualification
+
+async function qualify(ctx: Ctx, p: any) {
+  const sources = [p.url, ...(p.evidence ?? []).map((e: any) => e.url)];
+  let result: Qualification | null = null;
+  let by = "local rules";
+  let origin: "agent" | "tool" = "tool";
+  let sessionId: string | null = null;
+  let note = "";
+  if (live()) {
+    const r = await agentTask(ctx, "qualification", `qualify-${p.id}`, `Qualify ${p.name}`, [
+      `Prospect: ${JSON.stringify({ name: p.name, url: p.url, category: p.category, summary: p.summary, evidence: p.evidence })}`,
+      `Recipes Goose can carry out today, with their preconditions: ${JSON.stringify(RECIPES)}`,
+      "Fetch the prospect's public requirements or settings files if that confirms the stack and versions. Cite every reason with its URL, " +
+        "on the prospect's own pages.",
+    ].join("\n\n"), QUALIFY_SCHEMA, 8 * 60_000);
+    if (r.ok) {
+      sessionId = r.sessionId;
+      const g = guardQualification(r.output, sources);
+      if (g.ok) { result = g.q; by = "qualification agent"; origin = "agent"; }
+      else note = ` The agent's answer was rejected by the guard (${g.why}); local rules used instead.`;
+    } else note = ` The agent session did not complete (${r.message}); local rules used instead.`;
+  }
+  result ??= qualifyByRules(p);
+  await q(`UPDATE prospects SET fit_score = $2, scope_fit = $3, blockers = $4, qualification = $5, qualified_by = $6, qualified_at = now(),
+           updated_at = now() WHERE id = $1`, [p.id, result.fit_score, result.scope_fit, JSON.stringify(result.blockers),
+           JSON.stringify({ ...result, session_id: sessionId }), by]);
+  await logEvent(null, "qualification", "decision", `Qualified ${p.name}: ${result.fit_score} fit` +
+    (result.recipe !== "none" ? ` (${result.recipe})` : " (no recipe applies)") + ` by ${by}.${note}`,
+    { prospect: p.url, ...result }, { origin, originDetail: sessionId ? { session_id: sessionId } : { tool: "growthRules.qualifyByRules" } });
+  return result;
+}
+
+// ------------------------------------------------------------------ outreach drafts
+
+async function draft(ctx: Ctx, p: any, price: number) {
+  const qual: Qualification | null = p.qualification ?? null;
+  let d = null as { subject: string; body: string } | null;
+  let by = "template";
+  let origin: "agent" | "tool" = "tool";
+  let sessionId: string | null = null;
+  let note = "";
+  if (live()) {
+    const r = await agentTask(ctx, "outreach", `draft-${p.id}`, `Draft outreach for ${p.name}`, [
+      `Organisation: ${JSON.stringify({ name: p.name, url: p.url, summary: p.summary, evidence: p.evidence, contact_channel: p.contact_channel })}`,
+      `Qualification: ${JSON.stringify(qual)}`,
+      qual?.recipe && qual.recipe !== "none" ? `What Goose would do: ${RECIPES[qual.recipe]}` : "",
+      (qual?.blockers ?? []).length ? `Be upfront that these parts are outside what Goose supports today: ${JSON.stringify(qual?.blockers)}` :
+        `The pilot price, if the free assessment shows a fit: $${price} fixed, paid only when the agreed checks pass.`,
+      "Only link to URLs from the evidence above. Keep it under 200 words.",
+    ].filter(Boolean).join("\n\n"), DRAFT_SCHEMA, 6 * 60_000);
+    if (r.ok) {
+      sessionId = r.sessionId;
+      const g = guardDraft(r.output, p, (qual?.blockers ?? []).length ? null : price);
+      if (g.ok) { d = g.d; by = "outreach agent"; origin = "agent"; }
+      else note = ` The agent's draft was rejected by the guard (${g.why}); the template was used instead.`;
+    } else note = ` The agent session did not complete (${r.message}); the template was used instead.`;
+  }
+  d ??= draftByTemplate(p, qual, price);
+  await q(`UPDATE prospects SET outreach_draft = $2, status = 'draft_ready', drafted_by = $3, drafted_at = now(), updated_at = now() WHERE id = $1`,
+    [p.id, `Subject: ${d.subject}\n\n${d.body}`, by]);
+  await logEvent(null, "outreach", "decision", `Drafted outreach for ${p.name} by ${by} (stored as a draft, not sent).${note}`,
+    { prospect: p.url }, { origin, originDetail: sessionId ? { session_id: sessionId } : { tool: "growthRules.draftByTemplate" } });
+}
+
+// ------------------------------------------------------------------ the cycle
+
+/** Claim the cycle for 30 minutes; returns false if another process is running one. */
+async function claim() {
+  const r = await one(`INSERT INTO settings (key, value) VALUES ('growth_lease', jsonb_build_object('until', now() + interval '30 minutes', 'pid', $1::int))
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()
+    WHERE (settings.value->>'until')::timestamptz < now() RETURNING key`, [process.pid]);
+  return Boolean(r);
+}
+const release = () => q("UPDATE settings SET value = jsonb_build_object('until', now()), updated_at = now() WHERE key = 'growth_lease'");
+
+export async function runGrowthCycle(trigger: string) {
+  if (!(await claim())) return { ran: false as const, why: "another growth cycle is running" };
+  const settings = await growthSettings();
+  const ctx: Ctx = { cycle: Math.floor(Date.now() / 1000), settings };
+  const t0 = Date.now();
+  const spent0 = await growthSpentToday();
+  try {
+    await logEvent(null, "coordinator", "handoff", `Growth cycle started (${trigger}; ${live() ? "live agents" : "local mode"}; daily limit $${settings.daily_limit_usd}, ` +
+      `${usd(spent0)} used in the last 24 h).`, { settings }, { origin: "system" });
+    const found = await research(ctx);
+    const toQualify = await q<any>("SELECT * FROM prospects WHERE qualified_at IS NULL ORDER BY id");
+    for (const p of toQualify) await qualify(ctx, p);
+    const price = (await pilotOffer()).price_usd;
+    const toDraft = await q<any>(`SELECT * FROM prospects WHERE fit_score IN ('High', 'Medium') AND outreach_draft IS NULL
+      AND status = 'researched' ORDER BY CASE fit_score WHEN 'High' THEN 0 ELSE 1 END, id`);
+    for (const p of toDraft) await draft(ctx, p, price);
+    const spent = (await growthSpentToday()) - spent0;
+    const summary = { found, qualified: toQualify.length, drafted: toDraft.length, spent_micro_usd: spent, seconds: Math.round((Date.now() - t0) / 1000) };
+    await q(`INSERT INTO settings (key, value) VALUES ('growth_last_run', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+      [JSON.stringify({ at: new Date().toISOString(), trigger, mode: config.mode, ...summary })]);
+    await logEvent(null, "coordinator", "decision", `Growth cycle finished: ${found} new prospect(s), ${toQualify.length} qualified, ${toDraft.length} draft(s) ` +
+      `written, ${usd(spent)} spent, in ${summary.seconds} s. Nothing was sent.`, summary, { important: true, origin: "system" });
+    return { ran: true as const, ...summary };
+  } finally {
+    await release();
+  }
+}
+
+let running: Promise<unknown> | null = null;
+
+/** Called by the worker loop: start a cycle when one is due or was requested, without blocking the job queue. */
+export async function serviceGrowth() {
+  if (running) return;
+  const s = await growthSettings();
+  if (!s.enabled) return;
+  const last = await getSetting<{ at?: string }>("growth_last_run", {});
+  const asked = await getSetting<{ at?: string }>("growth_requested", {});
+  const requested = asked.at && (!last.at || asked.at > last.at);
+  const due = !last.at || Date.now() - Date.parse(last.at) > s.every_hours * 3_600_000;
+  if (!requested && !due) return;
+  running = runGrowthCycle(requested ? "requested by the operator" : `scheduled, every ${s.every_hours} h`)
+    .catch((e) => logEvent(null, "system", "error", `Growth cycle stopped with an error: ${(e as Error).message}`, undefined, { important: true }))
+    .finally(() => { running = null; });
+}
+
+export async function requestGrowthCycle() {
+  await q(`INSERT INTO settings (key, value) VALUES ('growth_requested', jsonb_build_object('at', to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')))
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`);
+}

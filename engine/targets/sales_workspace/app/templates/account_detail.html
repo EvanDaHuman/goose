@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ a.name }}{% endblock %}
+{% block content %}
+{% set here = "/accounts/" ~ a.id %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/accounts">Accounts</a>{{ m.icon("chevron-right", 13) }}<span>{{ a.name }}</span></nav>
+
+<section class="card">
+  <div class="record-head">
+    <div class="record-icon" aria-hidden="true">{{ a.name|initials }}</div>
+    <div class="record-main">
+      <div class="record-title-row">
+        <h1 class="record-title">{{ a.name }}</h1>
+        <span class="pills">
+          {% if a.account_type %}<span class="pill pill-accent pill-plain">{{ cfg.label("account_types", a.account_type) }}</span>{% endif %}
+          {% if a.industry %}<span class="pill pill-neutral pill-plain">{{ cfg.label("industries", a.industry) }}</span>{% endif %}
+        </span>
+      </div>
+      <div class="record-facts">
+        {% if a.billing_city or a.billing_state %}<span>{{ m.icon("pin", 15) }} {{ [a.billing_city, a.billing_state, a.billing_country]|select|join(", ") }}</span>{% endif %}
+        {% if a.phone %}<a href="tel:{{ a.phone }}">{{ m.icon("phone", 15) }} {{ a.phone }}</a>{% endif %}
+        {% if a.website %}<a href="{{ a.website if a.website.startswith('http') else 'https://' ~ a.website }}" target="_blank" rel="noopener noreferrer">{{ m.icon("globe", 15) }} {{ a.website }}</a>{% endif %}
+        {% if a.employees %}<span>{{ m.icon("users", 15) }} {{ a.employees }} employees</span>{% endif %}
+      </div>
+      {% if a.description %}<p class="record-desc">{{ a.description }}</p>{% endif %}
+      <div class="record-people">
+        <span><span class="label">Owner</span>{{ m.person(d.owner.name if d.owner else None) }}</span>
+        <span><span class="label">Team</span>{% for t in d.teams %}<span class="team-tag">{{ t.name }}</span>{% else %}<span class="muted">—</span>{% endfor %}</span>
+      </div>
+    </div>
+    <div class="record-side">
+      {% set tone = a.contract_renewal_date|renewal_tone(cfg.renewal_window_days) %}
+      <div class="renewal-callout tone-{{ tone }}">
+        <span class="rc-icon">{{ m.icon("calendar", 20) }}</span>
+        <div>
+          <p class="rc-label">{{ cfg.field_label("accounts", "contract_renewal_date", "Contract renewal") }}</p>
+          {% if a.contract_renewal_date %}
+          <p class="rc-date">{{ a.contract_renewal_date|date_fmt }}</p>
+          <p class="rc-hint">{{ a.contract_renewal_date|renewal_hint }}</p>
+          {% else %}<p class="rc-date">Not set</p>{% endif %}
+        </div>
+      </div>
+      <div class="btn-row">
+        {{ m.suitecrm_link(d.source_url) }}
+        {% if d.permissions.edit %}<a class="btn btn-sm" href="{{ here }}/edit">{{ m.icon("edit", 14) }} Edit</a>{% endif %}
+        {% if d.permissions.delete %}
+        <form method="post" action="{{ here }}/delete" data-confirm="Delete {{ a.name }}? It disappears from every list.">
+          <input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn btn-sm btn-danger" type="submit">{{ m.icon("trash", 14) }} Delete</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><p class="stat-label">Open pipeline</p><p class="stat-value">{{ d.stats.open_pipeline_usd|usd0 }}</p><p class="stat-sub">{{ plural(d.stats.open_deals, "open deal") }}</p></div>
+    <div class="stat"><p class="stat-label">Won to date</p><p class="stat-value">{{ d.stats.won_usd|usd0 }}</p><p class="stat-sub">{{ plural(d.stats.won_deals, "deal") }} won</p></div>
+    <div class="stat"><p class="stat-label">Contacts</p><p class="stat-value">{{ d.contacts|length }}</p><p class="stat-sub">people you can see</p></div>
+    <div class="stat"><p class="stat-label">Open tasks</p><p class="stat-value">{{ d.stats.open_tasks }}</p><p class="stat-sub">on this account</p></div>
+    <div class="stat"><p class="stat-label">In CRM since</p><p class="stat-value">{{ a.created_at.year if a.created_at else "—" }}</p><p class="stat-sub">{{ a.created_at|date_fmt }}</p></div>
+  </div>
+</section>
+
+<div class="detail-layout">
+  <div>
+    {% if can("deals", "list") %}
+    <section class="card" id="deals" aria-labelledby="deals-title">
+      <header class="card-head">
+        <h2 id="deals-title">{{ m.icon("trend", 17) }} Deals <span class="count-chip">{{ d.deals|length }}</span></h2>
+        {% if can("deals", "edit") %}<a class="btn btn-sm" href="/deals/new?account_id={{ a.id|urlencode }}">{{ m.icon("plus", 14) }} New deal</a>{% endif %}
+      </header>
+      {% if d.deals %}
+      <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Deal</th><th>Stage</th><th>Approval</th><th class="num">Amount</th><th>Close date</th><th>Owner</th></tr></thead>
+        <tbody>
+        {% for deal in d.deals %}
+          <tr>
+            <td><a class="cell-title" href="/deals/{{ deal.id }}" title="{{ deal.name }}">{{ deal.name|short_deal_name(a.name) }}</a></td>
+            <td>{{ m.stage_pill(deal) }}</td>
+            <td>{{ m.approval_pill(deal.approval_status) or '<span class="muted">—</span>'|safe }}</td>
+            <td class="num">{{ m.amount(deal) }}</td>
+            <td class="nowrap">{{ m.date_hint(deal.close_date) if deal.is_open else deal.close_date|date_fmt }}</td>
+            <td>{{ m.person(deal.owner_name, short=true) }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% else %}<div class="card-body">{{ m.empty("No deals with this account yet.", None, "trend") }}</div>{% endif %}
+    </section>
+    {% endif %}
+
+    {{ m.notes_card(d.notes, parent, csrf, request_key, contact_options) }}
+
+  </div>
+
+  <div>
+    <section class="card" id="contacts" aria-labelledby="contacts-title">
+      <header class="card-head">
+        <h2 id="contacts-title">{{ m.icon("users", 17) }} Contacts <span class="count-chip">{{ d.contacts|length }}</span></h2>
+        {% if can("contacts", "edit") %}<a class="btn btn-sm" href="/contacts/new?account_id={{ a.id|urlencode }}">{{ m.icon("plus", 14) }} Add</a>{% endif %}
+      </header>
+      {% if d.contacts %}
+      <ul class="contact-list">
+        {% for c in d.contacts %}
+        <li>
+          {{ m.avatar(c.name, "md") }}
+          <div class="c-main"><a class="c-name" href="/contacts/{{ c.id }}">{{ c.name }}</a><p class="c-sub">{{ c.title or "—" }}</p></div>
+          <div class="c-actions">
+            {% if c.email %}<a class="icon-link" href="mailto:{{ c.email }}" title="E-mail {{ c.email }}" aria-label="E-mail {{ c.name }}">{{ m.icon("mail", 15) }}</a>{% endif %}
+            {% if c.phone %}<a class="icon-link" href="tel:{{ c.phone }}" title="Call {{ c.phone }}" aria-label="Call {{ c.name }}">{{ m.icon("phone", 15) }}</a>{% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<div class="card-body">{{ m.empty("No contacts you can see.", None, "users") }}</div>{% endif %}
+    </section>
+
+    {{ m.tasks_card(d.tasks, parent, csrf, request_key, here) }}
+
+    {{ m.external_card(d.external_links, d.source_url) }}
+  </div>
+</div>
+{% endblock %}

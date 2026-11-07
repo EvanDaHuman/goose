@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block title %}{{ lead.name }}{% endblock %}
+{% block content %}
+{% set here = "/leads/" ~ lead.id %}
+{% set conv = d.conversion %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/leads">Leads</a>{{ m.icon("chevron-right", 13) }}<span>{{ lead.name }}</span></nav>
+<section class="card">
+  <div class="record-head">
+    <div class="record-icon" aria-hidden="true">{{ lead.name|initials }}</div>
+    <div class="record-main">
+      <div class="record-title-row">
+        <h1 class="record-title">{{ lead.name }}</h1>
+        {% if conv.already_converted %}<span class="pill pill-approved">Converted</span>{% else %}<span class="pill pill-neutral">{{ cfg.label("lead_statuses", lead.status) }}</span>{% endif %}
+      </div>
+      <div class="record-facts">
+        {% if lead.title %}<span>{{ m.icon("user", 15) }} {{ lead.title }}</span>{% endif %}
+        {% if lead.company %}<span>{{ m.icon("building", 15) }} {{ lead.company|trim }}</span>{% endif %}
+        {% if lead.email %}<a href="mailto:{{ lead.email }}">{{ m.icon("mail", 15) }} {{ lead.email }}</a>{% endif %}
+        {% if lead.phone %}<a href="tel:{{ lead.phone }}">{{ m.icon("phone", 15) }} {{ lead.phone }}</a>{% endif %}
+        {% if lead.city %}<span>{{ m.icon("pin", 15) }} {{ lead.city }}</span>{% endif %}
+      </div>
+      <div class="record-people">
+        <span><span class="label">Owner</span>{{ m.person(d.owner.name if d.owner else None) }}</span>
+        <span><span class="label">Team</span>{% for t in d.teams %}<span class="team-tag">{{ t.name }}</span>{% else %}<span class="muted">—</span>{% endfor %}</span>
+        {% if lead.lead_source %}<span><span class="label">Source</span>{{ cfg.label("lead_sources", lead.lead_source) }}</span>{% endif %}
+      </div>
+    </div>
+    <div class="record-side">
+      {% if conv.can_convert %}
+      <a class="btn btn-primary" href="{{ here }}/convert">{{ m.icon("convert", 16) }} Convert</a>
+      {% elif conv.already_converted %}
+      <a class="btn" href="{{ here }}/convert">{{ m.icon("check", 16) }} View conversion</a>
+      {% endif %}
+      <div class="btn-row">
+        {{ m.suitecrm_link(d.source_url) }}
+        {% if d.permissions.edit %}<a class="btn btn-sm" href="{{ here }}/edit">{{ m.icon("edit", 14) }} Edit</a>{% endif %}
+        {% if d.permissions.delete %}<form method="post" action="{{ here }}/delete" data-confirm="Delete this lead?"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn btn-sm btn-danger" type="submit">{{ m.icon("trash", 14) }} Delete</button></form>{% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% if conv.already_converted %}
+<div class="alert alert-success" style="margin-top:20px">{{ m.icon("check", 18) }}<div>This lead was converted{% if conv.result.converted_at %} on {{ conv.result.converted_at|date_fmt }}{% endif %}. <a href="{{ here }}/convert">See what was created and linked</a>.</div></div>
+{% endif %}
+
+<div class="detail-layout">
+  <div>
+    {% if lead.description %}
+    <section class="card"><header class="card-head"><h2>{{ m.icon("info", 17) }} About</h2></header><div class="card-body"><p class="desc">{{ lead.description }}</p></div></section>
+    {% endif %}
+    {{ m.notes_card(d.notes, parent, csrf, request_key, contact_options) }}
+  </div>
+  <div>
+    {{ m.tasks_card(d.tasks, parent, csrf, request_key, here) }}
+    <section class="card">
+      <header class="card-head"><h2>{{ m.icon("info", 17) }} Details</h2></header>
+      <div class="card-body">
+        <dl class="kv">
+          <dt>Created</dt><dd>{{ lead.created_at|date_fmt }} <span class="muted">({{ lead.created_at|ago }})</span></dd>
+          <dt>Last updated</dt><dd>{{ lead.updated_at|date_fmt }}</dd>
+          <dt>Company</dt><dd>{{ (lead.company or "")|trim or "—" }}</dd>
+          <dt>Status</dt><dd>{{ cfg.label("lead_statuses", lead.status) }}</dd>
+        </dl>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
