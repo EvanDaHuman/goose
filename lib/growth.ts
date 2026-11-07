@@ -2,7 +2,7 @@
 //   research       the research agent finds organisations with outdated software from public sources (live agents only)
 //   qualify        every prospect not yet qualified is scored against today's recipes (agent, or local rules)
 //   draft          every High or Medium prospect without a draft gets an outreach draft (agent, or the fixed template)
-// Internal only: prospects and drafts are stored in the pipeline; nothing is sent (no e-mail provider is connected).
+// Prospects and drafts are stored internally. Sending prospect outreach requires separate exact-message authorization.
 // Every agent result passes the guards in lib/growthRules.ts first; a rejected or failed result falls back to the local rule,
 // and both are recorded. The cycle has its own daily spending limit (settings: growth.daily_limit_usd), checked before each
 // agent session. The worker runs it on a schedule (settings: growth.every_hours) or when the operator asks (/ops/company).
@@ -69,6 +69,7 @@ async function research(ctx: Ctx) {
   const r = await agentTask(ctx, "research", "research", `Find up to ${n} new prospects`, [
     `Today is ${new Date().toISOString().slice(0, 10)}. Find up to ${n} NEW organisations that Goose could help now.`,
     `What Goose can carry out today (only these): ${JSON.stringify(RECIPES)}`,
+    "Goose is a broad autonomous engineering company. Look for concrete, evidenced engineering needs across repository modernization, language/runtime changes and service/data migration. Do not restrict research to CRM or robotics. An open-source maintainer is a potential lead, not evidence of a paying customer or a current budget. Prefer organizations with a plausible owner and business need. General engineering fit remains conditional on executable assessment.",
     `Already known (skip these URLs): ${JSON.stringify(known)}`,
     "category: \"a\" = an open-source application an organisation runs, \"b\" = a software agency or consultancy (a partner channel), " +
       "\"c\" = an organisation with an internal tool. Use web_search to find candidates and web_fetch to confirm each piece of evidence " +
@@ -107,6 +108,7 @@ async function qualify(ctx: Ctx, p: any) {
     const r = await agentTask(ctx, "qualification", `qualify-${p.id}`, `Qualify ${p.name}`, [
       `Prospect: ${JSON.stringify({ name: p.name, url: p.url, category: p.category, summary: p.summary, evidence: p.evidence })}`,
       `Recipes Goose can carry out today, with their preconditions: ${JSON.stringify(RECIPES)}`,
+      "For general repository work, explicitly list unverified runtime, dependencies and acceptance-contract assumptions. Do not mark arbitrary ROS projects supported by the pinned robotics fixture. A prospect has not been assessed by running its code and is not an existing customer.",
       "Fetch the prospect's public requirements or settings files if that confirms the stack and versions. Cite every reason with its URL, " +
         "on the prospect's own pages.",
     ].join("\n\n"), QUALIFY_SCHEMA, 8 * 60_000);

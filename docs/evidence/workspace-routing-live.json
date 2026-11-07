@@ -1,0 +1,906 @@
+{
+  "generated_at": "2026-11-07T23:55:38.531Z",
+  "job": {
+    "id": "GS-1001",
+    "title": "Route planning engine to Node.js with blocked-link support",
+    "goal": "Migrate planner.py to a Node.js command-line program planner.mjs, using only built-in modules. Preserve shortest-route behavior, validation, ties, unreachable routes, Unicode and fractional distances. Add optional blocked_edges containing undirected pairs that must not be traversed. Include a README explaining execution and the new field. Verify both preserved behavior and blocked-edge scenarios.",
+    "kind": "demo",
+    "mode": "naive",
+    "stage": "closed",
+    "status": "done"
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "total": 16,
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "integrity_ok": true,
+      "verdict": "pass",
+      "created_at": "2026-11-07T23:41:39.277Z"
+    }
+  ],
+  "sessions": [
+    {
+      "session_id": "ses_1ybpqfcbmzxvz8xv15mzrv9bbn",
+      "role": "assessment",
+      "purpose": "workspace-contract",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 49856,
+      "created_at": "2026-11-07T23:36:22.263Z"
+    },
+    {
+      "session_id": "ses_1w9q7t5n84mymjnrkmftbmj66f",
+      "role": "coordinator",
+      "purpose": "proposal",
+      "model": null,
+      "status": "idle",
+      "stop_reason": "error",
+      "consumed_micro_usd": 7490,
+      "created_at": "2026-11-07T23:37:12.092Z"
+    },
+    {
+      "session_id": "ses_0yh19bm2hv899b0jhkpn54fdcj",
+      "role": "implementation",
+      "purpose": "implement",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 320945,
+      "created_at": "2026-11-07T23:37:21.066Z"
+    }
+  ],
+  "stages": [
+    {
+      "stage": "intake",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 2,
+      "actor": "coordinator",
+      "started_at": "2026-11-07T23:36:16.465Z",
+      "finished_at": "2026-11-07T23:36:16.593Z",
+      "error": null
+    },
+    {
+      "stage": "inspect",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "assessment",
+      "started_at": "2026-11-07T23:36:16.596Z",
+      "finished_at": "2026-11-07T23:36:16.600Z",
+      "error": null
+    },
+    {
+      "stage": "plan",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "assessment",
+      "started_at": "2026-11-07T23:36:16.603Z",
+      "finished_at": "2026-11-07T23:37:08.543Z",
+      "error": null
+    },
+    {
+      "stage": "propose",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "coordinator",
+      "started_at": "2026-11-07T23:37:08.550Z",
+      "finished_at": "2026-11-07T23:37:16.842Z",
+      "error": null
+    },
+    {
+      "stage": "baseline",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "verification",
+      "started_at": "2026-11-07T23:37:16.855Z",
+      "finished_at": "2026-11-07T23:37:17.744Z",
+      "error": null
+    },
+    {
+      "stage": "freeze",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "verification",
+      "started_at": "2026-11-07T23:37:17.747Z",
+      "finished_at": "2026-11-07T23:37:17.750Z",
+      "error": null
+    },
+    {
+      "stage": "implement",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "implementation",
+      "started_at": "2026-11-07T23:37:17.753Z",
+      "finished_at": "2026-11-07T23:41:38.573Z",
+      "error": null
+    },
+    {
+      "stage": "verify",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "verification",
+      "started_at": "2026-11-07T23:41:38.578Z",
+      "finished_at": "2026-11-07T23:41:39.281Z",
+      "error": null
+    },
+    {
+      "stage": "package",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "coordinator",
+      "started_at": "2026-11-07T23:41:39.283Z",
+      "finished_at": "2026-11-07T23:41:39.301Z",
+      "error": null
+    },
+    {
+      "stage": "invoice",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "coordinator",
+      "started_at": "2026-11-07T23:41:39.306Z",
+      "finished_at": "2026-11-07T23:41:39.321Z",
+      "error": null
+    },
+    {
+      "stage": "follow_up",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "coordinator",
+      "started_at": "2026-11-07T23:41:39.323Z",
+      "finished_at": "2026-11-07T23:41:40.681Z",
+      "error": null
+    }
+  ],
+  "approvals": [
+    {
+      "kind": "proposal",
+      "decision": "accepted",
+      "by_name": "Synthetic test harness",
+      "statement": "TEST approval of this synthetic engineering fixture; no real customer agreement.",
+      "at": "2026-11-07T23:37:16.847Z"
+    },
+    {
+      "kind": "delivery",
+      "decision": "accepted",
+      "by_name": "Synthetic test harness",
+      "statement": "TEST acceptance of verified synthetic output; no real revenue.",
+      "at": "2026-11-07T23:41:39.304Z"
+    }
+  ],
+  "interventions": [
+    {
+      "kind": "retry_stage",
+      "reason": "Asked the agents to retry \"Checking your files\". Development correction: resolve shared virtualenv paths in the sandbox profile",
+      "minutes": 2,
+      "at": "2026-11-07T23:36:16.134Z"
+    }
+  ],
+  "invoices": [
+    {
+      "number": "TEST-GS-INV-0001",
+      "status": "paid",
+      "is_test": true,
+      "amount_cents": 110000
+    }
+  ],
+  "payments": [
+    {
+      "method": "local_test",
+      "is_test": true,
+      "amount_cents": 110000
+    }
+  ],
+  "spend_micro_usd": {
+    "total": 378344,
+    "metered": 378291,
+    "estimated": 53
+  },
+  "contract_manifest_sha256": "c24e658df5bc9a5acad9513ffb152dc7e4fc7c844dbf7eaa7637cfa6dffeee7b",
+  "verification": {
+    "integrity": {
+      "ok": true
+    },
+    "candidate_digest": "821a17a29b9b5af4ccc533e76bd2e72e78520672fa54faa8674d09ee70ceb9dd",
+    "summary": {
+      "total": 16,
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "verdict": "pass"
+    },
+    "checks": [
+      {
+        "id": "frozen_evidence",
+        "title": "Acceptance evidence is unchanged",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:planner.mjs",
+        "title": "Required file planner.mjs",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:README.md",
+        "title": "Required file README.md",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "target_build",
+        "title": "Target builds in isolation",
+        "category": "build",
+        "status": "pass",
+        "mandatory": true,
+        "expected": 0,
+        "actual": 0,
+        "evidence": {}
+      },
+      {
+        "id": "weighted-route",
+        "title": "Preserve weighted-route",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "distance": 5,
+          "route": [
+            "A",
+            "B",
+            "D"
+          ]
+        },
+        "actual": {
+          "result": {
+            "distance": 5,
+            "route": [
+              "A",
+              "B",
+              "D"
+            ]
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "reverse-route",
+        "title": "Preserve reverse-route",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "distance": 5,
+          "route": [
+            "D",
+            "B",
+            "A"
+          ]
+        },
+        "actual": {
+          "result": {
+            "distance": 5,
+            "route": [
+              "D",
+              "B",
+              "A"
+            ]
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "same-node",
+        "title": "Preserve same-node",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "distance": 0,
+          "route": [
+            "A"
+          ]
+        },
+        "actual": {
+          "result": {
+            "distance": 0,
+            "route": [
+              "A"
+            ]
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "tie-break",
+        "title": "Preserve tie-break (lexicographically smaller equal-cost route)",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "distance": 2,
+          "route": [
+            "A",
+            "B",
+            "D"
+          ]
+        },
+        "actual": {
+          "result": {
+            "distance": 2,
+            "route": [
+              "A",
+              "B",
+              "D"
+            ]
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "unknown-node",
+        "title": "Preserve unknown-node",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "error": "unknown node"
+        },
+        "actual": {
+          "result": {
+            "error": "unknown node"
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "disconnected",
+        "title": "Preserve disconnected",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "distance": null,
+          "route": []
+        },
+        "actual": {
+          "result": {
+            "distance": null,
+            "route": []
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "invalid-weight",
+        "title": "Preserve invalid-weight",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "error": "invalid edge"
+        },
+        "actual": {
+          "result": {
+            "error": "invalid edge"
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "fractional-distance",
+        "title": "Preserve fractional-distance",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "distance": 1.75,
+          "route": [
+            "A",
+            "B",
+            "C"
+          ]
+        },
+        "actual": {
+          "result": {
+            "distance": 1.75,
+            "route": [
+              "A",
+              "B",
+              "C"
+            ]
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "unicode",
+        "title": "Preserve unicode",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "distance": 2.5,
+          "route": [
+            "café",
+            "倉庫"
+          ]
+        },
+        "actual": {
+          "result": {
+            "distance": 2.5,
+            "route": [
+              "café",
+              "倉庫"
+            ]
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "blocked-reroute",
+        "title": "Support blocked-reroute",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "route": [
+            "A",
+            "B",
+            "C",
+            "D"
+          ],
+          "distance": 7
+        },
+        "actual": {
+          "result": {
+            "distance": 7,
+            "route": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ]
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "blocked-unreachable",
+        "title": "Support blocked-unreachable",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "route": [],
+          "distance": null
+        },
+        "actual": {
+          "result": {
+            "distance": null,
+            "route": []
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "blocked-reverse-pair",
+        "title": "Support blocked edge given in reverse endpoint order",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "route": [
+            "A",
+            "B",
+            "C",
+            "D"
+          ],
+          "distance": 7
+        },
+        "actual": {
+          "result": {
+            "distance": 7,
+            "route": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ]
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      }
+    ],
+    "results": [
+      {
+        "id": "frozen_evidence",
+        "title": "Acceptance evidence is unchanged",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:planner.mjs",
+        "title": "Required file planner.mjs",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:README.md",
+        "title": "Required file README.md",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "target_build",
+        "title": "Target builds in isolation",
+        "category": "build",
+        "status": "pass",
+        "mandatory": true,
+        "expected": 0,
+        "actual": 0,
+        "evidence": {}
+      },
+      {
+        "id": "weighted-route",
+        "title": "Preserve weighted-route",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "distance": 5,
+          "route": [
+            "A",
+            "B",
+            "D"
+          ]
+        },
+        "actual": {
+          "result": {
+            "distance": 5,
+            "route": [
+              "A",
+              "B",
+              "D"
+            ]
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "reverse-route",
+        "title": "Preserve reverse-route",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "distance": 5,
+          "route": [
+            "D",
+            "B",
+            "A"
+          ]
+        },
+        "actual": {
+          "result": {
+            "distance": 5,
+            "route": [
+              "D",
+              "B",
+              "A"
+            ]
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "same-node",
+        "title": "Preserve same-node",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "distance": 0,
+          "route": [
+            "A"
+          ]
+        },
+        "actual": {
+          "result": {
+            "distance": 0,
+            "route": [
+              "A"
+            ]
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "tie-break",
+        "title": "Preserve tie-break (lexicographically smaller equal-cost route)",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "distance": 2,
+          "route": [
+            "A",
+            "B",
+            "D"
+          ]
+        },
+        "actual": {
+          "result": {
+            "distance": 2,
+            "route": [
+              "A",
+              "B",
+              "D"
+            ]
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "unknown-node",
+        "title": "Preserve unknown-node",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "error": "unknown node"
+        },
+        "actual": {
+          "result": {
+            "error": "unknown node"
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "disconnected",
+        "title": "Preserve disconnected",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "distance": null,
+          "route": []
+        },
+        "actual": {
+          "result": {
+            "distance": null,
+            "route": []
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "invalid-weight",
+        "title": "Preserve invalid-weight",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "error": "invalid edge"
+        },
+        "actual": {
+          "result": {
+            "error": "invalid edge"
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "fractional-distance",
+        "title": "Preserve fractional-distance",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "distance": 1.75,
+          "route": [
+            "A",
+            "B",
+            "C"
+          ]
+        },
+        "actual": {
+          "result": {
+            "distance": 1.75,
+            "route": [
+              "A",
+              "B",
+              "C"
+            ]
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "unicode",
+        "title": "Preserve unicode",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "distance": 2.5,
+          "route": [
+            "café",
+            "倉庫"
+          ]
+        },
+        "actual": {
+          "result": {
+            "distance": 2.5,
+            "route": [
+              "café",
+              "倉庫"
+            ]
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "blocked-reroute",
+        "title": "Support blocked-reroute",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "route": [
+            "A",
+            "B",
+            "C",
+            "D"
+          ],
+          "distance": 7
+        },
+        "actual": {
+          "result": {
+            "distance": 7,
+            "route": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ]
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "blocked-unreachable",
+        "title": "Support blocked-unreachable",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "route": [],
+          "distance": null
+        },
+        "actual": {
+          "result": {
+            "distance": null,
+            "route": []
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "blocked-reverse-pair",
+        "title": "Support blocked edge given in reverse endpoint order",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": {
+          "route": [
+            "A",
+            "B",
+            "C",
+            "D"
+          ],
+          "distance": 7
+        },
+        "actual": {
+          "result": {
+            "distance": 7,
+            "route": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ]
+          },
+          "exit": 0
+        },
+        "evidence": {}
+      }
+    ],
+    "failed": [],
+    "by_category": {},
+    "not_tested": [
+      "Command-level route planning only; no robot hardware or motion controller is involved",
+      "Production load and external service integrations are not tested",
+      "Error behavior for malformed (non-JSON) stdin beyond the Python source's blanket {\"error\":\"invalid request\"} is not separately tested"
+    ]
+  },
+  "delivery": {
+    "sha256": "40d027dda6b3fdfc1288b5202cc32b20ab32f78b0b2f86dd81b27a4e8256ba26",
+    "bytes": 21178
+  },
+  "claims": {
+    "synthetic_customer": true,
+    "production_deployment": false,
+    "paid_real_customer": false,
+    "agent_work": "Live Naive assessment, implementation and coordinator sessions are listed above.",
+    "tool_work": "Source execution, stable baseline recording, independent comparisons, isolation, packaging and durable orchestration.",
+    "acceptance": "Synthetic fixture approvals, not real customer acceptance.",
+    "limitations": [
+      "Command-level route planning only; no robot hardware or motion controller is involved",
+      "Production load and external service integrations are not tested",
+      "Error behavior for malformed (non-JSON) stdin beyond the Python source's blanket {\"error\":\"invalid request\"} is not separately tested"
+    ]
+  }
+}

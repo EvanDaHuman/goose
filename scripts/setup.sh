@@ -19,7 +19,7 @@ need /usr/bin/zip "zip"
 node -e 'const [a,b]=process.versions.node.split(".").map(Number); if (a<20||(a===20&&b<9)) {console.error("Node 20.9+ required"); process.exit(1)}'
 
 say "Node packages"
-[ -d node_modules/next ] || npm install --no-audit --no-fund
+[ -d node_modules/next ] || npm ci --no-audit --no-fund
 
 if [ ! -f .env ]; then
   say "PostgreSQL (project-local, 127.0.0.1:$PGPORT_PW)"

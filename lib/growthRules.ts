@@ -9,6 +9,8 @@ export const RECIPES: Record<string, string> = {
   "flask-fastapi-postgres": "Flask + raw sqlite3 JSON API replaced with FastAPI on PostgreSQL, data moved (not Flask-SQLAlchemy, not templates)",
   "suitecrm-sales-workspace": "SuiteCRM 7.11 sales workflow moved to a new sales workspace; support stays in SuiteCRM (needs a database dump)",
   "agent-change": "Targeted code changes made by the implementation agent (bug fixes, APIs with no mechanical rewrite)",
+  "agent-replatform": "Python, Node or Rust service migrations with explicit API and database acceptance contracts; existing adapters must support source and target",
+  "workspace-change": "General repository engineering such as language migrations, algorithm changes and build modernization, conditional on a reproducible offline build and executable acceptance contract. Python, Node, Rust, Go and C++ are eligible when installed. ROS currently supports only the pinned rrt_exploration fixture. This is an assessment opportunity, not a guarantee of arbitrary project support",
 };
 export const FIT = ["High", "Medium", "Low"] as const;
 export type Fit = (typeof FIT)[number];
@@ -135,7 +137,7 @@ export function guardDraft(raw: any, p: { name: string; url: string; evidence?: 
 export function draftByTemplate(p: { name: string; evidence?: Evidence[] | null; blockers?: string[] | null }, q: Qualification | null, priceUsd: number): Draft {
   const ev = (p.evidence ?? [])[0];
   const blockers = q?.blockers?.length ? q.blockers : p.blockers ?? [];
-  const what = q && q.recipe !== "none" ? RECIPES[q.recipe] : "upgrades of Flask and Django apps and SuiteCRM 7, with the data moved where needed";
+  const what = q && q.recipe !== "none" ? RECIPES[q.recipe] : "verified changes to existing software, including runtime upgrades, language migrations and behavior-preserving engineering";
   const body = [
     "Hello,",
     "",
