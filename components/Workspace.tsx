@@ -49,7 +49,10 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
       <section className="section grid g2" style={{ alignItems: "start" }}>
         <div className="card">
           <div className="stat-label">Your goal</div>
-          <p style={{ fontSize: "1.05rem", margin: "4px 0 10px" }}>"{job.goal}"</p>
+          {job.goal.length > 600 ? <>
+            <p style={{ fontSize: "1.05rem", margin: "4px 0 10px" }}>{job.goal.slice(0, 320).replace(/\s+\S*$/, "")}…</p>
+            <details style={{ marginBottom: 12 }}><summary>Read the full objective</summary><p style={{ whiteSpace: "pre-wrap", marginTop: 12 }}>{job.goal}</p></details>
+          </> : <p style={{ fontSize: "1.05rem", margin: "4px 0 10px", whiteSpace: "pre-wrap" }}>"{job.goal}"</p>}
           {(job.constraints ?? []).length > 0 && <div className="row" style={{ gap: 6 }}>{job.constraints.map((c: string) => <span key={c} className="pill neutral">{CONSTRAINT_TEXT[c] ?? c}</span>)}</div>}
           {job.constraint_notes && <p className="small muted" style={{ marginTop: 8 }}>{job.constraint_notes}</p>}
         </div>

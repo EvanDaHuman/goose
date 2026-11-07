@@ -63,7 +63,7 @@ test("a customer completes assessment, verified delivery, test payment, support,
   await page.getByRole("button", { name: "Accept proposal" }).locator("..").locator("..").getByRole("checkbox").check();
   await page.getByRole("button", { name: "Accept proposal" }).click();
   // record, freeze, change, verify - then the delivery appears
-  await expect(page.getByRole("heading", { name: "Delivery" })).toBeVisible({ timeout: 6 * 60_000 });
+  await expect(page.getByRole("heading", { name: "Delivery", exact: true })).toBeVisible({ timeout: 6 * 60_000 });
   await expect(page.getByText("All mandatory checks passed").first()).toBeVisible();
   await expect(page.getByText(/Before and after/)).toBeVisible();
   const delivery = page.locator("section").filter({ has: page.getByRole("heading", { name: "Delivery", exact: true }) });
