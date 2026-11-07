@@ -1,0 +1,6 @@
+import Link from "next/link";
+import { InquiryForm } from "@/components/InquiryForm";
+
+export default function Contact() {
+  return <main className="wrap"><div className="page-intro"><div className="kicker">Start with the outcome</div><h1>Your system. Your next move.</h1><p className="lead">A migration, a replacement, a change across connected services. Describe the objective and Goose will assess what an executable engagement would require.</p></div><div className="contact-grid section"><InquiryForm /><aside className="stack"><div className="card"><h3>A useful first conversation</h3><ul className="tight-list muted small"><li>What runs today, and what should run next?</li><li>Which behavior and data must be preserved?</li><li>What deadline, cost, or dependency is driving the change?</li><li>How would you decide the job is complete?</li></ul></div><div className="card"><h3>Assessment before commitment</h3><p className="small muted">Your inquiry begins a scope review. Engineering work begins only after an executable plan, acceptance criteria, and price are agreed.</p></div><div className="card"><h3>Ready to share the source?</h3><p className="small muted">Upload your repository and requirements directly to a customer workspace.</p><Link href="/start" className="btn">Start a job ↗</Link></div></aside></div></main>;
+}

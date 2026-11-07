@@ -103,15 +103,16 @@ export function MessageForm({ jobId, token }: { jobId: string; token: string }) 
   const router = useRouter();
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
-  return (
-    <div className="row" style={{ alignItems: "stretch" }}>
-      <input type="text" placeholder="Ask a question about your job" value={body} onChange={(e) => setBody(e.target.value)} style={{ flex: 1, minWidth: 220 }} />
-      <button className="btn" disabled={busy || !body.trim()} onClick={async () => {
-        setBusy(true);
-        try { await post(`/api/jobs/${jobId}/message`, { t: token, body }); setBody(""); router.refresh(); } finally { setBusy(false); }
-      }}>Send</button>
-    </div>
-  );
+  const [error, setError] = useState("");
+  return <form className="stack-sm" onSubmit={async e => {
+    e.preventDefault(); if (!body.trim() || busy) return;
+    setBusy(true); setError("");
+    try { await post(`/api/jobs/${jobId}/message`, { t: token, body }); setBody(""); router.refresh(); }
+    catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  }}><div className="row" style={{ alignItems: "stretch" }}>
+    <input type="text" aria-label="Message about your job" placeholder="Ask a question about your job" value={body} onChange={e => setBody(e.target.value)} style={{ flex: 1, minWidth: 200 }} />
+    <button className="btn" disabled={busy || !body.trim()}>{busy ? "Sending..." : "Send"}</button>
+  </div>{error && <p className="form-message error" role="alert">{error}</p>}</form>;
 }
 
 export function UploadForm({ jobId, token, kind }: { jobId: string; token: string; kind: "database" | "repository" }) {

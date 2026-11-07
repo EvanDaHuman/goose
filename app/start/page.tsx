@@ -1,23 +1,19 @@
+import Link from "next/link";
 import { StartForm } from "@/components/StartForm";
 
 export const dynamic = "force-dynamic";
 
-export default function Start() {
-  return (
-    <main className="wrap">
-      <h1>Start a job</h1>
-      <p className="lead">Tell us what you want to improve and send the application. We inspect it, then propose a plan and a fixed price
-        that fit it, or tell you plainly that we cannot do it yet. Nothing is charged until the result passes the agreed checks and you accept it.</p>
-      <div className="grid g2 section" style={{ alignItems: "start" }}>
-        <StartForm />
-        <div className="stack">
-          <div className="card small muted">
-            <b>How we handle your files.</b> Uploads are stored unchanged and opened read-only. Every test runs on a separate copy, in an
-            isolated environment with no internet access and no access to other customers' jobs. With our live agent team on, the agents read
-            a copy of the code in their own sandboxed computers on Naive; it is removed from there after delivery.
-          </div>
-        </div>
-      </div>
-    </main>
-  );
+export default async function Start({ searchParams }: { searchParams: Promise<{ inquiry?: string }> }) {
+  const { inquiry } = await searchParams;
+  return <main className="wrap">
+    <div className="page-intro"><div className="kicker">Your next technical change</div><h1>Start a job</h1><p className="lead">Tell us the outcome you need and share the source. Goose assesses the system, asks the questions that matter, and proposes a fixed scope and price for your approval.</p></div>
+    <div className="intake-layout section">
+      <StartForm inquiryId={inquiry} />
+      <aside className="stack intake-aside">
+        <div className="card"><span className="kicker">What happens next</span><ol className="intake-steps"><li><b>Assessment</b><span>The agents inspect the source and your requirements.</span></li><li><b>Your proposal</b><span>Review the changes, acceptance criteria, and fixed price.</span></li><li><b>Engineering & verification</b><span>Work begins after acceptance. Failed checks block delivery.</span></li><li><b>Delivery & support</b><span>Receive the result, review the evidence, and manage follow-up work.</span></li></ol></div>
+        <div className="card"><h3>Working with your source</h3><p className="small muted">Goose works on copies. The execution environment separates implementation from the independent verification evidence. With live mode enabled, Naïve agents receive the source needed for the job.</p><p className="small muted">Share only files and data you are authorized to provide. Production access and cutover are outside the intake authorization.</p></div>
+        <div className="card"><h3>Still defining the change?</h3><p className="small muted">Start with your objective and constraints. You can discuss the system before uploading source.</p><Link href="/contact" className="btn small">Send an inquiry ↗</Link></div>
+      </aside>
+    </div>
+  </main>;
 }

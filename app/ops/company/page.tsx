@@ -1,3 +1,4 @@
+import { OpsNav } from "@/components/OpsNav";
 import Link from "next/link";
 import { ActionButton, OpsNumberAction } from "@/components/client";
 import { dollars, KindTag, usd, when } from "@/components/ui";
@@ -25,9 +26,10 @@ export default async function Company() {
   const cost = v.costByBasis.reduce((n: number, c: any) => n + Number(c.micro), 0);
   return (
     <main className="wrap">
-      <h1>Company</h1>
-      <div className="banner warn"><b>No real customer yet</b><span>{realAccounts} real customer accounts, {realBookings.length} real bookings, {dollars(collected)} collected.
-        Everything else on this page comes from demonstration jobs with synthetic data and is labelled as test.</span></div>
+      <OpsNav active="company" />
+      <div className="ops-title"><div><div className="kicker">Business performance</div><h1>Company</h1></div><Link href="/ops/business" className="btn">Customer operations ↗</Link></div>
+      <div className="banner warn"><b>{collected > 0 ? "Commercial activity" : "Early operations"}</b><span>{realAccounts} real customer accounts, {realBookings.length} real bookings, {dollars(collected)} collected.
+        Demonstration activity and test payments are labelled separately from real activity.</span></div>
 
       <section className="section grid g4">
         <div className="card tight"><div className="stat-label">Bookings (real)</div><div className="stat">{dollars(realBookings.reduce((n: number, b: any) => n + b.price_cents, 0))}</div>
@@ -97,7 +99,7 @@ export default async function Company() {
       </section>
 
       <section className="section card">
-        <div className="card-head"><h2>Prospects</h2><span className="small muted">From public sources only. Nobody has been contacted.</span></div>
+        <div className="card-head"><h2>Prospects</h2><span className="small muted">Public-source research with recorded evidence.</span></div>
         <div className="table-wrap"><table>
           <thead><tr><th>Prospect</th><th>Signal of need</th><th>Fit with today's scope</th><th>Status</th></tr></thead>
           <tbody>{v.prospects.map((p: any) => (
@@ -113,7 +115,7 @@ export default async function Company() {
                 : <ActionButton url={`/api/ops/prospects/${p.id}/draft`} body={{}} label="Draft outreach" />}</td>
             </tr>))}</tbody>
         </table></div>
-        <p className="small muted" style={{ marginTop: 8 }}>The founder's first research, with sources: <code>docs/research/prospects.md</code>. Sending any message needs the founder; nothing is sent automatically.</p>
+        <p className="small muted" style={{ marginTop: 8 }}>Review and authorize customer communication from <Link href="/ops/business">Customer operations</Link>. Research and drafts do not imply that a customer has been contacted.</p>
       </section>
 
       <section className="section card">

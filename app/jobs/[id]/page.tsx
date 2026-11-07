@@ -1,3 +1,4 @@
+import { CustomerBusiness } from "@/components/CustomerBusiness";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionButton, AnswerForm, AutoRefresh, MessageForm, SignForm, UploadForm } from "@/components/client";
@@ -136,6 +137,8 @@ export default async function CustomerJob({ params, searchParams }: { params: Pr
           <p>{dollars(invoice.amount_cents)} · {invoice.status} · due {when(invoice.due_at)}</p>
         </section>
       )}
+
+      <CustomerBusiness jobId={id} token={token} delivered={delivered} />
 
       <section className="section card">
         <h2>Messages</h2>

@@ -17,3 +17,5 @@ AGENTS.md
 .env.*
 !.env.example
 *.log
+
+.next-*/

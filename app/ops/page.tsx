@@ -1,3 +1,4 @@
+import { OpsNav } from "@/components/OpsNav";
 import Link from "next/link";
 import { AutoRefresh } from "@/components/client";
 import { JobStatus, KindTag, ModeBanner, ROLE_NAMES, usd, when } from "@/components/ui";
@@ -12,8 +13,9 @@ export default async function Ops() {
   const anyRunning = jobs.some((j: any) => j.status === "running");
   return (
     <main className="wrap">
+      <OpsNav active="delivery" />
       <AutoRefresh active={anyRunning} seconds={3} />
-      <div className="row between"><h1>Operator</h1><span className="small muted">Operator view (local prototype, no login)</span></div>
+      <div className="row between"><h1>Operator</h1><span className="small muted">Delivery queue · Agent decisions and interventions on record</span></div>
       <ModeBanner mode={config.mode} />
       <div className="grid g4 section">
         <div className="card tight"><div className="stat">{totals.running}</div><div className="stat-label">jobs the agents are working on</div></div>
@@ -31,7 +33,7 @@ export default async function Ops() {
                   <td><Link href={`/ops/jobs/${j.id}`}><b>{j.id}</b></Link><div className="small muted">{j.title}</div></td>
                   <td>{j.account_name}<div><KindTag kind={j.kind} /></div></td>
                   <td>{opsStageLabel(j.stage)}{j.attempt > 1 ? <div className="small muted">attempt {j.attempt}</div> : null}</td>
-                  <td className="small">{ROLE_NAMES[j.responsible]}</td>
+                  <td className="small">{ROLE_NAMES[j.responsible] ?? j.responsible}</td>
                   <td><JobStatus status={j.status} stage={j.stage} />{j.waiting_reason && <div className="small muted" style={{ maxWidth: 260 }}>{j.waiting_reason}</div>}</td>
                   <td className="small">{j.run ? `${j.run.passed}/${j.run.total}${j.run.verdict === "fail" ? " failed" : ""}` : "-"}</td>
                   <td className="num small">{usd(j.spent)}<div className="muted">of {usd(j.cost_limit_micro_usd, 2)}</div></td>
@@ -41,7 +43,7 @@ export default async function Ops() {
                   </td>
                 </tr>
               ))}
-              {jobs.length === 0 && <tr><td colSpan={8} className="muted">No jobs yet. Start one from <Link href="/start">Start a job</Link> or run <code>npm run demo</code>.</td></tr>}
+              {jobs.length === 0 && <tr><td colSpan={8} className="muted">No jobs yet. Create an assessment from <Link href="/start">Start a job</Link>.</td></tr>}
             </tbody>
           </table>
         </div>

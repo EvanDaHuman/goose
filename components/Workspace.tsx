@@ -1,3 +1,4 @@
+import { CustomerBusiness } from "@/components/CustomerBusiness";
 // The customer's project workspace for plan-driven jobs: their goal, the map of their application, the plan and why,
 // the quote and questions, the work as it happens (with who or what made each decision), and the result.
 import { AppMap, SourceLink } from "@/components/AppMap";
@@ -17,10 +18,17 @@ function who(actor: string, origin: string | null) {
   return `${name.replace(/ agent$/, "")} step`;
 }
 
+function DetailedText({ value, label = "Read the assessment rationale" }: { value: unknown; label?: string }) {
+  const text = typeof value === "string" ? value : String(value ?? "");
+  return text.length > 420 ? <details className="small" style={{ marginTop: 5 }}><summary>{label}</summary><p className="muted" style={{ marginTop: 8, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{text}</p></details> : <span className="muted">{text}</span>;
+}
+
 export function Workspace({ v, token, ops = false }: { v: any; token: string; ops?: boolean }) {
   const { job, proposal, questions, messages, artifacts, runs, invoice, plan, plans, inspection: insp, report, events, pairs, diff } = v;
   const id = job.id;
   const p = plan?.plan;
+  const workspace = job.recipe === "workspace-change";
+  const engineeringContract = p?.workspace_contract;
   const open = questions.filter((x: any) => x.status === "open");
   const pkg = artifacts.find((a: any) => a.kind === "delivery_package");
   const reportArt = [...artifacts].reverse().find((a: any) => a.kind === "verification_report");
@@ -47,7 +55,7 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
         </div>
         <div className="card">
           <div className="stat-label">What we found</div>
-          {st && st.framework === "SuiteCRM" ? <p style={{ margin: "4px 0" }}>SuiteCRM {st.framework_version} (PHP) · {insp.size.sales_rows.toLocaleString("en-US")} sales records ·{" "}
+          {workspace ? <p style={{ margin: "4px 0" }}>Executable repository engineering{engineeringContract ? <> · {engineeringContract.checks.length} agreed behavior checks · {engineeringContract.deliverables.length} deliverables</> : ". The assessment is establishing an executable contract."}</p> : st && st.framework === "SuiteCRM" ? <p style={{ margin: "4px 0" }}>SuiteCRM {st.framework_version} (PHP) · {insp.size.sales_rows.toLocaleString("en-US")} sales records ·{" "}
             {insp.size.customizations} customizations · {insp.components.filter((c: any) => c.kind === "role").length} roles, {insp.components.filter((c: any) => c.kind === "team").length} teams ·{" "}
             {findings.length} findings</p>
             : st ? <p style={{ margin: "4px 0" }}>{st.framework ?? "No supported framework"} {st.framework_version ?? ""}{st.python ? ` on Python ${st.python}` : ""} ·{" "}
@@ -82,8 +90,12 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
 
       {insp && (
         <section className="section card">
-          <div className="card-head"><h2>Your application</h2><span className="small muted">Built from reading your code{st?.database?.copy_supplied ? " and data" : ""}. Select a box.</span></div>
-          <AppMap jobId={id} token={token} ops={ops} components={insp.components} edges={insp.edges} findings={findings} changes={p?.changes ?? []} preserve={p?.preserve ?? []} />
+          <div className="card-head"><h2>Your application</h2><span className="small muted">{workspace ? "Executable scope and preserved behavior" : <>Built from reading your code{st?.database?.copy_supplied ? " and data" : ""}. Select a box.</>}</span></div>
+          {workspace ? <div className="grid g3">
+            <div><div className="stat-label">Original behavior</div><b>{engineeringContract?.checks.filter((c: any) => c.kind === "preserve").length ?? "Pending"} preservation checks</b><p className="small muted">Recorded against the source before implementation.</p></div>
+            <div><div className="stat-label">Requested changes</div><b>{engineeringContract?.checks.filter((c: any) => c.kind === "requirement").length ?? "Pending"} requirement checks</b><p className="small muted">Explicit expectations for the new capabilities.</p></div>
+            <div><div className="stat-label">Delivered files</div><p className="small mono">{engineeringContract?.deliverables.join(", ") ?? "Established during assessment"}</p></div>
+          </div> : <AppMap jobId={id} token={token} ops={ops} components={insp.components} edges={insp.edges} findings={findings} changes={p?.changes ?? []} preserve={p?.preserve ?? []} />}
           <h3 className="section">Findings</h3>
           <table><tbody>{findings.map((f: any) => (
             <tr key={f.id}><td style={{ width: 70 }}><span className={`pill ${f.severity === "high" ? "bad" : f.severity === "medium" ? "warn" : "neutral"}`}>{f.severity}</span></td>
@@ -112,14 +124,14 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
                 <td className="small muted">{o.why}</td></tr>))}</tbody></table></>)}
           {p.decision !== "unsupported" && (
             <div className="grid g2 section" style={{ alignItems: "start" }}>
-              <div><h3>What changes, and why</h3><ul>{(p.changes ?? []).map((c: any) => <li key={c.id}><b>{c.title}.</b> <span className="muted">{c.reason}</span>
+              <div><h3>What changes, and why</h3><ul>{(p.changes ?? []).map((c: any) => <li key={c.id}><b>{c.title}.</b> <DetailedText value={c.reason} />
                 {c.by === "agent" && <span className="origin agent" style={{ marginLeft: 6 }}>implementation agent</span>}</li>)}</ul>
                 <h3>Intended differences</h3>
                 <ul>{(p.intended_differences ?? []).map((d: any) => <li key={d.id}><b>{d.title ?? d.what}.</b> <span className="muted">{d.reason ?? d.why}</span></li>)}
                   {(p.intended_differences ?? []).length === 0 && <li className="muted">None: every recorded request must answer exactly as today.</li>}</ul></div>
               <div><h3>What we keep as it is</h3><ul>{(p.preserve ?? []).map((k: any, i: number) => <li key={i}>{k.what} <span className="muted small">{k.reason}</span></li>)}</ul>
                 <h3>Not in this job</h3><ul>{(p.follow_ups ?? []).map((f: any) => <li key={f.finding_id ?? f.id} className="small">{f.title} <span className="muted">- {f.why_not_now ?? (f.quote === "separate" ? "quoted separately if you want it" : "")}</span></li>)}
-                  {(p.follow_ups ?? []).length === 0 && <li className="muted small">Nothing left out.</li>}</ul></div>
+                  {(p.follow_ups ?? []).length === 0 && <li className="muted small">No additional follow-up items identified. The agreed contract defines coverage.</li>}</ul></div>
             </div>)}
           {(p.boundary ?? []).length > 0 && (
             <div className="section">
@@ -138,6 +150,7 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
               {p.cutover && <><h3>Switching over</h3><ol className="small">{p.cutover.steps.map((s: string) => <li key={s}>{s}</li>)}</ol>
                 <p className="small muted">{p.cutover.downtime} Rollback: {p.cutover.rollback}</p></>}
             </div>)}
+          {engineeringContract && <details className="section"><summary>Engineering execution contract</summary><div className="grid g2" style={{ marginTop: 14 }}><div><h3>Build the source</h3><pre>{engineeringContract.source_build.length ? engineeringContract.source_build.map((c: any) => c.argv.join(" ")).join("\n") : "No build step required"}</pre></div><div><h3>Build the target</h3><pre>{engineeringContract.target_build.length ? engineeringContract.target_build.map((c: any) => c.argv.join(" ")).join("\n") : "No build step required"}</pre></div></div><p className="small muted" style={{ marginTop: 12 }}>Each behavior check runs the agreed command in an isolated environment. Preservation checks compare against the recorded source; new requirements compare against the approved expectation.</p><ul className="small">{engineeringContract.limitations.map((limit: string, index: number) => <li key={index}>{limit}</li>)}</ul></details>}
           {p.migration_contract && <div className="section card" style={{ background: "var(--panel)" }}>
             <h3>Migration contract</h3>
             <p><b>{p.migration_contract.target === "rust" ? "Rust" : p.migration_contract.target}</b> application with SQLite data continuity.</p>
@@ -180,7 +193,7 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
         <h2>Work and decisions</h2>
         <ul className="timeline two">{events.map((e: any) => (
           <li key={e.id}><span className="mono small muted">{when(e.at)}</span>
-            <span><span className="small"><b>{who(e.actor, e.origin)}</b></span> <Origin origin={e.origin} detail={e.origin_detail} source={e.source} /><br />{e.summary}</span></li>))}
+            <div><span className="small"><b>{who(e.actor, e.origin)}</b></span> <Origin origin={e.origin} detail={e.origin_detail} source={e.source} /><br /><DetailedText value={e.summary} label="Read the full recorded decision" /></div></li>))}
           {events.length === 0 && <li className="muted small">Nothing yet.</li>}</ul>
       </section>
 
@@ -264,6 +277,8 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
           <p>{dollars(invoice.amount_cents)} · {invoice.status} · due {when(invoice.due_at)}</p>
         </section>
       )}
+
+      {!ops && <CustomerBusiness jobId={id} token={token} delivered={delivered} />}
 
       <section className="section card">
         <h2>Messages</h2>
