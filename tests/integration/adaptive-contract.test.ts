@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { adaptiveProblems, acceptanceReviewApproved } from "../../lib/adaptive";
+import { adaptiveProblems, acceptanceReviewApproved, agentExecutionEvidence } from "../../lib/adaptive";
 const plan=()=>({version:1,title:"Add subtraction",image:"python:3.12-slim",dependency_hosts:["pypi.org","files.pythonhosted.org"],setup:"pip install pytest==8.3.5",prepare:"",checks:[{id:"existing",title:"Existing suite",kind:"preserve",script:"python -m pytest tests"},{id:"new_behavior",title:"Requested behavior",kind:"requirement",script:"python /acceptance/feature.py"}],protected_paths:["tests"],deliverables:["src/calc.py"],mutations:[{path:"src/calc.py",find:"return a+b",replace:"return a-b",check_id:"existing"}],limitations:["No production deployment"],missing_requirements:[]});
 test("autonomous contracts require preserved behavior, requested behavior and a semantic negative control",()=>{
  assert.deepEqual(adaptiveProblems(plan()),[]);
@@ -20,4 +20,18 @@ test("a reviewer cannot approve unresolved findings with a contradictory accepte
  assert.equal(acceptanceReviewApproved({accepted:true}),false);
  assert.equal(acceptanceReviewApproved({accepted:false,issues:[]}),false);
  assert.equal(acceptanceReviewApproved({accepted:true,issues:[]}),true);
+});
+
+// Malformed model output is feedback for discovery, not an orchestration crash.
+test("invalid agent-produced check collections are rejected without throwing",()=>{
+ for(const checks of [null,{},[null,null],[{},null],"invalid"]){
+  const p:any=plan();p.checks=checks;assert.ok(adaptiveProblems(p).length);
+ }
+});
+
+test("private data diagnostics never reach agents when a customer forbids data sharing",()=>{
+ const report={ok:false,error:"private row",setup:{code:0,output:"private name"},checks:[{id:"writes",code:1,actual:{row:"private record"},output:"private email"}]};
+ const safe=agentExecutionEvidence({constraints:["no_data"]},report);
+ assert.ok(!JSON.stringify(safe).includes("private"));assert.equal(safe.checks[0].id,"writes");assert.equal(safe.checks[0].code,1);
+ assert.equal(agentExecutionEvidence({constraints:[]},report),report);assert.equal(report.error,"private row");
 });

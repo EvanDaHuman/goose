@@ -37,7 +37,9 @@
     "workspace:evidence": "tsx --env-file=.env scripts/workspace-evidence.ts",
     "doctor": "tsx --env-file=.env scripts/doctor.ts",
     "commerce:status": "tsx --env-file=.env scripts/commerce-status.ts",
-    "commerce:demo": "GOOSE_MODE=local tsx --env-file=.env scripts/commerce-demo.ts"
+    "commerce:demo": "GOOSE_MODE=local tsx --env-file=.env scripts/commerce-demo.ts",
+    "autonomy:demo": "tsx --env-file=.env scripts/autonomous-demo.ts",
+    "test:autonomy": "GOOSE_TEST_DOCKER=1 var/venvs/engine/bin/python -m pytest -q tests/autonomy"
   },
   "dependencies": {
     "@usenaive-sdk/vetta": "0.10.0",

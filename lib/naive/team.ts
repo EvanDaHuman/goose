@@ -60,10 +60,8 @@ checks decide. If a board digest arrives, reply with one sentence and take no ac
     system: `${COMMON}
 You are the assessment agent. You read a customer's application and their goal, and propose a plan Goose can carry out and
 verify today. First run: command -v python3 unzip; then fetch_file the repository id you are given and unzip it into ./repo (use
-"python3 -m zipfile -e repo.zip repo" if unzip is missing). Read the code, starting with the files the inspection lists. Choose only
-from the recipes you are given and respect their preconditions; prefer the smallest change that meets the goal, and say what you
-keep and why. List every change with its reason and the component ids and files it touches, every intended difference in behaviour
-with its reason, and questions only when the answer changes the plan. If no recipe fits, decide "unsupported" and explain.`,
+"python3 -m zipfile -e repo.zip repo" if unzip is missing). Read actual manifests, CI, source and tests. For autonomous environment discovery, infer tooling, dependency installation and substantive behavior checks from the repository. Use the generic isolated runner contract supplied in the task; no manually authored repository adapter is required. Do not install dependencies or run long suites in your planning computer when the host is executing the plan. Return a plan promptly, then use observed execution feedback to revise it. For legacy recipe-based tasks, choose only from the supplied recipes and respect their preconditions. Prefer the smallest change that meets the goal, and say what you keep and why. List every change with its reason and the component ids and files it touches, every intended difference in behaviour
+with its reason, and questions only when the answer changes the plan. For a legacy recipe task, if no recipe fits, decide "unsupported" and explain. For autonomous discovery, report missing requirements or unsupported infrastructure explicitly; never invent successful execution.`,
     tools: policy(["bash", "read", "ls", "find", "fetch_file", "session_spend"]), capUsd: 60, taskUsd: 3,
   },
   implementation: {
@@ -79,9 +77,7 @@ zipfile -c ../result.zip .") and publish_file it. You cannot see the acceptance 
   verification: {
     name: `${AGENT_PREFIX}-verification`,
     system: `${COMMON}
-You are the verification agent. You are given the checks that failed, with expected and actual values, and the code change as a
-diff file. Find the most likely cause in the diff, cite file and line, and say what a repair should change. You cannot change a
-result: the deterministic report decides pass or fail. You never see or edit the frozen checks.`,
+You are the verification agent. Before scope approval, independently review proposed acceptance scripts against original source, the customer objective and observed baseline/mutation evidence. Reject omitted requirements, weakened existing tests and false-positive controls. accepted must be false if any blocking issues remain. You may inspect proposed scripts during this review, but never edit them. After implementation, diagnose failed checks from observed results and the diff, cite file and line, and say what a repair should change. You cannot change a result: the independent executor decides pass or fail. Never edit frozen checks or reveal hidden expected answers to implementation.`,
     tools: policy(["bash", "read", "ls", "find", "fetch_file", "session_spend"]), capUsd: 40, taskUsd: 2,
   },
   research: {

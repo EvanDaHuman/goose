@@ -14,6 +14,8 @@ The company workflow still scopes work, requests customer approval, implements, 
 6. After approval the original baseline runs again. The environment, acceptance scripts, protected original tests, input hashes and runner version are frozen before implementation.
 7. Naïve implements the objective. Each independent check gets a fresh prepared copy, and final verification rebuilds from source. Delivery requires the exact verified candidate and unchanged frozen evidence.
 
+Supporting documents and customer clarification answers are included in discovery, independent review and implementation. Accepted requirements are frozen alongside the checks. When a customer selects the no-data-sharing constraint, execution output is withheld from agent feedback because test logs can contain record values. This can reduce automatic diagnosis and require a customer clarification.
+
 Discovery asks a customer question when required behavior or infrastructure is missing. It does not invent credentials, access or business requirements.
 
 ## Execution and isolation

@@ -21,12 +21,26 @@ try {
     q("SELECT number,status,is_test,amount_cents FROM invoices WHERE job_id=$1",[id]),
     q("SELECT p.method,p.is_test,p.amount_cents FROM payments p JOIN invoices i ON i.id=p.invoice_id WHERE i.job_id=$1",[id]),
     q("SELECT actor,kind,summary,origin,at FROM events WHERE job_id=$1 AND (important OR kind='error') ORDER BY id",[id])]);
+  const optional=(...parts:string[])=>{const file=J(job,...parts);return fs.existsSync(file)?readJson(file):null;};
+  const discoveryRoot=J(job,"discovery");
+  const discoveryAttempts:unknown[]=[];
+  if(fs.existsSync(discoveryRoot))for(const round of fs.readdirSync(discoveryRoot).sort())for(const trial of fs.readdirSync(path.join(discoveryRoot,round)).sort()){
+    const directory=path.join(discoveryRoot,round,trial);if(!fs.statSync(directory).isDirectory())continue;
+    const file=path.join(directory,"plan.json"),execution=optional("discovery",round,trial,"execution","report.json");
+    discoveryAttempts.push({round,trial,plan_sha256:fs.existsSync(file)?sha256(file):null,
+      execution:execution?{ok:execution.ok,error:execution.error,setup_code:execution.setup?.code,
+        checks:execution.checks?.map((c:any)=>({id:c.id,code:c.code,accepted:c.accepted,seconds:c.seconds})),
+        mutations:execution.mutations?.map((m:any)=>({path:m.path,check_id:m.check_id,detected:m.detected})),finished_at:execution.finished_at}:null,
+      review:optional("discovery",round,trial,"review.json")});
+  }
   const evidence={generated_at:new Date().toISOString(),job:{id,title:job.title,goal:job.goal,kind:job.kind,mode:job.mode,stage:job.stage,status:job.status},
+    source:optional("inputs","github-source.json"),
+    autonomous:optional("vault","adaptive-plan.json")?{plan:optional("vault","adaptive-plan.json"),discovery:optional("work","adaptive-discovery.json"),attempts:discoveryAttempts,runner:optional("vault","adaptive-runner.json")}:discoveryAttempts.length?{attempts:discoveryAttempts}:null,
     attempts,sessions,stages,approvals,interventions,invoices,payments,events,spend_micro_usd:await jobSpend(id),
     contract_manifest_sha256:job.checks_manifest_sha,verification:report,
     delivery:fs.existsSync(packageFile)?{sha256:sha256(packageFile),bytes:fs.statSync(packageFile).size}:null,
     claims:{synthetic_customer:job.kind==="demo",production_deployment:false,paid_real_customer:payments.some((p:any)=>!p.is_test),
-      agent_work:"Live Naive assessment, implementation and coordinator sessions are listed above.",
+      agent_work:"Live Naive sessions and their actual roles are listed above, including independent acceptance review when used.",
       tool_work:"Source execution, stable baseline recording, independent comparisons, isolation, packaging and durable orchestration.",
       acceptance:job.kind==="demo"?"Synthetic fixture approvals, not real customer acceptance.":"See recorded customer approvals.",
       limitations:report?.not_tested??[]}};

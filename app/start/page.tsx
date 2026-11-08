@@ -6,7 +6,7 @@ import { EXAMPLES } from "@/components/site/samples";
 import "../site.css";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Begin a migration" };
+export const metadata: Metadata = { title: "Start an engineering job" };
 
 export default async function Start({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = await searchParams;
@@ -18,7 +18,7 @@ export default async function Start({ searchParams }: { searchParams: Promise<Re
         <div className="container">
           <Link className="back" href="/">← Back to home</Link>
           <div style={{ display: "grid", gap: 16 }}>
-            <div className="eyebrow">Begin migration</div>
+            <div className="eyebrow">Start an engineering job</div>
             <h1 className="h2">Tell us where your software <em>needs to go</em>.</h1>
           </div>
           <div className="begin-grid">
@@ -29,7 +29,7 @@ export default async function Start({ searchParams }: { searchParams: Promise<Re
                 <li><span><b>We inspect your code</b> with read-only access and send a plan with a fixed price, or tell you plainly that we can&apos;t do it yet.</span></li>
                 <li><span><b>You accept</b>, and we record how your app behaves today and freeze the checks.</span></li>
                 <li><span><b>Goose does the work</b> on copies, and a separate verifier compares old and new.</span></li>
-                <li><span><b>You get</b> the changed code, the evidence, a switch-over plan and a rollback guide. Then the invoice.</span></li>
+                <li><span><b>You get</b> the verified code, execution evidence and instructions for reproducing the checks. Migration plans include cutover and recovery requirements. Then the invoice.</span></li>
               </ol>
               <p className="fine">Your code is stored unchanged and opened read-only. Every test runs on a separate copy, in an isolated environment with
                 no internet access. If we cannot finish and prove a job, the plan says so before you pay anything.</p>

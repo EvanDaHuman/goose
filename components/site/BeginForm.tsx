@@ -122,7 +122,7 @@ export function BeginForm({ prefill, githubStatus, inquiryId }: { prefill?: { fr
     setErr(null);
     const f = e.currentTarget;
     if (!f.checkValidity()) { f.reportValidity(); return; }
-    if (mode === "github" && !REPO_RE.test(repo)) { setErr("Give us the GitHub repository to migrate, or upload a .zip instead."); return; }
+    if (mode === "github" && !REPO_RE.test(repo)) { setErr("Give us the GitHub repository to work on, or upload a .zip instead."); return; }
     if (mode === "github" && branches.state === "error") { setErr(branches.message ?? "Goose can't read that repository yet."); return; }
     if (mode === "zip" && !files.zip) { setErr("Attach the source code as a .zip file."); return; }
     setBusy(true);
@@ -142,7 +142,7 @@ export function BeginForm({ prefill, githubStatus, inquiryId }: { prefill?: { fr
       {inquiryId && <input type="hidden" name="inquiry_id" value={inquiryId} />}
 
       <fieldset>
-        <legend><span>1</span>The move</legend>
+        <legend><span>1</span>The objective</legend>
         <div className="move">
           <div className="s-field"><label htmlFor="f-from">Migrating from</label>
             <input type="text" id="f-from" name="move_from" list="l-from" placeholder="e.g. C++" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
@@ -166,17 +166,17 @@ export function BeginForm({ prefill, githubStatus, inquiryId }: { prefill?: { fr
           <span className="hint">{jobType === "workspace"
             ? "Share a repository and an objective. Naïve discovers dependencies and tests, reproduces an isolated environment, and proposes verified acceptance checks. No Goose-specific configuration is required."
             : "Upgrade a supported application or choose a new runtime with a reviewed data contract."}</span></div>
-        <div className="row2">
+        {jobType === "service" && <div className="row2">
             <div className="s-field"><label htmlFor="f-target">Target runtime (optional)</label>
-              <select id="f-target" name="target_runtime" defaultValue="" disabled={jobType === "workspace"}>
+              <select id="f-target" name="target_runtime" defaultValue="">
                 <option value="">Let the goal and inspection guide the plan</option>
                 <option value="rust">Rust</option><option value="node">Node.js</option><option value="python">Python</option>
               </select>
               <span className="hint">Rewrites use the live Naive team. The plan must pass capability and data checks before work begins.</span></div>
             <div className="s-field"><label htmlFor="f-data-changes">Requested data changes (optional)</label>
-              <textarea id="f-data-changes" name="data_changes" rows={3} disabled={jobType === "workspace"} placeholder="Add a customer tier defaulting to standard for existing customers." />
+              <textarea id="f-data-changes" name="data_changes" rows={3} placeholder="Add a customer tier defaulting to standard for existing customers." />
               <span className="hint">New fields, defaults, renamed fields or tables. Needs a target runtime; you review the exact transformations in the proposal.</span></div>
-        </div>
+        </div>}
       </fieldset>
 
       <fieldset>
@@ -215,7 +215,7 @@ export function BeginForm({ prefill, githubStatus, inquiryId }: { prefill?: { fr
             )}
             <input type="hidden" name="github_repo" value={repo} />
             {branches.state === "ok" && (
-              <div className="s-field"><label htmlFor="f-branch">Branch to migrate</label>
+              <div className="s-field"><label htmlFor="f-branch">Branch to use</label>
                 <select id="f-branch" name="github_branch" value={branch} onChange={(e) => setBranch(e.target.value)}>
                   {branches.list.map((b) => <option key={b} value={b}>{b === branches.defaultBranch ? `${b} (default)` : b}</option>)}
                 </select></div>
@@ -285,7 +285,7 @@ export function BeginForm({ prefill, githubStatus, inquiryId }: { prefill?: { fr
       </div>
       <div className="submit-row">
         <button className="s-btn primary" type="submit" disabled={busy || !authorized}>
-          {busy ? (mode === "github" ? "Reading your repository…" : "Uploading…") : "Begin migration"}
+          {busy ? (mode === "github" ? "Reading your repository…" : "Uploading…") : "Start engineering job"}
         </button>
         {err && <p className="form-err" role="alert">{err}</p>}
       </div>

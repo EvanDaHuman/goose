@@ -57,3 +57,26 @@ PYCODE"""
 def test_setup_cannot_rewrite_original_tests(tmp_path):
     source,p=fixture(tmp_path);p['setup']="printf 'pass\\n' > test_calc.py"
     r=runner.execute(source,p,tmp_path/'result','baseline');assert not r['ok'];assert 'changed original source' in r['error']
+
+@pytest.mark.skipif(os.environ.get('GOOSE_TEST_DOCKER')!='1',reason='requires Docker')
+def test_uploaded_database_is_copied_and_migrated_only_inside_environment(tmp_path):
+    import sqlite3
+    source,p=fixture(tmp_path);data=tmp_path/'customer.sqlite'
+    with sqlite3.connect(data) as db:db.execute('create table customers(id integer primary key, name text)');db.execute("insert into customers values(1,'Example')")
+    original=data.read_bytes()
+    p['checks'].append({'id':'data_copy','title':'Actual source rows, migration, new write and persistence','kind':'preserve','script':'''python - <<'PYCODE'
+import sqlite3,shutil
+with sqlite3.connect('file:/data/input?mode=ro',uri=True) as original:
+ assert original.execute('select * from customers').fetchall()==[(1,'Example')]
+shutil.copyfile('/data/input','/workspace/migration.sqlite')
+with sqlite3.connect('/workspace/migration.sqlite') as db:
+ db.execute("alter table customers add column tier text default 'standard'")
+ assert db.execute('select * from customers').fetchall()==[(1,'Example','standard')]
+ db.execute("insert into customers(name,tier) values('New','premium')")
+with sqlite3.connect('/workspace/migration.sqlite') as db:
+ assert db.execute('select count(*) from customers').fetchone()[0]==2
+ assert db.execute('select tier from customers where id=2').fetchone()[0]=='premium'
+with sqlite3.connect('file:/data/input?mode=ro',uri=True) as original:
+ assert len(original.execute('pragma table_info(customers)').fetchall())==2
+PYCODE'''})
+    r=runner.execute(source,p,tmp_path/'result','baseline',data=data);assert r['ok'],r;assert data.read_bytes()==original

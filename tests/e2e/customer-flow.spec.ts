@@ -54,7 +54,7 @@ test("a customer completes assessment, verified delivery, test payment, support,
   await page.locator("input[name=database]").setInputFiles(path.join(CLINIC, "data", "clinic.db"));
   await page.locator("input[name=demo]").check();
   await page.locator("input[name=authorized]").check();
-  await page.getByRole("button", { name: "Begin migration" }).click();
+  await page.getByRole("button", { name: "Start engineering job" }).click();
   await expect(page).toHaveURL(/\/jobs\/GS-\d+\?t=/);
   await expect(page.getByText("Demo · synthetic data")).toBeVisible();
   await expect(page.getByText("Your goal", { exact: true })).toBeVisible();
@@ -228,8 +228,8 @@ test("a public inquiry links to a repository engineering assessment without chan
   await page.getByLabel("Your name").fill("Playwright Tester");
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Type of engineering work").selectOption("workspace");
-  await expect(page.getByLabel("Target runtime (optional)")).toBeDisabled();
-  await expect(page.getByLabel("Requested data changes (optional)")).toBeDisabled();
+  await expect(page.getByLabel("Target runtime (optional)")).toHaveCount(0);
+  await expect(page.getByLabel("Requested data changes (optional)")).toHaveCount(0);
   await expect(page.getByText(/No Goose-specific configuration is required/)).toBeVisible();
   await page.getByLabel(/Your goal/).fill("Upgrade the dispatch routing CLI while preserving its existing JSON command interface and add bounded route constraints.");
   const source = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "e2e-workspace-")), "routing.zip");
@@ -238,7 +238,7 @@ test("a public inquiry links to a repository engineering assessment without chan
   await page.locator("input[name=repository]").setInputFiles(source);
   await page.locator("input[name=demo]").check();
   await page.locator("input[name=authorized]").check();
-  await page.getByRole("button", { name: "Begin migration" }).click();
+  await page.getByRole("button", { name: "Start engineering job" }).click();
   await expect(page).toHaveURL(/\/jobs\/GS-\d+\?t=/);
   await expect(page.getByText(/Autonomous discovery requires live Naive/).first()).toBeVisible({ timeout: 120_000 });
   await expect(page.getByRole("button", { name: "Accept proposal" })).toHaveCount(0);
@@ -266,7 +266,7 @@ test("a Rust request keeps its explicit target and requests live execution in lo
   await page.locator("input[name=database]").setInputFiles(path.join(CLINIC, "data", "clinic.db"));
   await page.locator("input[name=demo]").check();
   await page.locator("input[name=authorized]").check();
-  await page.getByRole("button", { name: "Begin migration" }).click();
+  await page.getByRole("button", { name: "Start engineering job" }).click();
   await expect(page).toHaveURL(/\/jobs\/GS-\d+\?t=/);
   await expect(page.getByText("Migrate the application to Rust.", { exact: true }).first()).toBeVisible({ timeout: 120_000 });
   await expect(page.getByText(/needs the live agent team on Naive/).first()).toBeVisible();
