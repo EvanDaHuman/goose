@@ -264,9 +264,14 @@ export async function fetchRepoZip(input: string, branch: string | null, session
   const name = wanted || info.default_branch;
   let sha=git?resolvePublicRef(git,name):null;
   if(!git){
-    const c = await gh<{ sha: string }>(`/repos/${ref.owner}/${ref.repo}/commits/${refPath(name)}`, token);
+    let c = await gh<{ sha: string }>(`/repos/${ref.owner}/${ref.repo}/commits/${refPath(name)}`, token);
+    // GitHub's commits endpoint sometimes answers 502/504 for a moment: try once more before giving up
+    if(c.status>=500){await new Promise(r=>setTimeout(r,1500));c=await gh<{ sha: string }>(`/repos/${ref.owner}/${ref.repo}/commits/${refPath(name)}`, token);}
     if(c.status===200)sha=c.data?.sha??null;
     else if(c.rateLimited&&!token)sha=resolvePublicRef(await publicReader(ref),name);
+    else if(c.status>=500&&!token){const pub=await publicReader(ref).catch(()=>null);sha=pub?resolvePublicRef(pub,name):null;}
+    // a GitHub outage is not a missing branch: say what actually happened
+    if(!sha&&c.status>=500)throw new GithubError(`GitHub isn't responding right now (HTTP ${c.status}). Please try again in a minute.`,502);
   }
   if(!sha||!(/^[a-f0-9]{40}$/).test(sha))throw new GithubError(`Couldn't find the branch "${name}" in ${info.full_name}.`,404);
 

@@ -49,6 +49,24 @@ def docker(*args,timeout=600,required=True):
     if required and r['code']:raise RuntimeError(r['output'][-6000:])
     return r
 
+# How a failing check is judged. These are language-neutral on purpose: a C++, Rust or Go test reports a failure as
+# "Encoding is wrong", "test failed" or "panicked", not only as Python's AssertionError.
+HARNESS_BROKE=re.compile(r'prepare changed original source|command not found|SyntaxError|ModuleNotFoundError')
+COMPILE_BROKE=re.compile(r'error: expected|was not declared|undefined reference|ld returned|error\[E\d+\]|cannot find symbol')
+BEHAVIOUR_FAILED=re.compile(r'AssertionError|assert|expect|not ok|fail|wrong|mismatch|differ|!=|panicked',re.I)
+FEATURE_ABSENT=re.compile(r'missing|not present|not implemented|AttributeError|TypeError:.*is not a function',re.I)
+
+def mutation_detected(r):
+    """A planted bug counts as caught only if a behaviour check failed; a mutation that stops the build, or a harness error, does not."""
+    out=r['output']
+    return r['code']>0 and not r['timed_out'] and bool(BEHAVIOUR_FAILED.search(out)) and not HARNESS_BROKE.search(out) and not COMPILE_BROKE.search(out)
+
+def requirement_fails_for_the_right_reason(r):
+    """Before the work, a requirement check must fail because the feature is wrong or absent (a migration's new crate or
+    module simply doesn't exist yet), not because the harness broke."""
+    out=r['output']
+    return r['code']>0 and not r['timed_out'] and bool(BEHAVIOUR_FAILED.search(out) or FEATURE_ABSENT.search(out)) and not HARNESS_BROKE.search(out)
+
 def execute(source,plan,out,phase='baseline',data=None):
     global DEADLINE
     DEADLINE=time.monotonic()+1800
@@ -113,7 +131,7 @@ def execute(source,plan,out,phase='baseline',data=None):
         docker('create','--name',seed,'--network','none','--mount',f'type=volume,src={volume},dst=/acceptance',base,'true');docker('cp',str(scripts)+'/.',seed+':/acceptance');docker('rm',seed)
         for c in plan['checks']:
             r=check(c);r['expected']='pass' if phase=='verify' or c['kind']=='preserve' else 'fail'
-            r['accepted']=(r['code']==0 if r['expected']=='pass' else r['code']>0 and not r['timed_out'] and bool(re.search(r'assert|expect|fail|AttributeError|TypeError:.*is not a function',r['output'],re.I)))
+            r['accepted']=(r['code']==0 if r['expected']=='pass' else requirement_fails_for_the_right_reason(r))
             report['checks'].append(r);save()
         if phase=='baseline':
             for i,m in enumerate(plan['mutations']):
@@ -125,7 +143,7 @@ def execute(source,plan,out,phase='baseline',data=None):
                 try:
                     c=next(c for c in plan['checks'] if c['id']==m['check_id']);r=check(c,mutimage,f'mutation-{i}.sha256')
                     # A failing build/import is not evidence that a behavior assertion noticed the mutation.
-                    detected=r['code']>0 and not r['timed_out'] and bool(re.search(r'AssertionError|assert |expected|not ok',r['output'],re.I)) and not bool(re.search(r'SyntaxError|ModuleNotFoundError|command not found',r['output']))
+                    detected=mutation_detected(r)
                     report['mutations'].append({'path':m['path'],'check_id':m['check_id'],'detected':detected,**r});save()
                 finally:docker('image','rm','-f',mutimage,required=False)
         report['ok']=all(c['accepted'] for c in report['checks']) and (phase!='baseline' or all(m['detected'] for m in report['mutations']))
