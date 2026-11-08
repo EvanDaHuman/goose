@@ -14,7 +14,7 @@ Only addresses the organisation publishes for contact are used, in this order: a
 ## Sending
 
 - **Per message (default):** `/ops/company` → *Prepare email* → *Send to …*, or `npm run outreach -- send <id> --yes`. The authorization is bound to the SHA-256 of recipient, subject and body.
-- **Policy:** *Let the agent send* (or `npm run outreach -- policy on 5 High`) lets the worker send one message at a time, at least 3 minutes apart, up to the daily cap, to High (or High and Medium) fit prospects with a published contact. `OUTREACH_DAILY_MAX` is a hard ceiling for both modes.
+- **Policy:** *Let the agent send* (or `npm run outreach -- policy on 5 High`) lets the worker send one message at a time, `spacingMinutes` apart (default 10; `policy on 10 Medium 10`), up to the daily cap, to High (or High and Medium) fit prospects with a published contact. `OUTREACH_DAILY_MAX` is a hard ceiling for both modes.
 - **Test copies:** *Send test copy to me* / `npm run outreach -- test <id>` sends the exact email, subject prefixed `[TEST for <real recipient>]`, to `OUTREACH_TEST_RECIPIENT` only.
 - `npm run outreach -- preview <id>` prints the exact email without sending it (once real sending is configured it is kept as the draft that `send` will use).
 

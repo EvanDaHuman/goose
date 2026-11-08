@@ -39,8 +39,8 @@ export function outreachStatus() {
 
 // ------------------------------------------------------------------ policy
 
-export type OutreachPolicy = { enabled: boolean; dailyCap: number; minFit: "High" | "Medium"; id: string | null; authorizedAt: string | null };
-const POLICY_OFF: OutreachPolicy = { enabled: false, dailyCap: 5, minFit: "High", id: null, authorizedAt: null };
+export type OutreachPolicy = { enabled: boolean; dailyCap: number; minFit: "High" | "Medium"; spacingMinutes?: number; id: string | null; authorizedAt: string | null };
+const POLICY_OFF: OutreachPolicy = { enabled: false, dailyCap: 5, minFit: "High", spacingMinutes: 10, id: null, authorizedAt: null };
 export const outreachPolicy = () => getSetting<OutreachPolicy>("outreach.policy", POLICY_OFF);
 export const POLICY_PHRASE = "Authorize prospect outreach";
 
@@ -51,9 +51,10 @@ export async function setOutreachPolicy(input: any) {
   const cap = input.enabled ? requested : Math.min(Math.max(1, requested || 1), HARD_DAILY_MAX());   // turning off never fails validation
   if (!Number.isFinite(cap) || cap < 1 || cap > HARD_DAILY_MAX()) throw new Error(`dailyCap must be 1 to ${HARD_DAILY_MAX()}`);
   const minFit = input.minFit === "Medium" ? "Medium" : "High";
-  const policy: OutreachPolicy = { enabled: input.enabled, dailyCap: cap, minFit, id: crypto.randomUUID(), authorizedAt: new Date().toISOString() };
+  const spacingMinutes = Math.min(1440, Math.max(3, Math.round(Number(input.spacingMinutes ?? 10)) || 10));
+  const policy: OutreachPolicy = { enabled: input.enabled, dailyCap: cap, minFit, spacingMinutes, id: crypto.randomUUID(), authorizedAt: new Date().toISOString() };
   await q("INSERT INTO settings(key,value) VALUES('outreach.policy',$1) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value,updated_at=now()", [JSON.stringify(policy)]);
-  await addIntervention(null, "outreach_policy", policy.enabled ? `Founder let the outreach agent send up to ${cap} prospect email(s) a day (fit ${minFit} and above).`
+  await addIntervention(null, "outreach_policy", policy.enabled ? `Founder let the outreach agent send up to ${cap} prospect email(s) a day, ${spacingMinutes} minutes apart (fit ${minFit} and above).`
     : "Founder turned automatic prospect outreach off.", policy, 0);
   return policy;
 }
@@ -315,11 +316,11 @@ export async function serviceOutreach(now = Date.now()) {
     // 1. contacts for drafted prospects that have not been looked up yet (a few per minute: public rate limits)
     for (const p of await q<any>("SELECT id FROM prospects WHERE outreach_draft IS NOT NULL AND contact_checked_at IS NULL ORDER BY id LIMIT 3"))
       await resolveContact(p.id).catch((e) => console.error("[outreach] contact", p.id, e.message));
-    // 2. send one message per tick under the policy, spaced at least 3 minutes apart
+    // 2. send one message per tick under the policy, spaced policy.spacingMinutes apart (default 10)
     const policy = await outreachPolicy();
     if (policy.enabled && outreachStatus().canSendReal) {
       const cap = Math.min(policy.dailyCap, HARD_DAILY_MAX());
-      const recent = await one("SELECT 1 FROM outreach_messages WHERE NOT is_test AND authorized_at > now()-interval '3 minutes'");
+      const recent = await one("SELECT 1 FROM outreach_messages WHERE NOT is_test AND authorized_at > now() - make_interval(mins => $1)", [policy.spacingMinutes ?? 10]);
       if (!recent && (await sentToday()) < cap) {
         const next = await one<any>(`SELECT p.id FROM prospects p WHERE p.status='draft_ready' AND p.contact_email IS NOT NULL
           AND p.fit_score = ANY($1) AND NOT EXISTS(SELECT 1 FROM outreach_suppressions s WHERE s.email=lower(p.contact_email))

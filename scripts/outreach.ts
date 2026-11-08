@@ -5,7 +5,7 @@
 //   npm run outreach -- test <id>          send a TEST copy of prospect <id>'s email to OUTREACH_TEST_RECIPIENT only
 //   npm run outreach -- send <id> --yes    send prospect <id>'s email to the prospect (authorizes this exact message)
 //   npm run outreach -- replies            poll AgentMail for replies to sent outreach
-//   npm run outreach -- policy on <cap> [High|Medium] | policy off
+//   npm run outreach -- policy on <cap> [High|Medium] [spacing minutes] | policy off
 import { pool, q } from "../lib/db";
 import { outreachDashboard, outreachStatus, pollReplies, POLICY_PHRASE, queueOutreach, resolveContact, sendOutreach, setOutreachPolicy } from "../lib/outreach";
 
@@ -38,7 +38,7 @@ try {
     console.log(await pollReplies());
   } else if (cmd === "policy") {
     const on = arg === "on";
-    console.log(await setOutreachPolicy({ enabled: on, dailyCap: Number(rest[0] ?? 5), minFit: rest[1], authorization: on ? POLICY_PHRASE : undefined }));
+    console.log(await setOutreachPolicy({ enabled: on, dailyCap: Number(rest[0] ?? 5), minFit: rest[1], spacingMinutes: rest[2] ? Number(rest[2]) : undefined, authorization: on ? POLICY_PHRASE : undefined }));
   } else throw new Error(`Unknown command ${cmd}`);
 } catch (e) { console.error((e as Error).message); process.exitCode = 1; }
 finally { await pool.end(); }
