@@ -1,18 +1,64 @@
 {
-  "recorded_at": "2026-11-08T00:31:00Z",
+  "recorded_at": "2026-11-08T00:50:01.278529+00:00",
   "environment": "macOS on Apple Silicon; local PostgreSQL; live Naive configured separately from isolated tests",
   "checks": [
-    { "command": "npm test", "result": "pass", "passed": 66, "scope": "Disposable database integration suite, including real process isolation, approval state, webhook signatures, provider HTTP mocks and payment replay" },
-    { "command": "npm run test:engine", "result": "pass", "passed": 35, "scope": "Python engineering and data-verification rules" },
-    { "command": "npm run test:e2e", "result": "pass", "passed": 6, "scope": "Production app and worker in a disposable database; live provider credentials disabled; complete browser workflows and exact inbound email rendering" },
-    { "command": "GOOSE_NEXT_DIST_DIR=.next-production npm run build", "result": "pass", "scope": "Production Next.js build" },
-    { "command": "npm run typecheck", "result": "pass" },
-    { "command": "GOOSE_TEST_DOCKER=1 var/venvs/engine/bin/python -m pytest -q tests/robotics", "result": "pass", "passed": 7, "scope": "Baseline semantics, Nav2 status handling and malicious candidate isolation" },
-    { "command": "npm run doctor", "result": "pass", "application_core_ready": true, "live_engineering_ready": true, "agent_roles": 7, "database_tables": 34 },
-    { "command": "Live browser smoke", "result": "pass", "routes": 9, "mobile_views": 3, "browser_errors": 0, "horizontal_overflow": false }
+    {
+      "command": "npm test",
+      "result": "pass",
+      "passed": 67,
+      "scope": "Disposable database integration suite, including real process isolation, approval state, webhook signatures, provider HTTP mocks and payment replay; repaired-attempt packaging through the real dispatcher with ZIP inspection"
+    },
+    {
+      "command": "npm run test:engine",
+      "result": "pass",
+      "passed": 35,
+      "scope": "Python engineering and data-verification rules"
+    },
+    {
+      "command": "npm run test:e2e",
+      "result": "pass",
+      "passed": 6,
+      "scope": "Production app and worker in a disposable database; live provider credentials disabled; complete browser workflows and exact inbound email rendering"
+    },
+    {
+      "command": "GOOSE_NEXT_DIST_DIR=.next-production npm run build",
+      "result": "pass",
+      "scope": "Production Next.js build"
+    },
+    {
+      "command": "npm run typecheck",
+      "result": "pass"
+    },
+    {
+      "command": "GOOSE_TEST_DOCKER=1 var/venvs/engine/bin/python -m pytest -q tests/robotics",
+      "result": "pass",
+      "passed": 7,
+      "scope": "Baseline semantics, Nav2 status handling and malicious candidate isolation"
+    },
+    {
+      "command": "npm run doctor",
+      "result": "pass",
+      "application_core_ready": true,
+      "live_engineering_ready": true,
+      "agent_roles": 7,
+      "database_tables": 34
+    },
+    {
+      "command": "Live browser smoke",
+      "result": "pass",
+      "routes": 9,
+      "mobile_views": 3,
+      "browser_errors": 0,
+      "horizontal_overflow": false
+    }
   ],
   "provider_boundary": "AgentMail and Stripe adapters were validated with signed local requests and HTTP mocks. Live email delivery and real payment settlement have not been claimed without provider activation.",
   "robotics_boundary": "The standalone live-agent fixture separately passed 111 algorithm checks and 9 real Gazebo checks under frozen verifier v7. Its evidence is under robotics/evidence. Full company engagements have separate exported job records.",
   "test_data": "Browser test services were stopped and their disposable database and job files removed. Earlier labelled local test records remain in the development company history. No real customer or revenue is claimed.",
-  "not_claimed": ["Production deployment", "Physical robot validation", "Universal repository support", "Enterprise multi-tenant certification"]
+  "not_claimed": [
+    "Production deployment",
+    "Physical robot validation",
+    "Universal repository support",
+    "Enterprise multi-tenant certification"
+  ]
 }

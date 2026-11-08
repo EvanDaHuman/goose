@@ -1,0 +1,1306 @@
+{
+  "kind": "migrated_gazebo_mission",
+  "world": "Nav2 official TurtleBot3 sandbox",
+  "durationWallSeconds": 180.01,
+  "simulationSeconds": 173.022,
+  "readyAtSeconds": 9.7,
+  "lidarMessages": 866,
+  "mapMessages": 35,
+  "detectedFrontiers": 7199,
+  "completedGoals": 50,
+  "candidateReportedCompletedGoals": 50,
+  "nav2SucceededGoalIds": [
+    "03d7205a454a4b588f970d25e8ceeff6",
+    "0fa88ccaedab451f8d82a0ac5bac0da6",
+    "125d1dbd3da740708f8221002fb20937",
+    "12da7e848f2d4947a7ec3966b7047367",
+    "12ea26d85cc34013a7418fc293edff60",
+    "1d881e4ffe1043cc82cd1a35412965ca",
+    "222d6e27a26246ec8895a2b5bc0a0a8c",
+    "234d3db05e674ead905c4fa5511c4130",
+    "24ce2eaf761b48cbba66c03bbb944a32",
+    "28b37e4473e64ab680d93f5971fb3a74",
+    "297e3266266f41a09e56931d38f769d7",
+    "2d8a4e2b3497478f81ae65bc839d66e8",
+    "3777afecf1a54433b7b021274204f99e",
+    "4013bd31bc934f25a7dcf6c931220fd4",
+    "448910e27afc4c0ea28f621769a5d1e5",
+    "4e6a2b600d574ff6ad033a466a49e55f",
+    "50c635c9ec7f43b99b7dd75745fd9270",
+    "50cbb747a1f641dd88decd10da31eea0",
+    "51bb969aac644ac2846d67f75a76e29c",
+    "521cb8f5656a4ec8997f9b26acbe44f2",
+    "538cc177f03b4a238d6ad47a74f830e4",
+    "57d67a8513034f0299a739b4c34e012d",
+    "653633128f814a5ea4b311ed8d75c2a5",
+    "6657ae140e804b14b13e92aaaf7ea5fd",
+    "6a0ec244ef3640278a274d0e4cd6212a",
+    "73a7e1324ad4483ba97de7b7d340f756",
+    "792964e05be245f0815d75623c99b410",
+    "81dfbc9a1b7d4bec9e3d4ece4e571c14",
+    "822e316bae034eeab8090a4c49512367",
+    "87448259f4e143e8a70f7a7c36ac8ddd",
+    "88d48718db7c47de84a3664915c165b7",
+    "946b43e37e294bc8a6a7c31ab827d4b2",
+    "9cf4fc96499b4b3dad6c7772c6dd9693",
+    "a05cd4d97b0743c2bcb65017f5a12d55",
+    "acdb066462aa4f569c88969550720219",
+    "b2bb6ced9aa74dfcbf75fcb623dad998",
+    "cd76c82a1bdd4e68b2bf6b36bc1438ea",
+    "cd923b224ae040d899b41da85218e807",
+    "cf09a5a935e44592875ba76fb745a1ee",
+    "d49ab5bce32b4d8ab6a229e72919a2cb",
+    "d4ec0b20379d409482abb9ddd04dcc36",
+    "d82dde565e65499bacb143ebd4003763",
+    "df4866500dc141ae94639abdcfd44bf1",
+    "e109ded1ea084aec9e131a66880131a0",
+    "e2d1717c34324ae7b8729c362e8f9fe0",
+    "e46dee67e2624cb5be67e50412bb6db0",
+    "e648d7f53ef543f3badafda6bedb1dbe",
+    "e9bdb1cb1745428f975874e4f412d3c4",
+    "eaaf6f3e6cd44f068c56c5f180cea5d3",
+    "f443e629dc4c43c9b30a9c71beacdd9a"
+  ],
+  "nav2ActionStatusPublishers": [
+    "/bt_navigator"
+  ],
+  "nav2GetResultStatuses": {
+    "cf09a5a935e44592875ba76fb745a1ee": 4,
+    "e9bdb1cb1745428f975874e4f412d3c4": 4,
+    "6657ae140e804b14b13e92aaaf7ea5fd": 4,
+    "f443e629dc4c43c9b30a9c71beacdd9a": 4,
+    "e109ded1ea084aec9e131a66880131a0": 4,
+    "e2d1717c34324ae7b8729c362e8f9fe0": 4,
+    "cd923b224ae040d899b41da85218e807": 4,
+    "822e316bae034eeab8090a4c49512367": 4,
+    "50c635c9ec7f43b99b7dd75745fd9270": 4,
+    "1d881e4ffe1043cc82cd1a35412965ca": 4,
+    "6a0ec244ef3640278a274d0e4cd6212a": 4,
+    "b2bb6ced9aa74dfcbf75fcb623dad998": 4,
+    "4e6a2b600d574ff6ad033a466a49e55f": 4,
+    "87448259f4e143e8a70f7a7c36ac8ddd": 4,
+    "521cb8f5656a4ec8997f9b26acbe44f2": 4,
+    "12ea26d85cc34013a7418fc293edff60": 4,
+    "e46dee67e2624cb5be67e50412bb6db0": 4,
+    "24ce2eaf761b48cbba66c03bbb944a32": 4,
+    "88d48718db7c47de84a3664915c165b7": 4,
+    "d4ec0b20379d409482abb9ddd04dcc36": 4,
+    "125d1dbd3da740708f8221002fb20937": 4,
+    "eaaf6f3e6cd44f068c56c5f180cea5d3": 4,
+    "297e3266266f41a09e56931d38f769d7": 4,
+    "acdb066462aa4f569c88969550720219": 4,
+    "4013bd31bc934f25a7dcf6c931220fd4": 4,
+    "03d7205a454a4b588f970d25e8ceeff6": 4,
+    "234d3db05e674ead905c4fa5511c4130": 4,
+    "0fa88ccaedab451f8d82a0ac5bac0da6": 4,
+    "df4866500dc141ae94639abdcfd44bf1": 4,
+    "81dfbc9a1b7d4bec9e3d4ece4e571c14": 4,
+    "538cc177f03b4a238d6ad47a74f830e4": 4,
+    "2d8a4e2b3497478f81ae65bc839d66e8": 4,
+    "57d67a8513034f0299a739b4c34e012d": 4,
+    "51bb969aac644ac2846d67f75a76e29c": 4,
+    "50cbb747a1f641dd88decd10da31eea0": 4,
+    "653633128f814a5ea4b311ed8d75c2a5": 4,
+    "448910e27afc4c0ea28f621769a5d1e5": 4,
+    "cd76c82a1bdd4e68b2bf6b36bc1438ea": 4,
+    "792964e05be245f0815d75623c99b410": 4,
+    "a05cd4d97b0743c2bcb65017f5a12d55": 4,
+    "73a7e1324ad4483ba97de7b7d340f756": 4,
+    "12da7e848f2d4947a7ec3966b7047367": 4,
+    "222d6e27a26246ec8895a2b5bc0a0a8c": 4,
+    "28b37e4473e64ab680d93f5971fb3a74": 4,
+    "3777afecf1a54433b7b021274204f99e": 4,
+    "9cf4fc96499b4b3dad6c7772c6dd9693": 4,
+    "e648d7f53ef543f3badafda6bedb1dbe": 4,
+    "d49ab5bce32b4d8ab6a229e72919a2cb": 4,
+    "d82dde565e65499bacb143ebd4003763": 4,
+    "946b43e37e294bc8a6a7c31ab827d4b2": 4
+  },
+  "completionEvidence": "independent Nav2 GetResult RPC returned SUCCEEDED for unique goal UUIDs discovered from bt_navigator status; candidate counters are supplementary",
+  "distanceMeters": 3.798,
+  "trajectory": [
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0237,
+      0.0
+    ],
+    [
+      0.0502,
+      -0.0002
+    ],
+    [
+      0.0732,
+      -0.0007
+    ],
+    [
+      0.0976,
+      -0.0017
+    ],
+    [
+      0.1231,
+      -0.0032
+    ],
+    [
+      0.1495,
+      -0.0052
+    ],
+    [
+      0.176,
+      -0.0077
+    ],
+    [
+      0.2025,
+      -0.0107
+    ],
+    [
+      0.2291,
+      -0.0142
+    ],
+    [
+      0.2552,
+      -0.018
+    ],
+    [
+      0.281,
+      -0.022
+    ],
+    [
+      0.3069,
+      -0.0264
+    ],
+    [
+      0.3333,
+      -0.031
+    ],
+    [
+      0.3601,
+      -0.0358
+    ],
+    [
+      0.3877,
+      -0.0409
+    ],
+    [
+      0.4174,
+      -0.0462
+    ],
+    [
+      0.4391,
+      -0.0501
+    ],
+    [
+      0.4615,
+      -0.054
+    ],
+    [
+      0.4848,
+      -0.0579
+    ],
+    [
+      0.5089,
+      -0.0618
+    ],
+    [
+      0.5338,
+      -0.0657
+    ],
+    [
+      0.559,
+      -0.0693
+    ],
+    [
+      0.5847,
+      -0.0729
+    ],
+    [
+      0.6108,
+      -0.0762
+    ],
+    [
+      0.6369,
+      -0.0793
+    ],
+    [
+      0.6626,
+      -0.0822
+    ],
+    [
+      0.6882,
+      -0.0849
+    ],
+    [
+      0.7136,
+      -0.0874
+    ],
+    [
+      0.7389,
+      -0.0898
+    ],
+    [
+      0.764,
+      -0.0921
+    ],
+    [
+      0.7889,
+      -0.0942
+    ],
+    [
+      0.8132,
+      -0.0962
+    ],
+    [
+      0.8369,
+      -0.0982
+    ],
+    [
+      0.8595,
+      -0.1001
+    ],
+    [
+      0.8818,
+      -0.102
+    ],
+    [
+      0.9033,
+      -0.1039
+    ],
+    [
+      0.9249,
+      -0.1059
+    ],
+    [
+      0.9462,
+      -0.1078
+    ],
+    [
+      0.9673,
+      -0.1097
+    ],
+    [
+      0.988,
+      -0.1116
+    ],
+    [
+      1.0086,
+      -0.1133
+    ],
+    [
+      1.0288,
+      -0.1151
+    ],
+    [
+      1.0582,
+      -0.1175
+    ],
+    [
+      1.0866,
+      -0.1197
+    ],
+    [
+      1.1139,
+      -0.1218
+    ],
+    [
+      1.1398,
+      -0.1236
+    ],
+    [
+      1.1636,
+      -0.1252
+    ],
+    [
+      1.1843,
+      -0.1266
+    ],
+    [
+      1.2053,
+      -0.1279
+    ],
+    [
+      1.2256,
+      -0.1292
+    ],
+    [
+      1.2472,
+      -0.1322
+    ],
+    [
+      1.2677,
+      -0.1373
+    ],
+    [
+      1.2885,
+      -0.1437
+    ],
+    [
+      1.3089,
+      -0.1513
+    ],
+    [
+      1.3275,
+      -0.1594
+    ],
+    [
+      1.3461,
+      -0.1687
+    ],
+    [
+      1.3649,
+      -0.1793
+    ],
+    [
+      1.3824,
+      -0.1904
+    ],
+    [
+      1.3988,
+      -0.2023
+    ],
+    [
+      1.4141,
+      -0.2156
+    ],
+    [
+      1.4269,
+      -0.2312
+    ],
+    [
+      1.4356,
+      -0.2493
+    ],
+    [
+      1.4426,
+      -0.2696
+    ],
+    [
+      1.4474,
+      -0.2895
+    ],
+    [
+      1.4512,
+      -0.3128
+    ],
+    [
+      1.4532,
+      -0.3338
+    ],
+    [
+      1.4544,
+      -0.359
+    ],
+    [
+      1.4546,
+      -0.3812
+    ],
+    [
+      1.454,
+      -0.4062
+    ],
+    [
+      1.4526,
+      -0.4344
+    ],
+    [
+      1.4504,
+      -0.4643
+    ],
+    [
+      1.4484,
+      -0.4851
+    ],
+    [
+      1.4461,
+      -0.5064
+    ],
+    [
+      1.4434,
+      -0.5283
+    ],
+    [
+      1.4403,
+      -0.5505
+    ],
+    [
+      1.437,
+      -0.5727
+    ],
+    [
+      1.4335,
+      -0.595
+    ],
+    [
+      1.4296,
+      -0.6174
+    ],
+    [
+      1.4255,
+      -0.6396
+    ],
+    [
+      1.4212,
+      -0.6617
+    ],
+    [
+      1.4166,
+      -0.6834
+    ],
+    [
+      1.4118,
+      -0.7047
+    ],
+    [
+      1.4067,
+      -0.7262
+    ],
+    [
+      1.4013,
+      -0.7477
+    ],
+    [
+      1.3957,
+      -0.7687
+    ],
+    [
+      1.3899,
+      -0.7891
+    ],
+    [
+      1.384,
+      -0.8088
+    ],
+    [
+      1.3779,
+      -0.8281
+    ],
+    [
+      1.3685,
+      -0.8557
+    ],
+    [
+      1.3595,
+      -0.88
+    ],
+    [
+      1.3506,
+      -0.9019
+    ],
+    [
+      1.3417,
+      -0.9217
+    ],
+    [
+      1.3301,
+      -0.9449
+    ],
+    [
+      1.318,
+      -0.9662
+    ],
+    [
+      1.3048,
+      -0.9866
+    ],
+    [
+      1.2903,
+      -1.0062
+    ],
+    [
+      1.2742,
+      -1.0254
+    ],
+    [
+      1.2561,
+      -1.0442
+    ],
+    [
+      1.2411,
+      -1.058
+    ],
+    [
+      1.2249,
+      -1.0714
+    ],
+    [
+      1.2071,
+      -1.0846
+    ],
+    [
+      1.1874,
+      -1.0975
+    ],
+    [
+      1.1662,
+      -1.1098
+    ],
+    [
+      1.1433,
+      -1.1213
+    ],
+    [
+      1.1189,
+      -1.1319
+    ],
+    [
+      1.0932,
+      -1.1414
+    ],
+    [
+      1.0662,
+      -1.1498
+    ],
+    [
+      1.0379,
+      -1.1569
+    ],
+    [
+      1.0086,
+      -1.1629
+    ],
+    [
+      0.9888,
+      -1.1661
+    ],
+    [
+      0.9688,
+      -1.1688
+    ],
+    [
+      0.9489,
+      -1.1709
+    ],
+    [
+      0.9288,
+      -1.1725
+    ],
+    [
+      0.9078,
+      -1.1736
+    ],
+    [
+      0.8862,
+      -1.1742
+    ],
+    [
+      0.864,
+      -1.1742
+    ],
+    [
+      0.8414,
+      -1.1735
+    ],
+    [
+      0.8185,
+      -1.172
+    ],
+    [
+      0.7958,
+      -1.1699
+    ],
+    [
+      0.7734,
+      -1.167
+    ],
+    [
+      0.7513,
+      -1.1632
+    ],
+    [
+      0.7294,
+      -1.1587
+    ],
+    [
+      0.7083,
+      -1.1535
+    ],
+    [
+      0.6879,
+      -1.1475
+    ],
+    [
+      0.6687,
+      -1.1409
+    ],
+    [
+      0.6421,
+      -1.1301
+    ],
+    [
+      0.6181,
+      -1.1181
+    ],
+    [
+      0.5965,
+      -1.1054
+    ],
+    [
+      0.5779,
+      -1.0921
+    ],
+    [
+      0.5621,
+      -1.0787
+    ],
+    [
+      0.5466,
+      -1.0626
+    ],
+    [
+      0.5334,
+      -1.0438
+    ],
+    [
+      0.5273,
+      -1.0631
+    ],
+    [
+      0.5194,
+      -1.0838
+    ],
+    [
+      0.507,
+      -1.104
+    ],
+    [
+      0.4921,
+      -1.1208
+    ],
+    [
+      0.4744,
+      -1.1348
+    ],
+    [
+      0.4561,
+      -1.1445
+    ],
+    [
+      0.4366,
+      -1.1497
+    ],
+    [
+      0.4161,
+      -1.1501
+    ],
+    [
+      0.3951,
+      -1.1493
+    ],
+    [
+      0.4153,
+      -1.1498
+    ],
+    [
+      0.3948,
+      -1.1496
+    ],
+    [
+      0.3743,
+      -1.1488
+    ],
+    [
+      0.3961,
+      -1.1491
+    ],
+    [
+      0.4161,
+      -1.1493
+    ],
+    [
+      0.3956,
+      -1.149
+    ],
+    [
+      0.4156,
+      -1.1493
+    ],
+    [
+      0.4074,
+      -1.1265
+    ],
+    [
+      0.4014,
+      -1.1073
+    ],
+    [
+      0.394,
+      -1.0855
+    ],
+    [
+      0.3856,
+      -1.0621
+    ],
+    [
+      0.3771,
+      -1.0382
+    ],
+    [
+      0.3689,
+      -1.014
+    ],
+    [
+      0.3616,
+      -0.9901
+    ],
+    [
+      0.3555,
+      -0.9666
+    ],
+    [
+      0.351,
+      -0.9446
+    ],
+    [
+      0.348,
+      -0.9203
+    ],
+    [
+      0.3476,
+      -0.8998
+    ],
+    [
+      0.3497,
+      -0.8799
+    ],
+    [
+      0.3306,
+      -0.8871
+    ],
+    [
+      0.3103,
+      -0.8967
+    ],
+    [
+      0.2894,
+      -0.9029
+    ]
+  ],
+  "mapHistory": [
+    {
+      "seconds": 122649.36,
+      "known": 1186,
+      "free": 1085,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122654.36,
+      "known": 1186,
+      "free": 1085,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122659.36,
+      "known": 2746,
+      "free": 2536,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122664.36,
+      "known": 2746,
+      "free": 2536,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122669.36,
+      "known": 2746,
+      "free": 2536,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122674.36,
+      "known": 5565,
+      "free": 5140,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122679.36,
+      "known": 5565,
+      "free": 5140,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122684.36,
+      "known": 5565,
+      "free": 5140,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122689.36,
+      "known": 5565,
+      "free": 5140,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122694.36,
+      "known": 5565,
+      "free": 5140,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122699.36,
+      "known": 5565,
+      "free": 5140,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122704.36,
+      "known": 5565,
+      "free": 5140,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122709.36,
+      "known": 5565,
+      "free": 5140,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122714.36,
+      "known": 5565,
+      "free": 5140,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122719.36,
+      "known": 5565,
+      "free": 5140,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122724.36,
+      "known": 5930,
+      "free": 5476,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122729.36,
+      "known": 5930,
+      "free": 5476,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122734.36,
+      "known": 5930,
+      "free": 5476,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122739.36,
+      "known": 5930,
+      "free": 5476,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122744.36,
+      "known": 5930,
+      "free": 5476,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122749.36,
+      "known": 5930,
+      "free": 5476,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122754.36,
+      "known": 5930,
+      "free": 5476,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122759.36,
+      "known": 5930,
+      "free": 5476,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122764.37,
+      "known": 5930,
+      "free": 5476,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122769.36,
+      "known": 5930,
+      "free": 5476,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122774.36,
+      "known": 5930,
+      "free": 5476,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122779.36,
+      "known": 5930,
+      "free": 5476,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122784.37,
+      "known": 5930,
+      "free": 5476,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122789.36,
+      "known": 5930,
+      "free": 5476,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122794.36,
+      "known": 5930,
+      "free": 5476,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122799.36,
+      "known": 5930,
+      "free": 5476,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122804.36,
+      "known": 5930,
+      "free": 5476,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122809.37,
+      "known": 5930,
+      "free": 5476,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122814.36,
+      "known": 5930,
+      "free": 5476,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    },
+    {
+      "seconds": 122819.36,
+      "known": 5930,
+      "free": 5476,
+      "total": 11433,
+      "resolution": 0.05000000074505806
+    }
+  ],
+  "agentStatus": [
+    {
+      "completed_goals": 35,
+      "failed_goals": 0,
+      "selected_goal": [
+        0.07342070670950147,
+        -1.001241132697141
+      ]
+    },
+    {
+      "completed_goals": 36,
+      "failed_goals": 0,
+      "selected_goal": null
+    },
+    {
+      "completed_goals": 36,
+      "failed_goals": 0,
+      "selected_goal": [
+        0.07342070670950147,
+        -1.001241132697141
+      ]
+    },
+    {
+      "completed_goals": 37,
+      "failed_goals": 0,
+      "selected_goal": null
+    },
+    {
+      "completed_goals": 37,
+      "failed_goals": 0,
+      "selected_goal": [
+        0.07342070670950147,
+        -1.001241132697141
+      ]
+    },
+    {
+      "completed_goals": 38,
+      "failed_goals": 0,
+      "selected_goal": null
+    },
+    {
+      "completed_goals": 38,
+      "failed_goals": 0,
+      "selected_goal": [
+        0.07342070670950147,
+        -1.001241132697141
+      ]
+    },
+    {
+      "completed_goals": 39,
+      "failed_goals": 0,
+      "selected_goal": null
+    },
+    {
+      "completed_goals": 39,
+      "failed_goals": 0,
+      "selected_goal": [
+        0.07342070670950147,
+        -1.001241132697141
+      ]
+    },
+    {
+      "completed_goals": 40,
+      "failed_goals": 0,
+      "selected_goal": null
+    },
+    {
+      "completed_goals": 40,
+      "failed_goals": 0,
+      "selected_goal": [
+        0.07342070670950147,
+        -1.001241132697141
+      ]
+    },
+    {
+      "completed_goals": 41,
+      "failed_goals": 0,
+      "selected_goal": null
+    },
+    {
+      "completed_goals": 41,
+      "failed_goals": 0,
+      "selected_goal": [
+        0.07342070670950147,
+        -1.001241132697141
+      ]
+    },
+    {
+      "completed_goals": 42,
+      "failed_goals": 0,
+      "selected_goal": null
+    },
+    {
+      "completed_goals": 42,
+      "failed_goals": 0,
+      "selected_goal": [
+        0.07342070670950147,
+        -1.001241132697141
+      ]
+    },
+    {
+      "completed_goals": 43,
+      "failed_goals": 0,
+      "selected_goal": null
+    },
+    {
+      "completed_goals": 43,
+      "failed_goals": 0,
+      "selected_goal": [
+        0.07342070670950147,
+        -1.001241132697141
+      ]
+    },
+    {
+      "completed_goals": 44,
+      "failed_goals": 0,
+      "selected_goal": null
+    },
+    {
+      "completed_goals": 44,
+      "failed_goals": 0,
+      "selected_goal": [
+        0.07342070670950147,
+        -1.001241132697141
+      ]
+    },
+    {
+      "completed_goals": 45,
+      "failed_goals": 0,
+      "selected_goal": null
+    },
+    {
+      "completed_goals": 45,
+      "failed_goals": 0,
+      "selected_goal": [
+        0.07342070670950147,
+        -1.001241132697141
+      ]
+    },
+    {
+      "completed_goals": 46,
+      "failed_goals": 0,
+      "selected_goal": null
+    },
+    {
+      "completed_goals": 46,
+      "failed_goals": 0,
+      "selected_goal": [
+        0.07342070670950147,
+        -1.001241132697141
+      ]
+    },
+    {
+      "completed_goals": 47,
+      "failed_goals": 0,
+      "selected_goal": null
+    },
+    {
+      "completed_goals": 47,
+      "failed_goals": 0,
+      "selected_goal": [
+        0.07342070670950147,
+        -1.001241132697141
+      ]
+    },
+    {
+      "completed_goals": 48,
+      "failed_goals": 0,
+      "selected_goal": null
+    },
+    {
+      "completed_goals": 48,
+      "failed_goals": 0,
+      "selected_goal": [
+        0.07342070670950147,
+        -1.001241132697141
+      ]
+    },
+    {
+      "completed_goals": 49,
+      "failed_goals": 0,
+      "selected_goal": null
+    },
+    {
+      "completed_goals": 49,
+      "failed_goals": 0,
+      "selected_goal": [
+        0.07342070670950147,
+        -1.001241132697141
+      ]
+    },
+    {
+      "completed_goals": 50,
+      "failed_goals": 0,
+      "selected_goal": null
+    }
+  ],
+  "checks": [
+    {
+      "name": "Gazebo simulation clock advanced",
+      "passed": true
+    },
+    {
+      "name": "real lidar scans received",
+      "passed": true
+    },
+    {
+      "name": "SLAM occupancy maps received",
+      "passed": true
+    },
+    {
+      "name": "map to robot transform available",
+      "passed": true
+    },
+    {
+      "name": "Nav2 action server ready",
+      "passed": true
+    },
+    {
+      "name": "robot moved at least 0.25 m in physics",
+      "passed": true
+    },
+    {
+      "name": "migrated RRT published frontiers",
+      "passed": true
+    },
+    {
+      "name": "migrated assignment completed a Nav2 goal",
+      "passed": true
+    },
+    {
+      "name": "migrated package remained running",
+      "passed": true
+    }
+  ],
+  "passed": 9,
+  "total": 9,
+  "verdict": "pass",
+  "nonce": "82ae51703e58414f9c695b53a40e0128",
+  "limitations": [
+    "One simulated robot and world; no physical robot validation",
+    "No collision certification or full exploration coverage claim",
+    "ROS1 baseline is separately recorded source-level replay"
+  ],
+  "execution": {
+    "exitCode": 0,
+    "seconds": 183.629,
+    "log": "/Users/adhvaidhsunny_1/Documents/Codex/2026-11-06/pul/work/goose/var/robotics/jobs/ba6539a20abd8d0d3088/simulation.log",
+    "isolation": "simulation/observer and candidate run in separate filesystem containers"
+  },
+  "candidateFiles": {
+    "CMakeLists.txt": "6667aab267014148f4c94ad90f52d0b288bb2b38f01d0154499ad0aaffe0347a",
+    "GOOSE_AGENT_PROVENANCE.json": "136ce183293c687dfd4c913cc238c4a8c42a4ca9c7ca3c597a0b9e88b7ff8010",
+    "LICENSE.md": "8871685c97d69944d09fd0a870458e21739021a40bc576446898480a9fcc8287",
+    "MIGRATION_REQUIREMENTS.md": "95b120a278fcd3a53d5820ee28cbeb80d8aca57e9036038340a202b516ba2ebc",
+    "README.md": "2b1bf13a18abf733690234732065a0ac12ec39382f49c9344ae2e6f22a17af85",
+    "goose-workspace.json": "d43356845c87c52f830fad092aeee63d8e93848561ec38abbd54e7c8d12a1922",
+    "include/functions.h": "84f23ad7786cb7ad433fec13de4f834070c6281ff54d874f50c14a4cd2122b9d",
+    "launch/exploration.launch.py": "68a8a91de39c3b246098bf5b35498541edd331238985b3a0d65bc565e7cc7ccf",
+    "launch/single.launch": "c81086cbe87f3d82c0f4af2eabe3ac6900fcbc9343d3b2de43d929ec80b82529",
+    "msg/PointArray.msg": "cf9261678d83e55f2267e6ea8a85cfbcaf83037d90584b83bad2288ab05f1f19",
+    "package.xml": "57ffd3bb9759d971d41e6e9dc41f33dc73cef6aa73c22e2cc173d557da25ef5b",
+    "scripts/assigner.py": "2e85054ddfa83fc1c2376c44feacbcd1673407c0db64057e3e0a563cc1c4110c",
+    "scripts/core.py": "7841be232afdcec5ddd444c4131181791cda46fd0cdca2830f07f3237d72e392",
+    "scripts/filter.py": "d761b6cf50f3de9a456ff34acd3ecfe8d5d749f6054d2883f721b7d9fcd8e770",
+    "scripts/functions.py": "2437b790b266e1aa00f234bf99d010ee6b9405e8af4936aead14c9ec357dc43d",
+    "src/functions.cpp": "1bb39f3d76e8aa181f6dd1f62f184d0ea558d2c2fa25a82f8b80c60c6528b68f",
+    "src/global_rrt_detector.cpp": "c902c4ef687a16372e193045b93adc22c23799e9c3c056c3fe866a27a3249dcb",
+    "src/local_rrt_detector.cpp": "f73de97c1864144124bcf975b44053fcd34aa9a8a67a8310b7e26a66da770adb",
+    "src/rrt_detector.cpp": "0d2d9377b78a2c674d6a23223d9c91d89baafec0ec6215a0bb3d91f9fa15b0a7"
+  },
+  "verifierManifestSha256": "a2bad3e0113dd0b3e97396795666c10174be7a7109fb436577ff99a7e15635ab",
+  "verifierVersion": 7,
+  "mapArtifact": {
+    "path": "/Users/adhvaidhsunny_1/Documents/Codex/2026-11-06/pul/work/goose/var/robotics/jobs/ba6539a20abd8d0d3088/observed-map.json",
+    "sha256": "b2408b8cec262ae429d9499ab7e5e78b84fe7e4f2d06f92734f6796e417413f6",
+    "frame": "map"
+  },
+  "trajectoryFrame": "odom",
+  "verifierUnchangedDuringRun": true
+}

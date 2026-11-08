@@ -1,0 +1,117 @@
+{
+  "generatedAt": "2026-11-08T00:48:55.256Z",
+  "jobId": "GS-1004",
+  "source": "local commercial lifecycle around a separately recorded live Naive engineering delivery",
+  "isSyntheticCustomer": true,
+  "commercialModelCalls": 0,
+  "externalEmailsSent": 0,
+  "realMoneyMovedCents": 0,
+  "engineeringVerification": {
+    "verdict": "pass",
+    "integrity_ok": true,
+    "total": 14,
+    "passed": 14,
+    "failed": 0
+  },
+  "engineeringPackagesUnchanged": true,
+  "inquiry": {
+    "id": 7,
+    "status": "linked",
+    "source": "local_commerce_demonstration"
+  },
+  "policy": {
+    "enabled": true,
+    "allowReal": false
+  },
+  "dispatch": [
+    {
+      "synced": 0,
+      "dispatched": 2,
+      "errors": []
+    },
+    {
+      "synced": 1,
+      "dispatched": 2,
+      "errors": []
+    }
+  ],
+  "outbox": [
+    {
+      "id": 28,
+      "purpose": "delivery",
+      "status": "sent",
+      "provider": "local_test",
+      "authorized_by": "policy:66d36e88-47d2-4283-994e-f3418d562495"
+    },
+    {
+      "id": 29,
+      "purpose": "invoice",
+      "status": "sent",
+      "provider": "local_test",
+      "authorized_by": "policy:66d36e88-47d2-4283-994e-f3418d562495"
+    },
+    {
+      "id": 31,
+      "purpose": "support",
+      "status": "sent",
+      "provider": "local_test",
+      "authorized_by": "policy:66d36e88-47d2-4283-994e-f3418d562495"
+    },
+    {
+      "id": 32,
+      "purpose": "support",
+      "status": "sent",
+      "provider": "local_test",
+      "authorized_by": "policy:66d36e88-47d2-4283-994e-f3418d562495"
+    }
+  ],
+  "checkout": {
+    "provider": "local_test",
+    "isTest": true
+  },
+  "payment": {
+    "ok": true,
+    "isTest": true,
+    "message": "TEST payment recorded. No money moved.",
+    "duplicate": false
+  },
+  "invoicePayments": [
+    {
+      "amount_cents": 125000,
+      "is_test": true,
+      "method": "local_test",
+      "reference": "TEST:6"
+    }
+  ],
+  "support": {
+    "id": 6,
+    "status": "resolved",
+    "replyMode": "local deterministic support response"
+  },
+  "followup": {
+    "id": 5,
+    "status": "awaiting_source",
+    "childStarted": false
+  },
+  "maintenance": [
+    {
+      "id": 6,
+      "status": "passed"
+    }
+  ],
+  "changeRequests": [
+    {
+      "id": 5,
+      "status": "awaiting_source",
+      "parent_job_id": "GS-1004",
+      "child_job_id": null,
+      "budget_micro_usd": 20000000
+    }
+  ],
+  "limitations": [
+    "Synthetic customer actions and local test settlement",
+    "No real customer acquisition, email delivery, or payment provider exercised",
+    "Support reply used local mode; no additional Naive model call",
+    "Maintenance checked delivered artifact integrity, not production behavior or new dependency releases"
+  ]
+}

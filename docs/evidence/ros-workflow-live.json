@@ -1,0 +1,990 @@
+{
+  "generated_at": "2026-11-08T00:49:16.273Z",
+  "job": {
+    "id": "GS-1004",
+    "title": "ROS 1 frontier exploration to ROS 2 Jazzy with a Gazebo mission",
+    "goal": "# Approved robotics migration requirements\n\nMigrate the supplied real MIT ROS1 rrt_exploration source to a buildable ROS2 Jazzy package called goose_rrt_exploration. Target ONE differential-drive robot, an existing Nav2 NavigateToPose action server, existing SLAM /map (nav_msgs/OccupancyGrid), and tf2 map -> base_link. Nav2 and Gazebo are existing infrastructure, not things you must recreate. Never claim simulation or tests passed; an independent runner checks the result.\nRead the source and produce the migrated package at the repository root. Required paths relative to the package: package.xml, CMakeLists.txt, msg/PointArray.msg, src/rrt_detector.cpp, scripts/core.py, scripts/filter.py, scripts/assigner.py, launch/exploration.launch.py, README.md. Use ament_cmake and rosidl_default_generators, install Python scripts executable with core.py beside them. Generated PointArray retains geometry_msgs/Point[] points. Use only standard ROS2 packages, numpy, and Python standard library (no sklearn).\nPort real algorithm concepts: RRT samples free-to-unknown frontiers, frontier filtering removes invalid/occupied/low-information candidates, assigner uses information gain minus travel cost with hysteresis. Preserve RRT logic from supplied C++ source. Do not replace this with hardcoded waypoints or mock physics. Use bounded timer callbacks and async actions, never blocking loops in callbacks. Handle missing TF, unavailable map/action server, failed goals and cancellation with bounded timeouts. Enable use_sim_time, configurable topics, robot frame, max_goals and random_seed. Map publisher QoS should support transient-local /map. Treat unknown and occupied cells carefully; do not send goals into occupied space. Output goals use the /map header's frame id normalized without leading slash. Goal orientation.w=1.0. Expose /goose/exploration_status (std_msgs/String JSON) with completed_goals, failed_goals and selected goal so the external runner can observe behavior. Use a single active NavigateToPose goal and handle get_result_async. On shutdown cancel active goal and stop dispatching.\nKeep core.py importable WITHOUT ROS or numpy. It must expose index_of_point(mapData, Xp), point_of_index(mapData,i), informationGain(mapData,point,r), discount(mapData,assigned_pt,centroids,infoGain,r), gridValue(mapData,Xp), pathCost(path), and select_goal(mapData,position,frontiers,info_radius=1.0,info_multiplier=3.0,hysteresis_radius=3.0,hysteresis_gain=2.0). Map objects have info.width,height,resolution,origin.position.x/y, data. Return plain Python numbers/lists. select_goal returns the chosen [x,y] or None.\nFor valid in-bounds inputs preserve the original Python2 algorithm's integer division semantics and discount subtraction of 1 per cell. Authorized changes: safe coordinate bounds (gridValue outside returns 100), validate zero/invalid map resolution, avoid negative indexing/row wrap at invalid coordinates, bound empty inputs, correct Python2 integer divisions for Python3. point_of_index returns cell-corner coordinates as original. informationGain counts unknown cells within radius and multiplies resolution squared. select_goal must ignore out-of-map and occupied points, select the maximum score with deterministic tie handling, and apply hysteresis to nearby frontiers. No new endpoints or network calls except ROS communication. Include original MIT attribution in README and comments. Do not inspect or invent acceptance test results.\n Use the supplied goose-workspace.json contract and available goose-ros2 baseline/build/verify/simulate adapter. The source baseline is algorithm replay, not a ROS1 simulation; no hardware is in scope.",
+    "kind": "demo",
+    "mode": "naive",
+    "stage": "closed",
+    "status": "done"
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "total": 13,
+      "passed": 12,
+      "failed": 1,
+      "skipped": 0,
+      "integrity_ok": true,
+      "verdict": "fail",
+      "created_at": "2026-11-08T00:19:22.669Z"
+    },
+    {
+      "attempt": 2,
+      "total": 14,
+      "passed": 13,
+      "failed": 1,
+      "skipped": 0,
+      "integrity_ok": true,
+      "verdict": "fail",
+      "created_at": "2026-11-08T00:34:23.841Z"
+    },
+    {
+      "attempt": 3,
+      "total": 14,
+      "passed": 13,
+      "failed": 1,
+      "skipped": 0,
+      "integrity_ok": true,
+      "verdict": "fail",
+      "created_at": "2026-11-08T00:39:30.965Z"
+    },
+    {
+      "attempt": 4,
+      "total": 14,
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "integrity_ok": true,
+      "verdict": "pass",
+      "created_at": "2026-11-08T00:44:21.972Z"
+    }
+  ],
+  "sessions": [
+    {
+      "session_id": "ses_frymtxy5rm2zeqamnb4c52vwdr",
+      "role": "assessment",
+      "purpose": "workspace-contract",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 503949,
+      "created_at": "2026-11-07T23:47:39.700Z"
+    },
+    {
+      "session_id": "ses_y5s3bzcags3vk0vcwqw9r2724h",
+      "role": "assessment",
+      "purpose": "workspace-contract",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 872447,
+      "created_at": "2026-11-07T23:59:39.840Z"
+    },
+    {
+      "session_id": "ses_7nwpb4d4nnf03gs0h8kb34kj2a",
+      "role": "coordinator",
+      "purpose": "proposal",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 7716,
+      "created_at": "2026-11-08T00:03:42.050Z"
+    },
+    {
+      "session_id": "ses_a9690mnrrm25zfvbqsq1a2se1r",
+      "role": "implementation",
+      "purpose": "robotics-core",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 60309,
+      "created_at": "2026-11-08T00:03:55.433Z"
+    },
+    {
+      "session_id": "ses_5scjqjq8w318qztn4nb4h9qatb",
+      "role": "implementation",
+      "purpose": "robotics-detector",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 86744,
+      "created_at": "2026-11-08T00:06:23.060Z"
+    },
+    {
+      "session_id": "ses_ars78dd7zfcdqb4kcvje797a6k",
+      "role": "implementation",
+      "purpose": "robotics-filter",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 118721,
+      "created_at": "2026-11-08T00:08:43.152Z"
+    },
+    {
+      "session_id": "ses_vg26avp23dgmntb6cb88d568ch",
+      "role": "implementation",
+      "purpose": "robotics-assigner",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 123140,
+      "created_at": "2026-11-08T00:11:51.204Z"
+    },
+    {
+      "session_id": "ses_82mrd3vw4dthf97mqs1whabgs3",
+      "role": "implementation",
+      "purpose": "robotics-package",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 46850,
+      "created_at": "2026-11-08T00:14:42.949Z"
+    },
+    {
+      "session_id": "ses_9pm8fc4vjf8hqb0nw7ha2m0jrt",
+      "role": "coordinator",
+      "purpose": "after-failure",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 19371,
+      "created_at": "2026-11-08T00:19:26.297Z"
+    },
+    {
+      "session_id": "ses_rztm47kb2afeba8hpbtm4kmh81",
+      "role": "coordinator",
+      "purpose": "after-failure",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 25962,
+      "created_at": "2026-11-08T00:34:27.810Z"
+    },
+    {
+      "session_id": "ses_a5jqe4jjpbjxyf7n6bxcn6s9vh",
+      "role": "implementation",
+      "purpose": "robotics-repair-plan",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 20665,
+      "created_at": "2026-11-08T00:34:51.550Z"
+    },
+    {
+      "session_id": "ses_xb2h9334sa69r3kj2fyy9wgchc",
+      "role": "implementation",
+      "purpose": "robotics-filter",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 44262,
+      "created_at": "2026-11-08T00:35:14.024Z"
+    },
+    {
+      "session_id": "ses_jhf8sdhvq6ft34xtetr28ak5jp",
+      "role": "implementation",
+      "purpose": "robotics-assigner",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 53347,
+      "created_at": "2026-11-08T00:35:35.172Z"
+    },
+    {
+      "session_id": "ses_f1m86cx5ck2v63sab4wva2d80w",
+      "role": "coordinator",
+      "purpose": "after-failure",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 20562,
+      "created_at": "2026-11-08T00:39:35.701Z"
+    },
+    {
+      "session_id": "ses_pekax49yx3qs962k55rxgxagey",
+      "role": "implementation",
+      "purpose": "robotics-repair-plan",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 48611,
+      "created_at": "2026-11-08T00:40:01.671Z"
+    },
+    {
+      "session_id": "ses_4r2bd9vjx4swa6av8krqadtq2j",
+      "role": "implementation",
+      "purpose": "robotics-filter",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 36684,
+      "created_at": "2026-11-08T00:40:42.167Z"
+    }
+  ],
+  "stages": [
+    {
+      "stage": "intake",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "coordinator",
+      "started_at": "2026-11-07T23:47:34.778Z",
+      "finished_at": "2026-11-07T23:47:34.915Z",
+      "error": null
+    },
+    {
+      "stage": "inspect",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "assessment",
+      "started_at": "2026-11-07T23:47:34.918Z",
+      "finished_at": "2026-11-07T23:47:34.921Z",
+      "error": null
+    },
+    {
+      "stage": "plan",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 3,
+      "actor": "assessment",
+      "started_at": "2026-11-07T23:59:36.980Z",
+      "finished_at": "2026-11-08T00:03:38.081Z",
+      "error": null
+    },
+    {
+      "stage": "propose",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "coordinator",
+      "started_at": "2026-11-08T00:03:38.089Z",
+      "finished_at": "2026-11-08T00:03:52.886Z",
+      "error": null
+    },
+    {
+      "stage": "baseline",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "verification",
+      "started_at": "2026-11-08T00:03:52.895Z",
+      "finished_at": "2026-11-08T00:03:53.215Z",
+      "error": null
+    },
+    {
+      "stage": "freeze",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "verification",
+      "started_at": "2026-11-08T00:03:53.218Z",
+      "finished_at": "2026-11-08T00:03:53.222Z",
+      "error": null
+    },
+    {
+      "stage": "implement",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "implementation",
+      "started_at": "2026-11-08T00:03:53.225Z",
+      "finished_at": "2026-11-08T00:15:52.649Z",
+      "error": null
+    },
+    {
+      "stage": "verify",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "verification",
+      "started_at": "2026-11-08T00:15:52.653Z",
+      "finished_at": "2026-11-08T00:20:01.599Z",
+      "error": null
+    },
+    {
+      "stage": "verify",
+      "attempt": 2,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "verification",
+      "started_at": "2026-11-08T00:30:57.001Z",
+      "finished_at": "2026-11-08T00:34:47.776Z",
+      "error": null
+    },
+    {
+      "stage": "repair",
+      "attempt": 2,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "implementation",
+      "started_at": "2026-11-08T00:34:47.783Z",
+      "finished_at": "2026-11-08T00:36:06.302Z",
+      "error": null
+    },
+    {
+      "stage": "verify",
+      "attempt": 3,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "verification",
+      "started_at": "2026-11-08T00:36:06.305Z",
+      "finished_at": "2026-11-08T00:39:56.960Z",
+      "error": null
+    },
+    {
+      "stage": "repair",
+      "attempt": 3,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "implementation",
+      "started_at": "2026-11-08T00:39:56.964Z",
+      "finished_at": "2026-11-08T00:40:58.766Z",
+      "error": null
+    },
+    {
+      "stage": "verify",
+      "attempt": 4,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "verification",
+      "started_at": "2026-11-08T00:40:58.768Z",
+      "finished_at": "2026-11-08T00:44:21.976Z",
+      "error": null
+    },
+    {
+      "stage": "package",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 2,
+      "actor": "coordinator",
+      "started_at": "2026-11-08T00:48:48.107Z",
+      "finished_at": "2026-11-08T00:48:48.154Z",
+      "error": null
+    },
+    {
+      "stage": "invoice",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "coordinator",
+      "started_at": "2026-11-08T00:48:48.163Z",
+      "finished_at": "2026-11-08T00:48:48.193Z",
+      "error": null
+    },
+    {
+      "stage": "follow_up",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "coordinator",
+      "started_at": "2026-11-08T00:48:48.195Z",
+      "finished_at": "2026-11-08T00:48:51.354Z",
+      "error": null
+    }
+  ],
+  "approvals": [
+    {
+      "kind": "proposal",
+      "decision": "accepted",
+      "by_name": "Synthetic test harness",
+      "statement": "TEST approval of this synthetic engineering fixture; no real customer agreement.",
+      "at": "2026-11-08T00:03:52.891Z"
+    },
+    {
+      "kind": "change",
+      "decision": "accepted",
+      "by_name": "Synthetic test harness",
+      "statement": "TEST verifier correction for the synthetic ROS fixture only: retain the approved workspace contract and baseline, replace the v3 robotics witness with a stronger independent Nav2 GetResult success witness, and verify identical candidate code again. No real customer approval or repaired implementation is represented.",
+      "at": "2026-11-08T00:30:49.070Z"
+    },
+    {
+      "kind": "delivery",
+      "decision": "accepted",
+      "by_name": "Synthetic test harness",
+      "statement": "TEST acceptance of verified synthetic output; no real revenue.",
+      "at": "2026-11-08T00:48:48.156Z"
+    }
+  ],
+  "interventions": [
+    {
+      "kind": "worker_restart",
+      "reason": "Restarted the demonstration worker before customer approval to bind the finalized robotics verifier manifest. The same live assessment session resumes from its durable record.",
+      "minutes": 1,
+      "at": "2026-11-07T23:56:29.192Z"
+    },
+    {
+      "kind": "retry_stage",
+      "reason": "Asked the agents to retry \"Planning the work\". Clarified that ROS build and simulation execute on the installed Goose host adapter, not inside the remote assessment session. Reuse the prior contract and ask the agent to distinguish test coverage limitations from missing capabilities; do not bypass acceptance checks.",
+      "minutes": 2,
+      "at": "2026-11-07T23:59:36.651Z"
+    },
+    {
+      "kind": "test_verifier_filesystem_recovery",
+      "reason": "TEST amendment recovery: macOS rejected moving the read-only vault before any evidence swap. Preserved the safely rolled-back attempt journal and added source-directory-only permission restoration for retry.",
+      "minutes": 2,
+      "at": "2026-11-08T00:30:38.429Z"
+    },
+    {
+      "kind": "test_verifier_correction",
+      "reason": "TEST verifier correction for the synthetic ROS fixture only: retain the approved workspace contract and baseline, replace the v3 robotics witness with a stronger independent Nav2 GetResult success witness, and verify identical candidate code again. No real customer approval or repaired implementation is represented.",
+      "minutes": 5,
+      "at": "2026-11-08T00:30:49.070Z"
+    },
+    {
+      "kind": "retry_stage",
+      "reason": "Asked the agents to retry \"Preparing the delivery\". Fixed workspace packaging to select job.attempt=4 rather than the single packaging stage key=1. Candidate and frozen evidence are unchanged; a dispatcher-level regression inspected the repaired archive and all 67 integration tests passed. Mission repetition limitation is recorded with the delivery artifacts.",
+      "minutes": 2,
+      "at": "2026-11-08T00:48:47.788Z"
+    }
+  ],
+  "invoices": [
+    {
+      "number": "TEST-GS-INV-0006",
+      "status": "paid",
+      "is_test": true,
+      "amount_cents": 125000
+    }
+  ],
+  "payments": [
+    {
+      "method": "local_test",
+      "is_test": true,
+      "amount_cents": 125000
+    }
+  ],
+  "events": [
+    {
+      "actor": "founder",
+      "kind": "intervention",
+      "summary": "Restarted the demonstration worker before customer approval to bind the finalized robotics verifier manifest. The same live assessment session resumes from its durable record.",
+      "origin": "human",
+      "at": "2026-11-07T23:56:29.195Z"
+    },
+    {
+      "actor": "system",
+      "kind": "status",
+      "summary": "Worker Adhvaidhs-MacBook-Pro-14.local:66746 stopped while holding this job; another worker will resume it.",
+      "origin": "system",
+      "at": "2026-11-07T23:56:29.587Z"
+    },
+    {
+      "actor": "system",
+      "kind": "status",
+      "summary": "Resuming \"Planning the work\" (attempt 1) after an interruption - run 2.",
+      "origin": "system",
+      "at": "2026-11-07T23:56:29.595Z"
+    },
+    {
+      "actor": "founder",
+      "kind": "intervention",
+      "summary": "Asked the agents to retry \"Planning the work\". Clarified that ROS build and simulation execute on the installed Goose host adapter, not inside the remote assessment session. Reuse the prior contract and ask the agent to distinguish test coverage limitations from missing capabilities; do not bypass acceptance checks.",
+      "origin": "human",
+      "at": "2026-11-07T23:59:36.654Z"
+    },
+    {
+      "actor": "system",
+      "kind": "status",
+      "summary": "Resuming \"Planning the work\" (attempt 1) after an interruption - run 3.",
+      "origin": "system",
+      "at": "2026-11-07T23:59:36.981Z"
+    },
+    {
+      "actor": "assessment",
+      "kind": "decision",
+      "summary": "Migrated the supplied MIT ROS1 rrt_exploration source (repo_src) into a buildable ROS2 Jazzy ament_cmake package goose_rrt_exploration at the repository root. All 9 required deliverable paths exist and are internally consistent: package.xml (format-3, rosidl_default_generators/runtime, MIT attribution), CMakeLists.txt (ament_cmake, rosidl_generate_interfaces for PointArray, installs rrt_detector + Python scripts as PROGRAMS with core.py beside them, installs launch), msg/PointArray.msg (geometry_msgs/Point[] points unchanged), src/rrt_detector.cpp (faithful port of functions.cpp Norm/sign/Nearest/Steer/gridValue/ObstacleFree plus global+local RRT behaviour; self-contained Mersenne Twister replacing the unsupplied mtrand.h; bounded timer callbacks; tf2 lookups with bounded timeouts; transient-local /map QoS; frame id normalized without leading slash; local-mode frontier resets tree to robot pose), scripts/core.py (importable WITHOUT ROS and WITHOUT numpy, verified; exposes index_of_point, point_of_index, informationGain, discount, gridValue, pathCost, select_goal; preserves Python2 integer-division semantics via // and the discount subtract-1-per-cell rule for valid in-bounds inputs; authorized bounds corrections: out-of-bounds gridValue returns 100, zero/invalid resolution rejected, negative indexing/row wrap avoided, empty inputs bounded; point_of_index returns cell-corner coordinates; select_goal ignores out-of-map and occupied points, picks max revenue with deterministic first-wins tie handling, applies hysteresis to nearby frontiers), scripts/filter.py (ROS2 frontier filter with numpy-only mean-shift replacing the forbidden sklearn, removes occupied/invalid/low-information candidates, transient-local /map), scripts/assigner.py (ROS2 assigner with Nav2 NavigateToPose async action, single active goal via get_result_async, bounded timer, hysteresis + discount, /goose/exploration_status JSON with completed_goals/failed_goals/selected_goal, orientation.w=1.0, normalized frame, max_goals honored, cancels active goal and stops dispatching on shutdown), launch/exploration.launch.py (single robot, configurable topics/frames/params, use_sim_time, random_seed, max_goals), README.md and LICENSE.md (MIT attribution). Local verification: all Python files compile; core.py algorithm parity (integer division, discount subtraction, out-of-bounds->100, occupied-skip, empty/invalid handling) confirmed; C++ helper functions compiled and ran under g++ -std=c++17; package/executable/name consistency checked; confirmed no sklearn imports and transient-local QoS on all /map subscribers. The goose-ros2 adapter is not present in the planning session (it runs on the Goose execution host), so baseline/build/verify/simulate were not executed here; the supplied goose-workspace.json contract is copied verbatim because it already encodes the customer's requirements and uses the host adapter as the substantive exit check. I do not claim simulation or tests passed.",
+      "origin": "agent",
+      "at": "2026-11-08T00:03:38.079Z"
+    },
+    {
+      "actor": "coordinator",
+      "kind": "decision",
+      "summary": "Proposal v1 sent: ROS 1 frontier exploration to ROS 2 Jazzy with Nav2 simulation, fixed price $1,250 (ROS 1 frontier exploration to ROS 2 Jazzy with Nav2 simulation + Size: 1,610 lines + 1 code change(s) made by the implementation agent), 2 acceptance items.",
+      "origin": "agent",
+      "at": "2026-11-08T00:03:52.886Z"
+    },
+    {
+      "actor": "customer",
+      "kind": "approval",
+      "summary": "Synthetic test harness accepted proposal v1 ($1,250 fixed).",
+      "origin": "human",
+      "at": "2026-11-08T00:03:52.893Z"
+    },
+    {
+      "actor": "implementation",
+      "kind": "decision",
+      "summary": "Five bounded live Naive tasks migrated the ROS exploration package; independent build, behavior and simulation checks are pending.",
+      "origin": "agent",
+      "at": "2026-11-08T00:15:52.648Z"
+    },
+    {
+      "actor": "verification",
+      "kind": "check",
+      "summary": "12/13 engineering checks passed",
+      "origin": "tool",
+      "at": "2026-11-08T00:19:22.674Z"
+    },
+    {
+      "actor": "founder",
+      "kind": "intervention",
+      "summary": "TEST amendment recovery: old job, frozen hashes and attempt 1 remain unchanged; failed journal archived without deletion. Two founder minutes recorded.",
+      "origin": "fixture",
+      "at": "2026-11-08T00:30:38.429Z"
+    },
+    {
+      "actor": "founder",
+      "kind": "intervention",
+      "summary": "TEST verifier correction approved: stronger independent Nav2 GetResult witness; identical candidate moves from verification attempt 1 to attempt 2. Earlier evidence remains preserved.",
+      "origin": "fixture",
+      "at": "2026-11-08T00:30:49.070Z"
+    },
+    {
+      "actor": "verification",
+      "kind": "check",
+      "summary": "13/14 engineering checks passed",
+      "origin": "tool",
+      "at": "2026-11-08T00:34:23.844Z"
+    },
+    {
+      "actor": "implementation",
+      "kind": "decision",
+      "summary": "2 bounded live Naive tasks repaired selected components of the ROS exploration package; independent build, behavior and simulation checks are pending.",
+      "origin": "agent",
+      "at": "2026-11-08T00:36:06.297Z"
+    },
+    {
+      "actor": "verification",
+      "kind": "check",
+      "summary": "13/14 engineering checks passed",
+      "origin": "tool",
+      "at": "2026-11-08T00:39:30.968Z"
+    },
+    {
+      "actor": "implementation",
+      "kind": "decision",
+      "summary": "1 bounded live Naive tasks repaired selected components of the ROS exploration package; independent build, behavior and simulation checks are pending.",
+      "origin": "agent",
+      "at": "2026-11-08T00:40:58.762Z"
+    },
+    {
+      "actor": "verification",
+      "kind": "check",
+      "summary": "14/14 engineering checks passed",
+      "origin": "tool",
+      "at": "2026-11-08T00:44:21.974Z"
+    },
+    {
+      "actor": "system",
+      "kind": "error",
+      "summary": "\"Preparing the delivery\" stopped with an error; the founder has been asked to look.",
+      "origin": "system",
+      "at": "2026-11-08T00:44:21.982Z"
+    },
+    {
+      "actor": "verification",
+      "kind": "decision",
+      "summary": "Exploration limitation: 50 successful Nav2 requests involved 3 distinct destinations in the candidate's dispatch log. Repeated targets remain; this run does not establish complete exploration coverage.",
+      "origin": "tool",
+      "at": "2026-11-08T00:47:33.788Z"
+    },
+    {
+      "actor": "founder",
+      "kind": "intervention",
+      "summary": "Asked the agents to retry \"Preparing the delivery\". Fixed workspace packaging to select job.attempt=4 rather than the single packaging stage key=1. Candidate and frozen evidence are unchanged; a dispatcher-level regression inspected the repaired archive and all 67 integration tests passed. Mission repetition limitation is recorded with the delivery artifacts.",
+      "origin": "human",
+      "at": "2026-11-08T00:48:47.790Z"
+    },
+    {
+      "actor": "system",
+      "kind": "status",
+      "summary": "Resuming \"Preparing the delivery\" (attempt 1) after an interruption - run 2.",
+      "origin": "system",
+      "at": "2026-11-08T00:48:48.107Z"
+    },
+    {
+      "actor": "coordinator",
+      "kind": "artifact",
+      "summary": "Verified engineering package delivered for customer acceptance",
+      "origin": "tool",
+      "at": "2026-11-08T00:48:48.153Z"
+    },
+    {
+      "actor": "customer",
+      "kind": "approval",
+      "summary": "Synthetic test harness accepted the delivery.",
+      "origin": "human",
+      "at": "2026-11-08T00:48:48.160Z"
+    },
+    {
+      "actor": "coordinator",
+      "kind": "decision",
+      "summary": "Invoice TEST-GS-INV-0006 prepared for $1,250 (TEST - demonstration job, not sent).",
+      "origin": "tool",
+      "at": "2026-11-08T00:48:48.183Z"
+    }
+  ],
+  "spend_micro_usd": {
+    "total": 2104620,
+    "metered": 2089340,
+    "estimated": 15280
+  },
+  "contract_manifest_sha256": "bf53a46ba99dc8e28ed48b578d4180977a8823a379e0c850cbde6f9c5ef87e09",
+  "verification": {
+    "integrity": {
+      "ok": true
+    },
+    "candidate_digest": "da4f6a07a40b32ae97f941760d1228bdf659daa19f6a1df76a563e0bb31783fa",
+    "summary": {
+      "total": 14,
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "verdict": "pass"
+    },
+    "checks": [
+      {
+        "id": "frozen_evidence",
+        "title": "Acceptance evidence is unchanged",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "verifier_version",
+        "title": "Robotics verifier matches the accepted version",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:package.xml",
+        "title": "Required file package.xml",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:CMakeLists.txt",
+        "title": "Required file CMakeLists.txt",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:msg/PointArray.msg",
+        "title": "Required file msg/PointArray.msg",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:src/rrt_detector.cpp",
+        "title": "Required file src/rrt_detector.cpp",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:scripts/core.py",
+        "title": "Required file scripts/core.py",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:scripts/filter.py",
+        "title": "Required file scripts/filter.py",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:scripts/assigner.py",
+        "title": "Required file scripts/assigner.py",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:launch/exploration.launch.py",
+        "title": "Required file launch/exploration.launch.py",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:README.md",
+        "title": "Required file README.md",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "target_build",
+        "title": "Target builds in isolation",
+        "category": "build",
+        "status": "pass",
+        "mandatory": true,
+        "expected": 0,
+        "actual": 0,
+        "evidence": {}
+      },
+      {
+        "id": "algorithm-parity",
+        "title": "Preserve pinned source algorithms and approved grid-boundary corrections",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": 0,
+        "actual": {
+          "result": 0,
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "gazebo-mission",
+        "title": "Real Gazebo lidar, map, transform, frontier publication and completed Nav2 goal",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": 0,
+        "actual": {
+          "result": 0,
+          "exit": 0
+        },
+        "evidence": {}
+      }
+    ],
+    "results": [
+      {
+        "id": "frozen_evidence",
+        "title": "Acceptance evidence is unchanged",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "verifier_version",
+        "title": "Robotics verifier matches the accepted version",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:package.xml",
+        "title": "Required file package.xml",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:CMakeLists.txt",
+        "title": "Required file CMakeLists.txt",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:msg/PointArray.msg",
+        "title": "Required file msg/PointArray.msg",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:src/rrt_detector.cpp",
+        "title": "Required file src/rrt_detector.cpp",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:scripts/core.py",
+        "title": "Required file scripts/core.py",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:scripts/filter.py",
+        "title": "Required file scripts/filter.py",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:scripts/assigner.py",
+        "title": "Required file scripts/assigner.py",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:launch/exploration.launch.py",
+        "title": "Required file launch/exploration.launch.py",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "deliverable:README.md",
+        "title": "Required file README.md",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "expected": true,
+        "actual": true,
+        "evidence": {}
+      },
+      {
+        "id": "target_build",
+        "title": "Target builds in isolation",
+        "category": "build",
+        "status": "pass",
+        "mandatory": true,
+        "expected": 0,
+        "actual": 0,
+        "evidence": {}
+      },
+      {
+        "id": "algorithm-parity",
+        "title": "Preserve pinned source algorithms and approved grid-boundary corrections",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": 0,
+        "actual": {
+          "result": 0,
+          "exit": 0
+        },
+        "evidence": {}
+      },
+      {
+        "id": "gazebo-mission",
+        "title": "Real Gazebo lidar, map, transform, frontier publication and completed Nav2 goal",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "expected": 0,
+        "actual": {
+          "result": 0,
+          "exit": 0
+        },
+        "evidence": {}
+      }
+    ],
+    "failed": [],
+    "by_category": {
+      "integrity": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0
+      },
+      "delivery": {
+        "total": 9,
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0
+      },
+      "build": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0
+      },
+      "behavior": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    "not_tested": [
+      "Source baseline executes pinned ROS1 algorithms with Python2 division compatibility; no ROS1 simulator execution",
+      "One differential-drive robot in the official Nav2 Gazebo sandbox; no physical hardware verification",
+      "Existing Nav2, SLAM and Gazebo infrastructure is reused and is not authored by Goose",
+      "Supported source revision and fixture only; new ROS projects need their own executable acceptance contract",
+      "goose-ros2 adapter runs on the Goose execution host, not in the planning session, so build/verify/simulate were not executed here; core.py parity was checked locally without ROS/numpy",
+      "Mersenne Twister replaces the original mtrand.h which was not part of the supplied source; same deterministic-seedable behaviour",
+      "Mean-shift clustering is a numpy-only reimplementation replacing the original sklearn dependency forbidden by the requirements"
+    ]
+  },
+  "delivery": {
+    "sha256": "49cdff681c66ed50dc9ded99e09608083680cb125dd1514a2d3d753dff641307",
+    "bytes": 99630
+  },
+  "claims": {
+    "synthetic_customer": true,
+    "production_deployment": false,
+    "paid_real_customer": false,
+    "agent_work": "Live Naive assessment, implementation and coordinator sessions are listed above.",
+    "tool_work": "Source execution, stable baseline recording, independent comparisons, isolation, packaging and durable orchestration.",
+    "acceptance": "Synthetic fixture approvals, not real customer acceptance.",
+    "limitations": [
+      "Source baseline executes pinned ROS1 algorithms with Python2 division compatibility; no ROS1 simulator execution",
+      "One differential-drive robot in the official Nav2 Gazebo sandbox; no physical hardware verification",
+      "Existing Nav2, SLAM and Gazebo infrastructure is reused and is not authored by Goose",
+      "Supported source revision and fixture only; new ROS projects need their own executable acceptance contract",
+      "goose-ros2 adapter runs on the Goose execution host, not in the planning session, so build/verify/simulate were not executed here; core.py parity was checked locally without ROS/numpy",
+      "Mersenne Twister replaces the original mtrand.h which was not part of the supplied source; same deterministic-seedable behaviour",
+      "Mean-shift clustering is a numpy-only reimplementation replacing the original sklearn dependency forbidden by the requirements"
+    ]
+  }
+}

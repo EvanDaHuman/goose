@@ -30,7 +30,9 @@ The live routing-engine engagement `GS-1001` migrated Python to Node.js, added b
 
 All current customers, approvals and payments in the demonstrations are synthetic and labelled accordingly. There is no claimed real revenue. Earlier migration and growth records under `docs/evidence/` belong to the predecessor build and are historical evidence, not new customer outcomes. ROS evidence lives under `robotics/evidence/` and must be checked for its actual verdict.
 
-The [validation record](docs/evidence/build-validation.json) covers 66 integration tests, 35 engine tests, six browser workflows, seven robotics harness tests, production build and readiness checks. Integration and browser suites use disposable databases. Provider calls are mocked; live email and payment activation remains separate.
+The live ROS engagement `GS-1004` also completed delivery, acceptance and TEST settlement after two Naïve code repairs. Its final checks passed 14/14, including 111 algorithm checks and nine Gazebo checks. The robot travelled 3.798 metres. Repeated destination requests remain a documented exploration-quality limitation. See the [full workflow evidence and reproducible delivery](docs/evidence/ros-workflow.md).
+
+The [validation record](docs/evidence/build-validation.json) covers 67 integration tests, 35 engine tests, six browser workflows, seven robotics harness tests, production build and readiness checks. Integration and browser suites use disposable databases. Provider calls are mocked; live email and payment activation remains separate.
 
 ## Run locally
 

@@ -1,0 +1,15 @@
+{
+  "observedAt": "2026-11-08T00:47:33.780Z",
+  "verifiedAttempt": 4,
+  "independentlyConfirmedNav2Requests": 50,
+  "physicalTravelMeters": 3.798,
+  "candidateReportedDestinations": {
+    "1.329, -0.302": 1,
+    "0.467, -1.413": 1,
+    "0.073, -1.001": 48
+  },
+  "dispatchLogSha256": "0e2cc3a93544bb3629c342c1f4d95f6cedf4ede567f997bfcffcb46c00910fa7",
+  "coordinateEvidence": "Candidate dispatch log, rounded to three decimal places; successful request UUIDs independently confirmed by Nav2 GetResult.",
+  "limitation": "Exploration limitation: 50 successful Nav2 requests involved 3 distinct destinations in the candidate's dispatch log. Repeated targets remain; this run does not establish complete exploration coverage.",
+  "followUp": "Suppress repeated reached-frontier goals and verify exploration progress in a separately scoped follow-up. Do not describe these requests as distinct exploration destinations."
+}
