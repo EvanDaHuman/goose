@@ -1,0 +1,6 @@
+{
+  "repository": "https://github.com/pallets/werkzeug",
+  "revision": "3.1.3",
+  "title": "Add case-insensitive multi-value removal to Werkzeug Headers",
+  "goal": "Add a public Headers.poplist(key) method to werkzeug.datastructures.Headers. It must return all values for the given header name in their original insertion order and remove all occurrences of that name case-insensitively. If absent, return an empty list without changing any other headers. Preserve duplicate values and the relative order of unrelated headers. Return a new list independent of later changes to the Headers object. Preserve all existing behavior and existing tests. Include appropriate typing and a method docstring. Discover and execute the project's actual existing test suite and establish focused checks for this new method. Do not modify original test or CI files; new test files are allowed. No production deployment is requested."
+}

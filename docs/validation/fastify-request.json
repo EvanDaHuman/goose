@@ -1,0 +1,6 @@
+{
+  "repository": "https://github.com/fastify/fastify",
+  "revision": "v5.2.1",
+  "title": "Add fluent batch response-header removal to Fastify",
+  "goal": "Add reply.removeHeaders(names), a fluent API that takes an array of header-name strings, removes those response headers case-insensitively using the same behavior as reply.removeHeader, and returns the same reply instance. An empty array is a no-op. Duplicate and missing names are harmless. Validate the entire input before mutation: non-array inputs or any non-string element must throw TypeError and leave all headers unchanged. Update the public TypeScript Reply interface and document the new API. Preserve existing behavior and all original tests and CI files; new test files are allowed. Discover and run the repository's substantive existing test suite, including relevant type checks when executable, and verify behavior through real Fastify requests. No production deployment is requested."
+}

@@ -15,6 +15,7 @@ import { quoteFor } from "./quote";
 import { jobSpend, logEvent, recordCompute, type Origin } from "./records";
 import * as crm from "./crm";
 import * as replatform from "./replatform";
+import { isAdaptive, ADAPTIVE_STAGES } from "./adaptive";
 import { isWorkspace, WORKSPACE_STAGES } from "./workspace";
 import { syncCommerceForJob } from "./commerce";
 import { contractProblems, repairEvidence } from "./migrationContract";
@@ -792,6 +793,7 @@ const V2: Record<string, (job: Job, attempt: number) => Promise<StageResult>> = 
 
 export const IMPL_ALL: Record<string, (job: Job, attempt: number) => Promise<StageResult>> = Object.fromEntries(
   [...new Set([...Object.keys(v1.IMPL), ...Object.keys(V2)])].map((stage) => [stage, (job: Job, a: number) =>
+    isAdaptive(job) && stage in ADAPTIVE_STAGES ? ADAPTIVE_STAGES[stage](job,a) :
     isWorkspace(job) && stage in WORKSPACE_STAGES ? WORKSPACE_STAGES[stage as keyof typeof WORKSPACE_STAGES](job,a) :
       job.pipeline >= 2 && V2[stage] ? V2[stage](job, a) : v1.IMPL[stage](job, a)]));
 
