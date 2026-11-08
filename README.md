@@ -73,7 +73,20 @@ Add AgentMail and Stripe keys when ready. Their absence does not prevent test en
 | `npm test` / `npm run test:engine` | Isolated integration database and Python tests |
 | `npm run test:e2e` | Browser workflow against a local-mode app and worker |
 
-Pages: `/contact`, `/start`, `/jobs/<id>?t=<token>`, `/ops`, `/ops/company`, `/ops/business`, `/ops/naive`.
+Pages: `/` (the public site: goose hero, examples, a sample live run), `/contact`, `/start` (from a GitHub repository or a .zip), `/jobs/<id>?t=<token>`, `/ops`, `/ops/company`, `/ops/business`, `/ops/naive`.
+
+### Connecting GitHub
+
+Customers can start a job from a GitHub repository instead of a .zip. Goose downloads the chosen branch at its current commit as a .zip, so the rest of the pipeline is unchanged, and records the repository, branch and commit on the job (migration `007`). Access is read-only: Goose never pushes, and delivery stays as before.
+
+- **Public repositories** work from the link alone, with no setup.
+- **Private repositories** need a GitHub App that customers install on just the repositories they choose:
+  1. On GitHub: *Settings → Developer settings → GitHub Apps → New GitHub App*. **Callback URL:** `https://<your-site>/api/github/callback` (locally `http://localhost:3100/api/github/callback`). Tick **Request user authorization (OAuth) during installation**. Turn the webhook off.
+  2. **Repository permissions:** *Contents: Read-only* and *Metadata: Read-only*. Nothing else.
+  3. Create it, then generate a **client secret** and a **private key** (.pem).
+  4. In `.env`: `GITHUB_APP_ID`, `GITHUB_APP_SLUG` (the name in the App's URL), `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, and `GITHUB_APP_PRIVATE_KEY_PATH=/path/to/key.pem` (or the key itself in `GITHUB_APP_PRIVATE_KEY`, on one line with `\n` breaks).
+
+On `/start`, *Connect GitHub (read-only)* sends the customer to install the App, then back with a one-time code. Goose swaps the code for the customer's own GitHub token, asks GitHub which installations of the App that person can access, and keeps only those ids in a signed, HTTP-only cookie (the token itself is not kept). Every token Goose uses to read code is minted for one installation, narrowed to read-only, and expires within an hour.
 
 ## Execution model
 
@@ -85,9 +98,9 @@ This is a working local prototype, not a production multi-tenant hosting service
 
 ## Layout and attribution
 
-`app/` and `components/` contain UI and APIs. `lib/` and `worker/` contain the company engine, Naïve team and commerce. `engine/` contains service/data executors. `robotics/` contains pinned source, the container adapter and independent harness. `db/migrations/`, `scripts/` and `tests/` provide setup and validation.
+`app/` and `components/` contain UI and APIs; the public site is `components/site/` (the goose hero and live run are canvas scenes in `components/site/goose/`) with `app/site.css`, and GitHub intake is `lib/github.ts` with `app/api/github/`. `lib/` and `worker/` contain the company engine, Naïve team and commerce. `engine/` contains service/data executors. `robotics/` contains pinned source, the container adapter and independent harness. `db/migrations/`, `scripts/` and `tests/` provide setup and validation.
 
-The migration foundation comes from `adhvaidhsunny/portwright`, `goose-rebrand`. Pinned `rrt_exploration` source retains its MIT license and revision manifest. ROS, Nav2, Gazebo and SLAM infrastructure are reused with attribution. The legacy SuiteCRM test fixture retains its AGPL attribution. Goose does not claim authorship of these projects.
+The migration foundation comes from `adhvaidhsunny/portwright`, `goose-rebrand`. Pinned `rrt_exploration` source retains its MIT license and revision manifest. ROS, Nav2, Gazebo and SLAM infrastructure are reused with attribution. The legacy SuiteCRM test fixture retains its AGPL attribution. Goose does not claim authorship of these projects. The public site self-hosts Bodoni Moda, Hanken Grotesk and JetBrains Mono under the SIL Open Font License 1.1 (`app/fonts/LICENSE.txt`); the technology marks on the examples come from [Simple Icons](https://simpleicons.org) (CC0), and each mark belongs to its owner.
 
 
 ### Readiness and commercial workflow
