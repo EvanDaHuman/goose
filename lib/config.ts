@@ -24,6 +24,8 @@ export const config = {
   databaseUrl: process.env.DATABASE_URL ?? "",
   pgAdminUrl: process.env.PG_ADMIN_URL ?? "",
   mode: (process.env.GOOSE_MODE === "naive" ? "naive" : "local") as "local" | "naive",
+  publicJobsRequireApproval: process.env.GOOSE_PUBLIC_JOBS_REQUIRE_APPROVAL === "1",
+  repositoryJobsOnly: process.env.GOOSE_REPOSITORY_JOBS_ONLY === "1",
   naive: {
     apiKey: process.env.VETTA_API_KEY ?? "",
     baseUrl: process.env.VETTA_API_BASE_URL || "https://api.vetta.sh",

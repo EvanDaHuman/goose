@@ -81,11 +81,13 @@ export async function changeWithAgent(ctx: Ctx, input: { candidateZip: string; i
     `Make exactly these approved changes and nothing else: ${JSON.stringify(input.items)}`,
     input.context,
     input.evidence ? `Verification failed. Evidence (failed checks, expected and actual, and the verification agent's explanation): ${JSON.stringify(input.evidence).slice(0, 12000)}` : "",
+    input.evidence ? "This is a focused repair. Follow the independent diagnosis exactly and preserve parts it identifies as passing. Do not make speculative consistency, style or cleanup changes outside the failed requirement. Run relevant checks available in your workspace, then publish the candidate; the host reruns the complete frozen acceptance suite. Avoid repeating unrelated or unavailable upstream tests. Report local testing limitations truthfully and distinguish them from genuinely unfinished requested work." : "",
     "Publish result.zip with publish_file and submit its file id, every file you changed and why, the tests you ran, and anything you did not do.",
   ].filter(Boolean).join("\n\n");
   const r = await runAgentTask(c, { jobId: ctx.jobId, stage: ctx.stage, attempt: ctx.attempt, role: "implementation",
     purpose: input.evidence ? "repair" : "implement", title: input.evidence ? "Repair the failed checks using their evidence" : "Make the approved code changes",
-    message, outputSchema: CHANGE_SCHEMA, budgetMicroUsd: ctx.budgetMicroUsd, timeoutMs: 30 * 60_000 });
+    message, outputSchema: CHANGE_SCHEMA, budgetMicroUsd: ctx.budgetMicroUsd, timeoutMs: 30 * 60_000,
+    continuationMessage: "Continue within the approved scope and follow the independent repair diagnosis when provided. Preserve parts explicitly identified as already passing; undo speculative changes outside the failed requirement. If the requested changes are complete, publish the complete result.zip and submit the structured result now. The host performs definitive acceptance in its reproduced environment. Do not keep repeating unavailable or unrelated upstream tests in your workspace; truthfully report local test limitations and any genuinely unfinished work. Never invent passing results." });
   if (!r.ok) return r;
   const id = String(r.output.result_file_id || "");
   if (!/^fil_/.test(id)) return { ok: false as const, reason: "no_output" as const, message: "The agent did not return a published file id.", sessionId: r.sessionId };
@@ -171,7 +173,7 @@ export async function answerCustomer(ctx: Ctx, question: string, facts: Record<s
       "The report lists exactly what was and was not tested." : "The checks are frozen before any code changes and run once the work is built.";
   }
   const local = { answer: answer ?? "Thanks for your question. I've passed it to our founder, who will reply here.", needs_founder: answer === null };
-  if (config.mode !== "naive") return { ...local, by: "local rule", origin: "tool" as const };
+  if (config.mode !== "naive" || !config.naive.apiKey) return { ...local, by: "local rule", origin: "tool" as const };
   const out = await runAgentTask(naiveClient(), { jobId: ctx.jobId, stage: ctx.stage, attempt: ctx.attempt, role: "coordinator", purpose: "support",
     title: "Answer a customer question", outputSchema: obj({ answer: S, needs_founder: { type: "boolean" } }), budgetMicroUsd: ctx.budgetMicroUsd,
     timeoutMs: 6 * 60_000, message: `Answer this customer question using only these facts. If the facts do not answer it, set needs_founder to true.\n` +

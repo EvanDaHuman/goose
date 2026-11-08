@@ -88,6 +88,7 @@ export async function createJob(opts: {
   migrationRequest?: { target: string; dataChanges: string };
   workspaceRequest?: boolean;
   adaptiveRequest?: boolean;
+  requiresApproval?: boolean;
   githubSource?: import("./githubSource").GitHubSource;
   inquiryPublicId?: string;
   /** Set when the repository was read from GitHub: where it came from, and the name to record for the .zip. */
@@ -154,6 +155,9 @@ export async function createJob(opts: {
     if (opts.inquiryPublicId) {
       await c.query("UPDATE commerce_inquiries SET job_id=$2,status='linked' WHERE public_id=$1", [opts.inquiryPublicId,id]);
       await c.query("INSERT INTO events(job_id,actor,kind,summary,detail,source,origin) VALUES($1,'coordinator','status','Customer inquiry linked to an executable engineering job.',$2,'local','tool')", [id,JSON.stringify({inquiry_public_id:opts.inquiryPublicId})]);
+    }
+    if (opts.requiresApproval) {
+      await c.query("UPDATE jobs SET status='waiting_founder',waiting_reason='Your request is awaiting operator approval before paid assessment begins.' WHERE id=$1", [id]);
     }
     return { id, token };
   });

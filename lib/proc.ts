@@ -1,14 +1,16 @@
 // Running engine tools and customer code in isolation.
 //
 // Every process gets a scrubbed environment (no API keys, no company database URL) and runs under
-// a macOS sandbox profile: no outbound network except localhost, no reading the home folder except
+// a macOS sandbox profile or a rootless Linux container: no outbound network, no reading the home folder except
 // the paths it needs, and writes only to its own job folders. Profiles differ by role: only the
 // verifier may read a job's frozen checks ("vault").
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import { config } from "./config";
+import { linuxSandboxArgs } from "./linuxSandbox";
 
 export type SandboxSpec = {
   readAllow: string[];      // folders inside the home folder this process may read
@@ -84,7 +86,14 @@ export async function run(opts: {
 }): Promise<RunResult> {
   let cmd = opts.cmd;
   let args = opts.args;
-  if (opts.sandbox) {
+  let containerName: string | undefined;
+  let env = opts.env as unknown as NodeJS.ProcessEnv;
+  if (opts.sandbox && process.platform === "linux") {
+    containerName = `goose-engine-${randomUUID()}`;
+    args = linuxSandboxArgs(opts.sandbox, opts.cwd, cmd, args, opts.env, containerName);
+    env = { ...opts.env, ...(process.env.DOCKER_HOST ? { DOCKER_HOST: process.env.DOCKER_HOST } : {}) } as unknown as NodeJS.ProcessEnv;
+    cmd = "/usr/bin/docker";
+  } else if (opts.sandbox) {
     const pf = opts.profileFile ?? path.join(opts.cwd, `.sandbox-${process.pid}-${Date.now()}.sb`);
     fs.mkdirSync(path.dirname(pf), { recursive: true });
     fs.writeFileSync(pf, profileText(opts.sandbox));
@@ -92,8 +101,8 @@ export async function run(opts: {
     cmd = "/usr/bin/sandbox-exec";
   }
   const started = Date.now();
-  return await new Promise<RunResult>((resolve) => {
-    const child = spawn(cmd, args, { cwd: opts.cwd, env: opts.env as unknown as NodeJS.ProcessEnv, detached: true, stdio: [opts.stdin === undefined ? "ignore" : "pipe", "pipe", "pipe"] });
+  const result = await new Promise<RunResult>((resolve) => {
+    const child = spawn(cmd, args, { cwd: opts.cwd, env, detached: true, stdio: [opts.stdin === undefined ? "ignore" : "pipe", "pipe", "pipe"] });
     if (opts.stdin !== undefined && child.stdin) { child.stdin.on("error", () => {}); child.stdin.end(opts.stdin); }
     let stdout = "";
     let stderr = "";
@@ -124,6 +133,8 @@ export async function run(opts: {
       resolve({ code, stdout, stderr, stdoutTruncated, ms: Date.now() - started, events, timedOut });
     });
   });
+  if (containerName) spawnSync("/usr/bin/docker", ["rm", "--force", containerName], { env, timeout: 10000, stdio: "ignore" });
+  return result;
 }
 
 export async function freePort(): Promise<number> {

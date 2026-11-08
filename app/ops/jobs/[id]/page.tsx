@@ -114,7 +114,7 @@ export default async function OpsJob({ params }: { params: Promise<{ id: string 
                 <OpsNumberAction url={action} field="usd" label="Set limit (USD)" initial={job.cost_limit_micro_usd / 1_000_000} extra={{ action: "raise_limit" }} /></div>
               {canFault && <div><div className="muted">Test fault (labelled; shows detection and repair)</div><FaultPicker jobId={id} /></div>}
               <div className="row">
-                {job.status === "waiting_founder" && <ActionButton url={action} body={{ action: "retry", reason: "Founder retried after review." }} label="Retry this step" />}
+                {job.status === "waiting_founder" && <ActionButton url={action} body={{ action: "retry", reason: "Founder approved this step after review." }} label={job.stage === "intake" ? "Approve assessment" : "Retry this step"} />}
                 {job.status === "waiting_founder" && ["verify", "repair"].includes(job.stage) && <ActionButton url={action} body={{ action: "grant_repair", reason: "Founder allowed one more repair." }} label="Allow one more repair" />}
                 {delivered && (showroom?.status === "running"
                   ? <ActionButton url={action} body={{ action: "showroom_stop" }} label="Stop the running app" />

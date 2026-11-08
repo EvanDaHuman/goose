@@ -1,13 +1,13 @@
 {
-  "recorded_at": "2026-11-08T02:54:30.552363+00:00",
+  "recorded_at": "2026-11-08T04:44:26.705888+00:00",
   "scope": "Repository-independent engineering upgrade and merged company workflow",
   "checks": [
     {
       "command": "GOOSE_TEST_DOCKER=1 npm test",
-      "passed": 98,
+      "passed": 100,
       "failed": 0,
       "skipped": 0,
-      "includes": "Real Docker baseline, frozen acceptance, candidate verification, delivery integrity, GitHub intake, Naive retries and commerce/outreach integration contracts."
+      "includes": "Real Docker baseline, frozen acceptance, candidate verification, delivery integrity, GitHub intake, Naive retries and commerce/outreach integration contracts. Reported incomplete work cannot bypass independent review; failure diagnosis is scoped to failed checks."
     },
     {
       "command": "npm run test:autonomy",
@@ -39,7 +39,9 @@
   "live_validation": {
     "werkzeug": "autonomous-werkzeug-live.json",
     "werkzeug_current_runner": "autonomous-werkzeug-revalidation.json",
-    "werkzeug_commerce": "autonomous-werkzeug-commerce.json"
+    "werkzeug_commerce": "autonomous-werkzeug-commerce.json",
+    "fastify": "autonomous-fastify-live.json",
+    "fastify_commerce": "autonomous-fastify-commerce.json"
   },
   "limits": [
     "Live repository engagements and synthetic test suites are distinct evidence.",
@@ -47,5 +49,24 @@
     "Public GitHub links work without customer credentials. Private GitHub App and real email/payment activation require provider keys.",
     "The generic execution backend is Linux Docker. Unavailable hardware, private infrastructure and unsupported operating systems require additional access or infrastructure.",
     "No production deployment, real customer or revenue is claimed."
-  ]
+  ],
+  "development_history": "Fastify required generic platform fixes, recorded process restarts, independent review of a missing documentation check, three completed repairs, one cancelled repair, and one explicit repair-limit extension within its unchanged $25 spending cap. No repository-specific environment/test adapter or manual candidate edit was used. These are development validation runs, not claims of zero-intervention operation.",
+  "upstream_results": {
+    "werkzeug": {
+      "version": "3.1.3",
+      "job": "GS-1022",
+      "upstream_tests_passed": 123,
+      "scope": "Data-structure suite plus focused API, immutable behavior, typing and docstring checks. Other upstream suites excluded."
+    },
+    "fastify": {
+      "version": "v5.2.1",
+      "job": "GS-1021",
+      "verification_checks_passed": 15,
+      "verification_checks_total": 15,
+      "upstream_js_passed": 5543,
+      "upstream_js_skipped": 10,
+      "new_behavior_tests_passed": 6,
+      "scope": "JavaScript suite plus TypeScript import, scoped reply tsd, new API typing and documentation. Full tsd and cross-platform matrix excluded. The generated plan labelled the borp command as focused, but actual logs show it executed 5553 JavaScript tests."
+    }
+  }
 }

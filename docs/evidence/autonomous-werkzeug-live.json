@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-08T02:15:58.599Z",
+  "generated_at": "2026-11-08T04:44:26.601Z",
   "job": {
     "id": "GS-1022",
     "title": "Add case-insensitive multi-value removal to Werkzeug Headers",
@@ -701,6 +701,13 @@
       "summary": "Invoice TEST-GS-INV-0007 prepared for $8,000 (TEST - demonstration job, not sent).",
       "origin": "tool",
       "at": "2026-11-08T02:05:55.491Z"
+    },
+    {
+      "actor": "verification",
+      "kind": "check",
+      "summary": "The strengthened generic executor reproduced all five accepted check groups on the unchanged delivered candidate.",
+      "origin": "tool",
+      "at": "2026-11-08T02:36:52.097Z"
     }
   ],
   "spend_micro_usd": {

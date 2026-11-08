@@ -12,11 +12,13 @@ The company workflow still scopes work, requests customer approval, implements, 
 4. Existing behavior must pass. New-feature checks must fail on the original implementation. A deliberately introduced semantic fault must be detected by a preservation check.
 5. A separate Naïve verification agent reviews the test coverage and actual execution evidence. Accepted environments are rebuilt on a fresh instance before a proposal is offered.
 6. After approval the original baseline runs again. The environment, acceptance scripts, protected original tests, input hashes and runner version are frozen before implementation.
-7. Naïve implements the objective. Each independent check gets a fresh prepared copy, and final verification rebuilds from source. Delivery requires the exact verified candidate and unchanged frozen evidence.
+7. Naïve implements the objective. Each independent check gets a fresh prepared copy, and final verification rebuilds from source. If the implementer reports unfinished work or unavailable local tests, those statements remain visible. Passing host checks alone cannot dismiss them: a separate verification agent must inspect the candidate and resolve every statement against actual execution and the accepted scope. Delivery requires the exact verified candidate, resolved completion findings and unchanged frozen evidence.
 
 Supporting documents and customer clarification answers are included in discovery, independent review and implementation. Accepted requirements are frozen alongside the checks. When a customer selects the no-data-sharing constraint, execution output is withheld from agent feedback because test logs can contain record values. This can reduce automatic diagnosis and require a customer clarification.
 
 Discovery asks a customer question when required behavior or infrastructure is missing. It does not invent credentials, access or business requirements.
+
+Before a repair, the independent verification role inspects the failed check definitions and candidate to explain the actual mismatch, including misleading diagnostic text. The implementation role receives concise guidance and failed results; the full acceptance scripts stay with the verifier. Repairs preserve the frozen contract and remain bounded by the job's repair and spending limits.
 
 ## Execution and isolation
 

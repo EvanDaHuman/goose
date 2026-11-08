@@ -194,7 +194,21 @@ async function sentToday() {
   return Number((await one<{ n: number }>("SELECT count(*)::int AS n FROM outreach_messages WHERE NOT is_test AND status IN ('sending','sent','uncertain') AND authorized_at > now()-interval '24 hours'"))?.n ?? 0);
 }
 
+export class OutreachPaused extends Error { constructor(readonly until: string) { super(`Outreach is paused by the provider's rate limit until ${until}`); } }
+/** The provider's stated reset time ("The limit rises to 25 at <ISO>"), or an hour from now. */
+export function pauseUntilFrom(message: string) {
+  const iso = message.match(/\b(?:rises|lifts|resets?|retry)[^"]*?\bat (\d{4}-\d\d-\d\dT[\d:.]+Z)/i)?.[1];
+  const t = iso && Date.parse(iso) > Date.now() ? Date.parse(iso) : Date.now() + 3_600_000;
+  return new Date(t).toISOString();
+}
+export async function outreachPausedUntil() {
+  const until = await getSetting<string | null>("outreach.paused_until", null);
+  return until && Date.parse(until) > Date.now() ? until : null;
+}
+
 async function dispatch(id: number, by: string, cap: number) {
+  const paused = await outreachPausedUntil();
+  if (paused) throw new OutreachPaused(paused);
   const pre = await one<any>("SELECT * FROM outreach_messages WHERE id=$1", [id]);
   if (!pre) throw new Error("Message not found");
   if (digest(`${pre.delivered_to}\n${pre.subject}\n${pre.body}`) !== pre.content_sha256) throw new Error("Message content changed; authorization is invalid");
@@ -216,6 +230,14 @@ async function dispatch(id: number, by: string, cap: number) {
   } catch (e) {
     // a definite HTTP rejection means nothing went out; anything else (timeout, network) may have been accepted
     const definite = e instanceof AgentMailError && typeof e.status === "number";
+    if (e instanceof AgentMailError && e.status === 429) {
+      // rate limited: nothing was sent. Put the exact message back as a draft and pause all sending until the provider allows it.
+      const until = pauseUntilFrom((e as Error).message);
+      await q("UPDATE outreach_messages SET status='draft',authorized_by=NULL,authorized_at=NULL,error=$2 WHERE id=$1", [id, `rate limited; retry after ${until}`]);
+      await q("INSERT INTO settings(key,value) VALUES('outreach.paused_until',to_jsonb($1::text)) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value,updated_at=now()", [until]);
+      await logEvent(null, "outreach", "status", `AgentMail rate limit: outreach paused until ${until}; ${p.name}'s email is queued again, nothing was sent.`, { outreach_message_id: id, until }, { important: true });
+      throw new OutreachPaused(until);
+    }
     await q("UPDATE outreach_messages SET status=$2,error=$3 WHERE id=$1", [id, definite ? "failed" : "uncertain", (e as Error).message.slice(0, 1000)]);
     await logEvent(null, "outreach", "error", `Outreach to ${p.name} ${definite ? "was rejected" : "has an unknown outcome"}: ${(e as Error).message}`, { outreach_message_id: id }, { important: true });
     throw e;
@@ -254,7 +276,7 @@ export async function reconcileOutreach(id: number, outcome: "sent" | "not_sent"
 export async function recordOutreachReply(c: pg.PoolClient, om: any, reply: { messageId: string; from: string; subject: string; text: string }) {
   const p = (await c.query("SELECT * FROM prospects WHERE id=$1", [om.prospect_id])).rows[0];
   const sender = senderAddress(reply.from);
-  const auto = autoReplyKind(reply.from, reply.subject);
+  const auto = autoReplyKind(reply.from, reply.subject, reply.text);
   if (auto === "auto") return { kind: "auto" as const, inquiryId: null };
   if (auto === "bounce") {
     if (!om.is_test) await suppress(om.delivered_to, "bounced", `agentmail:${reply.messageId}`, c);
@@ -320,7 +342,7 @@ export async function serviceOutreach(now = Date.now()) {
       await resolveContact(p.id).catch((e) => console.error("[outreach] contact", p.id, e.message));
     // 2. send one message per tick under the policy, spaced policy.spacingMinutes apart (default 10)
     const policy = await outreachPolicy();
-    if (policy.enabled && outreachStatus().canSendReal) {
+    if (policy.enabled && outreachStatus().canSendReal && !(await outreachPausedUntil())) {
       const cap = Math.min(policy.dailyCap, HARD_DAILY_MAX());
       const recent = await one("SELECT 1 FROM outreach_messages WHERE NOT is_test AND authorized_at > now() - make_interval(mins => $1)", [policy.spacingMinutes ?? 10]);
       if (!recent && (await sentToday()) < cap) {
@@ -344,5 +366,5 @@ export async function outreachDashboard() {
   const [messages, suppressions] = await Promise.all([
     q<any>("SELECT m.*,p.name AS prospect_name FROM outreach_messages m JOIN prospects p ON p.id=m.prospect_id ORDER BY m.id DESC LIMIT 100"),
     q<any>("SELECT * FROM outreach_suppressions ORDER BY created_at DESC LIMIT 100")]);
-  return { status: outreachStatus(), policy: await outreachPolicy(), sentToday: await sentToday(), messages, suppressions };
+  return { status: outreachStatus(), policy: await outreachPolicy(), pausedUntil: await outreachPausedUntil(), sentToday: await sentToday(), messages, suppressions };
 }

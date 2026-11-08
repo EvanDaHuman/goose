@@ -4,12 +4,14 @@ import { createJob } from "@/lib/jobs";
 import { fetchRepoZip, GithubError, sessionFrom, type RepoSource } from "@/lib/github";
 import { logEvent } from "@/lib/records";
 import { fail, json, saveUpload, wrap } from "@/lib/http";
-import { assertSameOrigin } from "@/lib/operatorAuth";
+import { config } from "@/lib/config";
+import { assertSameOrigin, isOperatorRequest } from "@/lib/operatorAuth";
 
 // A real customer submits a repository, either as a GitHub link (read with read-only access) or as a
 // .zip upload, and usually a database copy.
 export async function POST(req: Request) {
-  const denied = assertSameOrigin(req); if (denied) return denied;
+  const denied = assertSameOrigin(req);
+  if (denied) return denied;
   return wrap(async () => {
     const form = await req.formData();
     const field = (key: string, max: number, fallback = "") => {
@@ -31,6 +33,7 @@ export async function POST(req: Request) {
     try { new Intl.DateTimeFormat("en-US", { timeZone: timezone }); } catch { return fail("Choose a valid business time zone."); }
     const jobType = field("job_type", 30, "service");
     if (!["service", "workspace"].includes(jobType)) return fail("Choose a supported type of engineering work.");
+    if (config.repositoryJobsOnly && jobType !== "workspace") return fail("This server accepts repository engineering jobs. Describe your migration in the repository request, or send an inquiry.");
     const target = field("target_runtime", 60).toLowerCase(), dataChanges = field("data_changes", 10000);
     if (target && !["rust", "node", "python"].includes(target)) return fail("Choose a supported target runtime.");
     if (jobType === "workspace" && (target || dataChanges)) return fail("Repository engineering changes use the stated objective and executable contract; submit service migration fields only with a service migration.");
@@ -75,6 +78,7 @@ export async function POST(req: Request) {
       repoZip: repoPath, dbFile: dbPath, goal, constraints, constraintNotes: notes || null, documents: docs,
       migrationRequest: target ? { target, dataChanges } : undefined,
       workspaceRequest: jobType === "workspace", adaptiveRequest: jobType === "workspace", inquiryPublicId: inquiry || undefined,
+      requiresApproval: config.publicJobsRequireApproval && !isOperatorRequest(req),
       repoSource, repoFileName,
     });
     if (repoSource) {
