@@ -87,3 +87,22 @@ def test_prepare_cannot_rewrite_tests_or_undo_negative_control(tmp_path):
     r=runner.execute(source,p,tmp_path/'rewrite','baseline');assert not r['ok'];assert 'prepare changed original source' in r['checks'][0]['output']
     p['prepare']="sed -i 's/return a-b/return a+b/' calc.py"
     r=runner.execute(source,p,tmp_path/'undo-mutation','baseline');assert not r['ok'];assert not r['mutations'][0]['detected'];assert 'prepare changed original source' in r['mutations'][0]['output']
+
+
+def r(code, output, timed_out=False): return {'code':code,'output':output,'timed_out':timed_out}
+
+def test_failure_judgement_is_language_neutral():
+    # a C++ test that prints its own messages and exits 1 catches the planted bug
+    assert runner.mutation_detected(r(1,'Encoding is wrong\ndecoded != orig\n'))
+    assert runner.mutation_detected(r(101,"thread 'main' panicked at src/lib.rs:10"))
+    assert runner.mutation_detected(r(1,'AssertionError'))
+    # a mutation that only breaks the build, a harness error, a pass or a timeout does not
+    assert not runner.mutation_detected(r(1,"base64.cpp:12:5: error: expected ';' before 'return'"))
+    assert not runner.mutation_detected(r(1,'prepare changed original source or tests'))
+    assert not runner.mutation_detected(r(0,'all good'))
+    assert not runner.mutation_detected(r(1,'assert failed',timed_out=True))
+    # before the work, a requirement check may fail because the new crate doesn't exist yet
+    assert runner.requirement_fails_for_the_right_reason(r(1,'MISSING_FEATURE: Rust crate not present'))
+    assert runner.requirement_fails_for_the_right_reason(r(1,'AssertionError: expected 7'))
+    assert not runner.requirement_fails_for_the_right_reason(r(127,'sh: cargo: command not found'))
+    assert not runner.requirement_fails_for_the_right_reason(r(1,'something unrelated'))
