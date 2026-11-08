@@ -6,6 +6,7 @@ test("autonomous contracts require preserved behavior, requested behavior and a 
  assert.deepEqual(adaptiveProblems(plan()),[]);
  const p=plan();p.checks=p.checks.map(c=>({...c,kind:'preserve'}));assert.match(adaptiveProblems(p).join(),/new requirement/);
  const m=plan();m.mutations[0].check_id='new_behavior';assert.match(adaptiveProblems(m).join(),/Negative control/);
+ const tests=plan();tests.mutations[0].path="tests/test_calc.py";assert.match(adaptiveProblems(tests).join(),/must not mutate protected/);
  const missing=plan();missing.protected_paths=[];assert.match(adaptiveProblems(missing).join(),/protected/);
 });
 test("autonomous plans reject escaping paths, injected images, private hosts and unbounded checks",()=>{

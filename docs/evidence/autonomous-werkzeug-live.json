@@ -1,0 +1,1020 @@
+{
+  "generated_at": "2026-11-08T02:15:58.599Z",
+  "job": {
+    "id": "GS-1022",
+    "title": "Add case-insensitive multi-value removal to Werkzeug Headers",
+    "goal": "Add a public Headers.poplist(key) method to werkzeug.datastructures.Headers. It must return all values for the given header name in their original insertion order and remove all occurrences of that name case-insensitively. If absent, return an empty list without changing any other headers. Preserve duplicate values and the relative order of unrelated headers. Return a new list independent of later changes to the Headers object. Preserve all existing behavior and existing tests. Include appropriate typing and a method docstring. Discover and execute the project's actual existing test suite and establish focused checks for this new method. Do not modify original test or CI files; new test files are allowed. No production deployment is requested.",
+    "kind": "demo",
+    "mode": "naive",
+    "stage": "closed",
+    "status": "done"
+  },
+  "source": {
+    "url": "https://github.com/pallets/werkzeug",
+    "owner": "pallets",
+    "repository": "werkzeug",
+    "requested_ref": "3.1.3",
+    "commit": "6389612fd1ee1bd93579eed5026e8fd471d04abd",
+    "archive_sha256": "6741b1036ca4118dcff50711f51bcd30a3c98bed9a775152728fa2b89ac5a3b6",
+    "retrieved_at": "2026-11-08T01:22:26.345Z"
+  },
+  "autonomous": {
+    "plan": {
+      "image": "python:3.12",
+      "setup": "#!/bin/sh\nset -e\ncd /workspace\n# Build backend declared in pyproject.toml: requires = [\"flit_core<4\"], build-backend = \"flit_core.buildapi\".\n# Runtime dependency declared in pyproject.toml: MarkupSafe>=2.1.1.\npython -m pip install --no-cache-dir 'flit_core<4' 'MarkupSafe>=2.1.1'\n# Test dependencies declared in requirements/tests.txt and tests.in.\npython -m pip install --no-cache-dir -r requirements/tests.txt\n# Build and install werkzeug from source so 'import werkzeug' resolves to this tree.\npython -m pip install --no-cache-dir --no-deps -e .\necho \"werkzeug installed:\"\npython -c \"import werkzeug; print(werkzeug.__file__)\"\n",
+      "title": "Add Headers.poplist(key) to werkzeug.datastructures.Headers",
+      "checks": [
+        {
+          "id": "preserve_existing_test_datastructures",
+          "kind": "preserve",
+          "title": "Existing test_datastructures.py suite passes unchanged",
+          "script": "#!/bin/sh\nset -e\ncd /workspace\nexport PYTHONPATH=/workspace/src:${PYTHONPATH:-}\npython -m pytest tests/test_datastructures.py -q --no-header -p no:cacheprovider\necho \"existing test_datastructures suite passed\"\n",
+          "timeout_seconds": 300
+        },
+        {
+          "id": "preserve_headers_behavior",
+          "kind": "preserve",
+          "title": "Focused preservation assertions for existing Headers mutating and immutable behavior",
+          "script": "#!/bin/sh\nset -e\ncd /workspace\nexport PYTHONPATH=/workspace/src:${PYTHONPATH:-}\npython - <<'PY'\nfrom werkzeug.datastructures import Headers\n\n# pop(key) returns first value and removes all occurrences (existing behavior)\nh = Headers([(\"A\",\"1\"),(\"B\",\"2\"),(\"a\",\"3\")])\nassert h.pop(\"a\") == \"1\"\nassert list(h) == [(\"B\",\"2\")]\n\n# pop missing raises KeyError\ntry:\n    Headers().pop(\"z\")\n    raise AssertionError(\"expected KeyError\")\nexcept KeyError:\n    pass\n\n# pop with default returns default, no mutation\nh = Headers([(\"A\",\"1\")])\nassert h.pop(\"z\",\"d\") == \"d\"\nassert list(h) == [(\"A\",\"1\")]\n\n# getlist preserves insertion order, duplicates, case-insensitive\nh = Headers([(\"X-Bar\",\"1\"),(\"a\",\"2\"),(\"X-BAR\",\"3\")])\nassert h.getlist(\"x-bar\") == [\"1\",\"3\"]\nassert h.getlist(\"a\") == [\"2\"]\nassert h.getlist(\"missing\") == []\n\n# remove is case-insensitive, removes all occurrences\nh = Headers([(\"A\",\"1\"),(\"B\",\"2\"),(\"a\",\"3\"),(\"C\",\"4\")])\nh.remove(\"A\")\nassert list(h) == [(\"B\",\"2\"),(\"C\",\"4\")]\n\n# EnvironHeaders (ImmutableHeadersMixin) pop should raise TypeError\nfrom werkzeug.datastructures import EnvironHeaders\nenv = {\"HTTP_X_FOO\":\"42\",\"CONTENT_TYPE\":\"text/plain\",\"wsgi.version\":(1,0)}\neh = EnvironHeaders(env)\ntry:\n    eh.pop(\"X-Foo\")\n    raise AssertionError(\"expected TypeError on immutable pop\")\nexcept TypeError:\n    pass\n\n# EnvironHeaders popitem should raise TypeError (immutable contract)\ntry:\n    eh.popitem()\n    raise AssertionError(\"expected TypeError on immutable popitem\")\nexcept TypeError:\n    pass\nprint(\"preserve assertions ok\")\nPY\necho \"preserve ok\"\n",
+          "timeout_seconds": 300
+        },
+        {
+          "id": "require_poplist_behavior",
+          "kind": "requirement",
+          "title": "poplist returns all values in order, removes them, independent list, empty when absent",
+          "script": "#!/bin/sh\nset -e\ncd /workspace\nexport PYTHONPATH=/workspace/src:${PYTHONPATH:-}\npython - <<'PY'\nfrom werkzeug.datastructures import Headers\n\n# 1. Basic: returns all values for a name in original insertion order and removes all occurrences.\nh = Headers([(\"Content-Type\",\"text/plain\"),(\"X-Foo\",\"1\"),(\"X-Foo\",\"2\"),(\"Content-Type\",\"text/html\")])\nrv = h.poplist(\"x-foo\")\nassert isinstance(rv, list), f\"expected list, got {type(rv)!r}\"\nassert rv == [\"1\",\"2\"], rv\nassert list(h) == [(\"Content-Type\",\"text/plain\"),(\"Content-Type\",\"text/html\")], list(h)\nassert \"X-Foo\" not in h\nassert \"x-foo\" not in h\n\n# 2. Missing key returns empty list, no mutation.\nh = Headers([(\"A\",\"1\"),(\"B\",\"2\")])\nrv = h.poplist(\"Z\")\nassert rv == [], rv\nassert list(h) == [(\"A\",\"1\"),(\"B\",\"2\")], list(h)\n\n# 3. Case-insensitivity on the queried name; original case kept for remaining.\nh = Headers([(\"Content-Type\",\"a\"),(\"content-type\",\"b\"),(\"D\",\"e\")])\nrv = h.poplist(\"CONTENT-TYPE\")\nassert rv == [\"a\",\"b\"], rv\nassert list(h) == [(\"D\",\"e\")], list(h)\n\n# 4. Returned list is independent of later changes to the Headers object.\nh = Headers([(\"X\",\"1\"),(\"X\",\"2\")])\nrv = h.poplist(\"X\")\nassert rv == [\"1\",\"2\"], rv\nh.add(\"X\",\"3\")\nassert rv == [\"1\",\"2\"], rv\nrv.append(\"999\")\nassert h.getlist(\"X\") == [\"3\"], h.getlist(\"X\")\n\n# 5. Duplicate values preserved, relative order of unrelated headers preserved.\nh = Headers([(\"A\",\"1\"),(\"B\",\"1\"),(\"A\",\"1\"),(\"C\",\"1\"),(\"A\",\"2\")])\nrv = h.poplist(\"a\")\nassert rv == [\"1\",\"1\",\"2\"], rv\nassert list(h) == [(\"B\",\"1\"),(\"C\",\"1\")], list(h)\n\n# 6. Empty Headers.\nassert Headers().poplist(\"Anything\") == []\n\n# 7. Method is present and public.\nassert callable(getattr(Headers, \"poplist\", None)), \"Headers.poplist missing\"\n\nprint(\"requirement assertions ok\")\nPY\necho \"requirement ok\"\n",
+          "timeout_seconds": 300
+        },
+        {
+          "id": "require_poplist_immutable_raises",
+          "kind": "requirement",
+          "title": "poplist on ImmutableHeadersMixin (EnvironHeaders) raises TypeError",
+          "script": "#!/bin/sh\nset -e\ncd /workspace\nexport PYTHONPATH=/workspace/src:${PYTHONPATH:-}\npython - <<'PY'\nfrom werkzeug.datastructures import EnvironHeaders\nenv = {\"HTTP_X_FOO\":\"42\",\"CONTENT_TYPE\":\"text/plain\",\"wsgi.version\":(1,0)}\neh = EnvironHeaders(env)\ntry:\n    eh.poplist(\"X-Foo\")\n    raise AssertionError(\"expected TypeError: immutable Headers poplist must raise\")\nexcept TypeError:\n    pass\nassert eh.environ is env\nprint(\"immutable poplist raises ok\")\nPY\necho \"immutable ok\"\n",
+          "timeout_seconds": 300
+        },
+        {
+          "id": "require_poplist_typing_docstring",
+          "kind": "requirement",
+          "title": "poplist has a docstring and a list[str] return annotation",
+          "script": "#!/bin/sh\nset -e\ncd /workspace\nexport PYTHONPATH=/workspace/src:${PYTHONPATH:-}\npython - <<'PY'\nfrom werkzeug.datastructures import Headers\nm = Headers.poplist\nassert m.__doc__, \"poplist must have a docstring\"\nimport typing\nhints = typing.get_type_hints(Headers.poplist)\nret = hints.get(\"return\")\nassert ret is not None, \"poplist must have a return annotation\"\nassert ret == list[str], f\"expected list[str], got {ret!r}\"\nprint(\"typing/docstring ok\", hints)\nPY\necho \"typing ok\"\n",
+          "timeout_seconds": 300
+        }
+      ],
+      "prepare": "#!/bin/sh\nset -e\ncd /workspace\n# Tests import the installed editable package; no services to start.\nexport PYTHONPATH=/workspace/src:${PYTHONPATH:-}\necho \"prepare ok\"\n",
+      "version": 1,
+      "mutations": [
+        {
+          "find": "        try:\n            rv = self._get_key(key)\n        except KeyError:\n            if default is not _missing:\n                return default\n\n            raise\n\n        self.remove(key)\n        return rv",
+          "path": "src/werkzeug/datastructures/headers.py",
+          "replace": "        try:\n            rv = self._get_key(key)\n        except KeyError:\n            if default is not _missing:\n                return default\n\n            raise\n\n        return rv",
+          "check_id": "preserve_existing_test_datastructures"
+        },
+        {
+          "find": "    def pop(self, key: t.Any = None, default: t.Any = _missing) -> t.NoReturn:\n        _immutable_error(self)\n\n    def popitem(self) -> t.NoReturn:\n        _immutable_error(self)",
+          "path": "src/werkzeug/datastructures/mixins.py",
+          "replace": "    def pop(self, key: t.Any = None, default: t.Any = _missing) -> t.NoReturn:\n        pass\n\n    def popitem(self) -> t.NoReturn:\n        _immutable_error(self)",
+          "check_id": "preserve_headers_behavior"
+        }
+      ],
+      "rationale": "Goal: add a public Headers.poplist(key) to werkzeug.datastructures.Headers returning all values for a header name in original insertion order and removing all occurrences case-insensitively, returning an empty list (no mutation) when absent, and returning a new list independent of later changes.\n\nInspection of src/werkzeug/datastructures/headers.py confirms Headers stores entries as self._list: list[tuple[str, str]] (headers.py:70) and already implements the building blocks: _del_key (headers.py:264-272) removes all case-insensitive matches by rebuilding self._list with a filtered list, and getlist (headers.py:167-200) collects values in order via [v for k, v in self if k.lower() == ikey] (headers.py:200). pop (headers.py:291-319) returns only the first value via _get_key, so it cannot serve the goal. The smallest change reuses these proven, already-tested patterns: poplist collects values in order and, when non-empty, reassigns self._list[:] to the filtered list (same _del_key approach). Because self._list[:] = [...] rebuilds with a comprehension and the returned result is a fresh list built by a comprehension, later mutations of the Headers object (add/pop) cannot affect the returned list and vice versa, satisfying independence.\n\nThe method is inserted immediately before popitem (headers.py:321) to keep pop/poplist/popitem grouped, mirroring MultiDict.poplist placement (structures.py:522). Signature `def poplist(self, key: str) -> list[str]` mirrors getlist's return type and the goal's 'return all values' wording; a docstring is included.\n\nImmutability: EnvironHeaders (headers.py:605) subclasses ImmutableHeadersMixin (mixins.py:172), which overrides pop/remove/set/etc. to raise TypeError via _immutable_error but currently has NO poplist override. To keep poplist consistent with that contract, ImmutableHeadersMixin is extended with a poplist override that calls _immutable_error, placed between pop and popitem in mixins.py to mirror the existing ordering. This preserves all existing behavior: pop/getlist/get_all/remove/_del_key are untouched; existing tests in tests/test_datastructures.py (TestHeaders.test_popping at line 722, TestEnvironHeaders immutability expecting TypeError) are protected, plus a new focused assertion for EnvironHeaders.popitem raising TypeError.\n\nEnvironment: pyproject.toml declares build-system requires ['flit_core<4'] and build-backend 'flit_core.buildapi', runtime dependency MarkupSafe>=2.1.1. requirements/tests.txt pins pytest, pytest-timeout, cryptography, watchdog, ephemeral-port-reserve, cffi. tests/conftest.py top-level imports ephemeral_port_reserve, so it must be installed for any tests/ run even though test_datastructures.py does not use the dev_server fixture. The prior execution confirmed setup succeeds (code 0) and the existing suite passes (123 passed) with this exact setup script, so it is reused unchanged.\n\nCORRECTION from prior attempt: the prior plan's second negative-control mutation targeted ImmutableHeadersMixin.popitem, which no existing assertion exercises, so it was NOT detected (detected: false). This plan retargets that mutation at ImmutableHeadersMixin.pop (changing its body from _immutable_error(self) to pass), which the preserve_headers_behavior check exercises via `eh.pop(\"X-Foo\")` expecting TypeError; with the mutation pop returns None instead of raising, so that preservation check fails (detected: true). A popitem-raises-TypeError assertion was also added to preserve_headers_behavior for additional coverage. The first mutation (headers.py pop losing self.remove(key)) is unchanged and was already detected=true in the prior run, breaking test_defaults_and_conversion and test_popping.\n\nThe requirement checks verify actual runtime behavior (order, duplicates, case-insensitivity, absence, independence, immutability, return annotation and docstring) rather than source text, and fail on the original source because Headers has no poplist attribute (AttributeError on call).",
+      "limitations": [
+        "The negative-control mutations above alter ORIGINAL behavior to be wrong so a preservation check fails; per task instructions the real (correct) implementation is NOT applied during planning. The host applies the real implementation into the working copy that the checks validate, and the negative-control mutations are applied to a separate copy to confirm the preservation check catches regressions.",
+        "The full tox matrix (py3.9-3.13, pypy, Windows, Mac), the style/pre-commit env, the docs env, and the mypy/pyright typing tox env are not executed here; only the test_datastructures.py suite plus focused assertions run as the substantive preservation check in a single python:3.12 container. A lightweight typing-hint sanity assertion is used instead of mypy.",
+        "Tests that start live dev servers (tests/test_serving.py, dev_server-marked tests in tests/test_debug.py, tests/middleware/test_http_proxy.py) are intentionally excluded from the preservation check to avoid spawning subprocesses in the offline check container; test_datastructures.py does not use the dev_server fixture.",
+        "No production deployment is performed.",
+        "The requirement checks verify runtime behavior by calling Headers.poplist; on the original (unmutated) source they fail with AttributeError because Headers has no poplist attribute, which is the intended clear missing-feature error."
+      ],
+      "deliverables": [
+        "src/werkzeug/datastructures/headers.py",
+        "src/werkzeug/datastructures/mixins.py"
+      ],
+      "protected_paths": [
+        "tests/test_datastructures.py",
+        "tests/test_http.py",
+        "tests/test_wrappers.py",
+        "tests/test_test.py",
+        "tests/conftest.py",
+        ".github/workflows/tests.yaml",
+        ".github/workflows/lock.yaml",
+        ".github/workflows/pre-commit.yaml",
+        ".github/workflows/publish.yaml",
+        "tox.ini",
+        "pyproject.toml",
+        "requirements/tests.txt",
+        "requirements/tests.in"
+      ],
+      "dependency_hosts": [
+        "pypi.org",
+        "files.pythonhosted.org"
+      ],
+      "base_image_digest": "sha256:cad37dd20c7cac861af9003af8796d03ea7a998ec1e3a664429740fc9d7d2691",
+      "missing_requirements": []
+    },
+    "discovery": {
+      "trial": 4,
+      "first": {
+        "ok": true,
+        "setup": {
+          "code": 0,
+          "output": "Collecting flit_core<4\n  Downloading flit_core-3.12.0-py3-none-any.whl.metadata (888 bytes)\nCollecting MarkupSafe>=2.1.1\n  Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (2.7 kB)\nDownloading flit_core-3.12.0-py3-none-any.whl (45 kB)\nDownloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (24 kB)\nInstalling collected packages: MarkupSafe, flit_core\nSuccessfully installed MarkupSafe-3.0.4 flit_core-3.12.0\nWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n\n[notice] A new release of pip is available: 25.0.1 -> 26.3\n[notice] To update, run: pip install --upgrade pip\nCollecting cffi==1.17.1 (from -r requirements/tests.txt (line 7))\n  Downloading cffi-1.17.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (1.5 kB)\nCollecting cryptography==43.0.3 (from -r requirements/tests.txt (line 11))\n  Downloading cryptography-43.0.3-cp39-abi3-manylinux_2_28_aarch64.whl.metadata (5.4 kB)\nCollecting ephemeral-port-reserve==1.1.4 (from -r requirements/tests.txt (line 13))\n  Downloading ephemeral_port_reserve-1.1.4-py2.py3-none-any.whl.metadata (2.6 kB)\nCollecting iniconfig==2.0.0 (from -r requirements/tests.txt (line 15))\n  Downloading iniconfig-2.0.0-py3-none-any.whl.metadata (2.6 kB)\nCollecting packaging==24.1 (from -r requirements/tests.txt (line 17))\n  Downloading packaging-24.1-py3-none-any.whl.metadata (3.2 kB)\nCollecting pluggy==1.5.0 (from -r requirements/tests.txt (line 19))\n  Downloading pluggy-1.5.0-py3-none-any.whl.metadata (4.8 kB)\nCollecting pycparser==2.22 (from -r requirements/tests.txt (line 21))\n  Downloading pycparser-2.22-py3-none-any.whl.metadata (943 bytes)\nCollecting pytest==8.3.3 (from -r requirements/tests.txt (line 23))\n  Downloading pytest-8.3.3-py3-none-any.whl.metadata (7.5 kB)\nCollecting pytest-timeout==2.3.1 (from -r requirements/tests.txt (line 27))\n  Downloading pytest_timeout-2.3.1-py3-none-any.whl.metadata (20 kB)\nCollecting watchdog==5.0.3 (from -r requirements/tests.txt (line 29))\n  Downloading watchdog-5.0.3-py3-none-manylinux2014_aarch64.whl.metadata (41 kB)\nDownloading cffi-1.17.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (478 kB)\nDownloading cryptography-43.0.3-cp39-abi3-manylinux_2_28_aarch64.whl (3.7 MB)\n   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.7/3.7 MB 2.7 MB/s eta 0:00:00\nDownloading ephemeral_port_reserve-1.1.4-py2.py3-none-any.whl (4.4 kB)\nDownloading iniconfig-2.0.0-py3-none-any.whl (5.9 kB)\nDownloading packaging-24.1-py3-none-any.whl (53 kB)\nDownloading pluggy-1.5.0-py3-none-any.whl (20 kB)\nDownloading pycparser-2.22-py3-none-any.whl (117 kB)\nDownloading pytest-8.3.3-py3-none-any.whl (342 kB)\nDownloading pytest_timeout-2.3.1-py3-none-any.whl (14 kB)\nDownloading watchdog-5.0.3-py3-none-manylinux2014_aarch64.whl (79 kB)\nInstalling collected packages: watchdog, pycparser, pluggy, packaging, iniconfig, ephemeral-port-reserve, pytest, cffi, pytest-timeout, cryptography\nSuccessfully installed cffi-1.17.1 cryptography-43.0.3 ephemeral-port-reserve-1.1.4 iniconfig-2.0.0 packaging-24.1 pluggy-1.5.0 pycparser-2.22 pytest-8.3.3 pytest-timeout-2.3.1 watchdog-5.0.3\nWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n\n[notice] A new release of pip is available: 25.0.1 -> 26.3\n[notice] To update, run: pip install --upgrade pip\nObtaining file:///workspace\n  Installing build dependencies: started\n  Installing build dependencies: finished with status 'done'\n  Checking if build backend supports build_editable: started\n  Checking if build backend supports build_editable: finished with status 'done'\n  Getting requirements to build editable: started\n  Getting requirements to build editable: finished with status 'done'\n  Preparing editable metadata (pyproject.toml): started\n  Preparing editable metadata (pyproject.toml): finished with status 'done'\nBuilding wheels for collected packages: Werkzeug\n  Building editable for Werkzeug (pyproject.toml): started\n  Building editable for Werkzeug (pyproject.toml): finished with status 'done'\n  Created wheel for Werkzeug: filename=werkzeug-3.1.3-py3-none-any.whl size=3507 sha256=a2d9099d633be34bc75a8fbd30bf6c4a02943a1764c78f92849116038758d240\n  Stored in directory: /tmp/pip-ephem-wheel-cache-l7da6hn8/wheels/b0/41/ab/4e04a8678980f3355548f1261923479fbf2a713a7393a7dea8\nSuccessfully built Werkzeug\nInstalling collected packages: Werkzeug\nSuccessfully installed Werkzeug-3.1.3\nWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n\n[notice] A new release of pip is available: 25.0.1 -> 26.3\n[notice] To update, run: pip install --upgrade pip\nwerkzeug installed:\n/workspace/src/werkzeug/__init__.py\n"
+        },
+        "checks": [
+          {
+            "id": "preserve_existing_test_datastructures",
+            "code": 0,
+            "expected": "pass",
+            "accepted": true,
+            "output": "prepare ok\n........................................................................ [ 58%]\n...................................................                      [100%]\n123 passed in 0.42s\nexisting test_datastructures suite passed\n"
+          },
+          {
+            "id": "preserve_headers_behavior",
+            "code": 0,
+            "expected": "pass",
+            "accepted": true,
+            "output": "prepare ok\npreserve assertions ok\npreserve ok\n"
+          },
+          {
+            "id": "require_poplist_behavior",
+            "code": 1,
+            "expected": "fail",
+            "accepted": true,
+            "output": "prepare ok\nTraceback (most recent call last):\n  File \"<stdin>\", line 5, in <module>\nAttributeError: 'Headers' object has no attribute 'poplist'\n"
+          },
+          {
+            "id": "require_poplist_immutable_raises",
+            "code": 1,
+            "expected": "fail",
+            "accepted": true,
+            "output": "prepare ok\nTraceback (most recent call last):\n  File \"<stdin>\", line 5, in <module>\nAttributeError: 'EnvironHeaders' object has no attribute 'poplist'\n"
+          },
+          {
+            "id": "require_poplist_typing_docstring",
+            "code": 1,
+            "expected": "fail",
+            "accepted": true,
+            "output": "prepare ok\nTraceback (most recent call last):\n  File \"<stdin>\", line 2, in <module>\nAttributeError: type object 'Headers' has no attribute 'poplist'\n"
+          }
+        ],
+        "mutations": [
+          {
+            "path": "src/werkzeug/datastructures/headers.py",
+            "check_id": "preserve_existing_test_datastructures",
+            "detected": true,
+            "output": "prepare ok\n................................................F....................... [ 58%]\n...................................................                      [100%]\n=================================== FAILURES ===================================\n___________________ TestHeaders.test_defaults_and_conversion ___________________\n\nself = <test_datastructures.TestHeaders object at 0xfef829a19e80>\n\n    def test_defaults_and_conversion(self):\n        # defaults\n        headers = self.storage_class(\n            [\n                (\"Content-Type\", \"text/plain\"),\n                (\"X-Foo\", \"bar\"),\n                (\"X-Bar\", \"1\"),\n                (\"X-Bar\", \"2\"),\n            ]\n        )\n        assert headers.getlist(\"x-bar\") == [\"1\", \"2\"]\n        assert headers.get(\"x-Bar\") == \"1\"\n        assert headers.get(\"Content-Type\") == \"text/plain\"\n    \n        assert headers.setdefault(\"X-Foo\", \"nope\") == \"bar\"\n        assert headers.setdefault(\"X-Bar\", \"nope\") == \"1\"\n        assert headers.setdefault(\"X-Baz\", \"quux\") == \"quux\"\n        assert headers.setdefault(\"X-Baz\", \"nope\") == \"quux\"\n        headers.pop(\"X-Baz\")\n    \n        # newlines are not allowed in values\n        with pytest.raises(ValueError):\n            self.storage_class([(\"X-Example\", \"foo\\r\\n bar\")])\n    \n        # type conversion\n        assert headers.get(\"x-bar\", type=int) == 1\n        assert headers.getlist(\"x-bar\", type=int) == [1, 2]\n    \n        # list like operations\n        assert headers[0] == (\"Content-Type\", \"text/plain\")\n        assert headers[:1] == self.storage_class([(\"Content-Type\", \"text/plain\")])\n        del headers[:2]\n        del headers[-1]\n>       assert headers == self.storage_class([(\"X-Bar\", \"1\")])\nE       AssertionError: assert Headers([('X-...X-Bar', '2')]) == Headers([('X-Bar', '1')])\nE         \nE         Full diff:\nE         - Headers([('X-Bar', '1')])\nE         + Headers([('X-Bar', '1'), ('X-Bar', '2')])\nE         ?                        ++++++++++++++++\n\ntests/test_datastructures.py:713: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_datastructures.py::TestHeaders::test_defaults_and_conversion - AssertionError: assert Headers([('X-...X-Bar', '2')]) == Headers([('X-Bar', '1')])\n  \n  Full diff:\n  - Headers([('X-Bar', '1')])\n  + Headers([('X-Bar', '1'), ('X-Bar', '2')])\n  ?                        ++++++++++++++++\n1 failed, 122 passed in 0.45s\n"
+          },
+          {
+            "path": "src/werkzeug/datastructures/mixins.py",
+            "check_id": "preserve_headers_behavior",
+            "detected": true,
+            "output": "prepare ok\nTraceback (most recent call last):\n  File \"<stdin>\", line 37, in <module>\nAssertionError: expected TypeError on immutable pop\n"
+          }
+        ]
+      },
+      "reproduction": {
+        "ok": true,
+        "setup": {
+          "code": 0,
+          "output": "Collecting flit_core<4\n  Downloading flit_core-3.12.0-py3-none-any.whl.metadata (888 bytes)\nCollecting MarkupSafe>=2.1.1\n  Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (2.7 kB)\nDownloading flit_core-3.12.0-py3-none-any.whl (45 kB)\nDownloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (24 kB)\nInstalling collected packages: MarkupSafe, flit_core\nSuccessfully installed MarkupSafe-3.0.4 flit_core-3.12.0\nWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n\n[notice] A new release of pip is available: 25.0.1 -> 26.3\n[notice] To update, run: pip install --upgrade pip\nCollecting cffi==1.17.1 (from -r requirements/tests.txt (line 7))\n  Downloading cffi-1.17.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (1.5 kB)\nCollecting cryptography==43.0.3 (from -r requirements/tests.txt (line 11))\n  Downloading cryptography-43.0.3-cp39-abi3-manylinux_2_28_aarch64.whl.metadata (5.4 kB)\nCollecting ephemeral-port-reserve==1.1.4 (from -r requirements/tests.txt (line 13))\n  Downloading ephemeral_port_reserve-1.1.4-py2.py3-none-any.whl.metadata (2.6 kB)\nCollecting iniconfig==2.0.0 (from -r requirements/tests.txt (line 15))\n  Downloading iniconfig-2.0.0-py3-none-any.whl.metadata (2.6 kB)\nCollecting packaging==24.1 (from -r requirements/tests.txt (line 17))\n  Downloading packaging-24.1-py3-none-any.whl.metadata (3.2 kB)\nCollecting pluggy==1.5.0 (from -r requirements/tests.txt (line 19))\n  Downloading pluggy-1.5.0-py3-none-any.whl.metadata (4.8 kB)\nCollecting pycparser==2.22 (from -r requirements/tests.txt (line 21))\n  Downloading pycparser-2.22-py3-none-any.whl.metadata (943 bytes)\nCollecting pytest==8.3.3 (from -r requirements/tests.txt (line 23))\n  Downloading pytest-8.3.3-py3-none-any.whl.metadata (7.5 kB)\nCollecting pytest-timeout==2.3.1 (from -r requirements/tests.txt (line 27))\n  Downloading pytest_timeout-2.3.1-py3-none-any.whl.metadata (20 kB)\nCollecting watchdog==5.0.3 (from -r requirements/tests.txt (line 29))\n  Downloading watchdog-5.0.3-py3-none-manylinux2014_aarch64.whl.metadata (41 kB)\nDownloading cffi-1.17.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (478 kB)\nDownloading cryptography-43.0.3-cp39-abi3-manylinux_2_28_aarch64.whl (3.7 MB)\n   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.7/3.7 MB 5.8 MB/s eta 0:00:00\nDownloading ephemeral_port_reserve-1.1.4-py2.py3-none-any.whl (4.4 kB)\nDownloading iniconfig-2.0.0-py3-none-any.whl (5.9 kB)\nDownloading packaging-24.1-py3-none-any.whl (53 kB)\nDownloading pluggy-1.5.0-py3-none-any.whl (20 kB)\nDownloading pycparser-2.22-py3-none-any.whl (117 kB)\nDownloading pytest-8.3.3-py3-none-any.whl (342 kB)\nDownloading pytest_timeout-2.3.1-py3-none-any.whl (14 kB)\nDownloading watchdog-5.0.3-py3-none-manylinux2014_aarch64.whl (79 kB)\nInstalling collected packages: watchdog, pycparser, pluggy, packaging, iniconfig, ephemeral-port-reserve, pytest, cffi, pytest-timeout, cryptography\nSuccessfully installed cffi-1.17.1 cryptography-43.0.3 ephemeral-port-reserve-1.1.4 iniconfig-2.0.0 packaging-24.1 pluggy-1.5.0 pycparser-2.22 pytest-8.3.3 pytest-timeout-2.3.1 watchdog-5.0.3\nWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n\n[notice] A new release of pip is available: 25.0.1 -> 26.3\n[notice] To update, run: pip install --upgrade pip\nObtaining file:///workspace\n  Installing build dependencies: started\n  Installing build dependencies: finished with status 'done'\n  Checking if build backend supports build_editable: started\n  Checking if build backend supports build_editable: finished with status 'done'\n  Getting requirements to build editable: started\n  Getting requirements to build editable: finished with status 'done'\n  Preparing editable metadata (pyproject.toml): started\n  Preparing editable metadata (pyproject.toml): finished with status 'done'\nBuilding wheels for collected packages: Werkzeug\n  Building editable for Werkzeug (pyproject.toml): started\n  Building editable for Werkzeug (pyproject.toml): finished with status 'done'\n  Created wheel for Werkzeug: filename=werkzeug-3.1.3-py3-none-any.whl size=3507 sha256=a2d9099d633be34bc75a8fbd30bf6c4a02943a1764c78f92849116038758d240\n  Stored in directory: /tmp/pip-ephem-wheel-cache-zj224yqj/wheels/b0/41/ab/4e04a8678980f3355548f1261923479fbf2a713a7393a7dea8\nSuccessfully built Werkzeug\nInstalling collected packages: Werkzeug\nSuccessfully installed Werkzeug-3.1.3\nWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n\n[notice] A new release of pip is available: 25.0.1 -> 26.3\n[notice] To update, run: pip install --upgrade pip\nwerkzeug installed:\n/workspace/src/werkzeug/__init__.py\n"
+        },
+        "checks": [
+          {
+            "id": "preserve_existing_test_datastructures",
+            "code": 0,
+            "expected": "pass",
+            "accepted": true,
+            "output": "prepare ok\n........................................................................ [ 58%]\n...................................................                      [100%]\n123 passed in 0.29s\nexisting test_datastructures suite passed\n"
+          },
+          {
+            "id": "preserve_headers_behavior",
+            "code": 0,
+            "expected": "pass",
+            "accepted": true,
+            "output": "prepare ok\npreserve assertions ok\npreserve ok\n"
+          },
+          {
+            "id": "require_poplist_behavior",
+            "code": 1,
+            "expected": "fail",
+            "accepted": true,
+            "output": "prepare ok\nTraceback (most recent call last):\n  File \"<stdin>\", line 5, in <module>\nAttributeError: 'Headers' object has no attribute 'poplist'\n"
+          },
+          {
+            "id": "require_poplist_immutable_raises",
+            "code": 1,
+            "expected": "fail",
+            "accepted": true,
+            "output": "prepare ok\nTraceback (most recent call last):\n  File \"<stdin>\", line 5, in <module>\nAttributeError: 'EnvironHeaders' object has no attribute 'poplist'\n"
+          },
+          {
+            "id": "require_poplist_typing_docstring",
+            "code": 1,
+            "expected": "fail",
+            "accepted": true,
+            "output": "prepare ok\nTraceback (most recent call last):\n  File \"<stdin>\", line 2, in <module>\nAttributeError: type object 'Headers' has no attribute 'poplist'\n"
+          }
+        ],
+        "mutations": [
+          {
+            "path": "src/werkzeug/datastructures/headers.py",
+            "check_id": "preserve_existing_test_datastructures",
+            "detected": true,
+            "output": "prepare ok\n................................................F....................... [ 58%]\n...................................................                      [100%]\n=================================== FAILURES ===================================\n___________________ TestHeaders.test_defaults_and_conversion ___________________\n\nself = <test_datastructures.TestHeaders object at 0xfae35f24a1e0>\n\n    def test_defaults_and_conversion(self):\n        # defaults\n        headers = self.storage_class(\n            [\n                (\"Content-Type\", \"text/plain\"),\n                (\"X-Foo\", \"bar\"),\n                (\"X-Bar\", \"1\"),\n                (\"X-Bar\", \"2\"),\n            ]\n        )\n        assert headers.getlist(\"x-bar\") == [\"1\", \"2\"]\n        assert headers.get(\"x-Bar\") == \"1\"\n        assert headers.get(\"Content-Type\") == \"text/plain\"\n    \n        assert headers.setdefault(\"X-Foo\", \"nope\") == \"bar\"\n        assert headers.setdefault(\"X-Bar\", \"nope\") == \"1\"\n        assert headers.setdefault(\"X-Baz\", \"quux\") == \"quux\"\n        assert headers.setdefault(\"X-Baz\", \"nope\") == \"quux\"\n        headers.pop(\"X-Baz\")\n    \n        # newlines are not allowed in values\n        with pytest.raises(ValueError):\n            self.storage_class([(\"X-Example\", \"foo\\r\\n bar\")])\n    \n        # type conversion\n        assert headers.get(\"x-bar\", type=int) == 1\n        assert headers.getlist(\"x-bar\", type=int) == [1, 2]\n    \n        # list like operations\n        assert headers[0] == (\"Content-Type\", \"text/plain\")\n        assert headers[:1] == self.storage_class([(\"Content-Type\", \"text/plain\")])\n        del headers[:2]\n        del headers[-1]\n>       assert headers == self.storage_class([(\"X-Bar\", \"1\")])\nE       AssertionError: assert Headers([('X-...X-Bar', '2')]) == Headers([('X-Bar', '1')])\nE         \nE         Full diff:\nE         - Headers([('X-Bar', '1')])\nE         + Headers([('X-Bar', '1'), ('X-Bar', '2')])\nE         ?                        ++++++++++++++++\n\ntests/test_datastructures.py:713: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_datastructures.py::TestHeaders::test_defaults_and_conversion - AssertionError: assert Headers([('X-...X-Bar', '2')]) == Headers([('X-Bar', '1')])\n  \n  Full diff:\n  - Headers([('X-Bar', '1')])\n  + Headers([('X-Bar', '1'), ('X-Bar', '2')])\n  ?                        ++++++++++++++++\n1 failed, 122 passed in 0.42s\n"
+          },
+          {
+            "path": "src/werkzeug/datastructures/mixins.py",
+            "check_id": "preserve_headers_behavior",
+            "detected": true,
+            "output": "prepare ok\nTraceback (most recent call last):\n  File \"<stdin>\", line 37, in <module>\nAssertionError: expected TypeError on immutable pop\n"
+          }
+        ]
+      },
+      "review": {
+        "accepted": true,
+        "issues": [],
+        "summary": "Contract accepted after inspecting the actual werkzeug source (fil_9ybwhdhqsnrt0gz6cpc0pbgba9). Verified that Headers stores entries in self._list (headers.py), _del_key (headers.py:264-272) removes all case-insensitive matches by rebuilding self._list[:], and getlist (headers.py:167-200) collects values in insertion order via list comprehension — the exact building blocks the planned poplist reuses. Confirmed ImmutableHeadersMixin (mixins.py:172-240) has NO poplist override today, so EnvironHeaders (headers.py:605) would inherit a mutating poplist without the planned override; the established ImmutableMultiDictMixin.poplist (mixins.py:162) already calls _immutable_error, confirming the mirror pattern. All five checks exercise actual runtime behavior (not source text): preserve_existing_test_datastructures runs the full 123-test suite unchanged; preserve_headers_behavior asserts pop/remove/getlist/EnvironHeaders-immutability invariants; require_poplist_behavior covers order, duplicates, case-insensitivity, absence (empty list, no mutation), list independence both directions, empty Headers, and public-method presence; require_poplist_immutable_raises asserts EnvironHeaders.poplist raises TypeError; require_poplist_typing_docstring asserts a docstring and list[str] return annotation via get_type_hints (sound given 'from __future__ import annotations' at headers.py:1 plus typing import). The two negative-control mutations are meaningful semantic faults: removing self.remove(key) from pop breaks test_defaults_and_conversion (detected=true), and changing ImmutableHeadersMixin.pop body to pass breaks the immutability assertion (detected=true). Original source requirement checks fail with the expected AttributeError missing-feature error, not an import/setup failure. Setup installs real deps from requirements/tests.txt and editable-installs werkzeug from source; prepare only sets PYTHONPATH; no original test or CI files are modified (protected_paths respected). No blocking gaps: all explicit customer requirements and existing invariants are covered."
+      },
+      "session_id": "ses_2mkqk55zh7t6csnqkk6r7twks9"
+    },
+    "attempts": [
+      {
+        "round": "round-1",
+        "trial": "trial-1",
+        "plan_sha256": "7a092f8ead89c4e8dfa865cfcc78a3663b1a96f4ccc06511cca49057d419c003",
+        "execution": {
+          "ok": false,
+          "setup_code": 1,
+          "checks": [],
+          "mutations": [],
+          "finished_at": 1794102050.684258
+        },
+        "review": null
+      },
+      {
+        "round": "round-1",
+        "trial": "trial-2",
+        "plan_sha256": "bdfa16cd6a5954cab441494fdd3bbd7069b92a0f9b64f8643ac070bcc2002ca2",
+        "execution": {
+          "ok": false,
+          "setup_code": 0,
+          "checks": [
+            {
+              "id": "preserve_existing_test_datastructures",
+              "code": 0,
+              "accepted": true,
+              "seconds": 0.769
+            },
+            {
+              "id": "preserve_headers_behavior",
+              "code": 0,
+              "accepted": true,
+              "seconds": 0.342
+            },
+            {
+              "id": "require_poplist_behavior",
+              "code": 1,
+              "accepted": true,
+              "seconds": 0.328
+            },
+            {
+              "id": "require_poplist_immutable_raises",
+              "code": 1,
+              "accepted": true,
+              "seconds": 0.284
+            },
+            {
+              "id": "require_poplist_typing_docstring",
+              "code": 1,
+              "accepted": true,
+              "seconds": 0.283
+            }
+          ],
+          "mutations": [
+            {
+              "path": "src/werkzeug/datastructures/headers.py",
+              "check_id": "preserve_existing_test_datastructures",
+              "detected": false
+            },
+            {
+              "path": "src/werkzeug/datastructures/mixins.py",
+              "check_id": "preserve_existing_test_datastructures",
+              "detected": false
+            }
+          ],
+          "finished_at": 1794102726.010847
+        },
+        "review": null
+      },
+      {
+        "round": "round-1",
+        "trial": "trial-3",
+        "plan_sha256": "1f46accaf1bca7f2d2f65cf17b62269e22013f4c51f99588d070a6f9fd4acf0a",
+        "execution": {
+          "ok": false,
+          "setup_code": 0,
+          "checks": [
+            {
+              "id": "preserve_existing_test_datastructures",
+              "code": 0,
+              "accepted": true,
+              "seconds": 1.749
+            },
+            {
+              "id": "preserve_headers_behavior",
+              "code": 0,
+              "accepted": true,
+              "seconds": 0.603
+            },
+            {
+              "id": "require_poplist_behavior",
+              "code": 1,
+              "accepted": true,
+              "seconds": 0.488
+            },
+            {
+              "id": "require_poplist_immutable_raises",
+              "code": 1,
+              "accepted": true,
+              "seconds": 0.492
+            },
+            {
+              "id": "require_poplist_typing_docstring",
+              "code": 1,
+              "accepted": true,
+              "seconds": 0.489
+            }
+          ],
+          "mutations": [
+            {
+              "path": "src/werkzeug/datastructures/headers.py",
+              "check_id": "preserve_existing_test_datastructures",
+              "detected": true
+            },
+            {
+              "path": "src/werkzeug/datastructures/mixins.py",
+              "check_id": "preserve_existing_test_datastructures",
+              "detected": false
+            }
+          ],
+          "finished_at": 1794102921.913973
+        },
+        "review": null
+      },
+      {
+        "round": "round-1",
+        "trial": "trial-4",
+        "plan_sha256": "c4efe7a7fa6855a00fa2030853118f76d828edf9beed7275ff25b20308ef7381",
+        "execution": {
+          "ok": true,
+          "setup_code": 0,
+          "checks": [
+            {
+              "id": "preserve_existing_test_datastructures",
+              "code": 0,
+              "accepted": true,
+              "seconds": 1.599
+            },
+            {
+              "id": "preserve_headers_behavior",
+              "code": 0,
+              "accepted": true,
+              "seconds": 0.537
+            },
+            {
+              "id": "require_poplist_behavior",
+              "code": 1,
+              "accepted": true,
+              "seconds": 0.928
+            },
+            {
+              "id": "require_poplist_immutable_raises",
+              "code": 1,
+              "accepted": true,
+              "seconds": 0.503
+            },
+            {
+              "id": "require_poplist_typing_docstring",
+              "code": 1,
+              "accepted": true,
+              "seconds": 0.379
+            }
+          ],
+          "mutations": [
+            {
+              "path": "src/werkzeug/datastructures/headers.py",
+              "check_id": "preserve_existing_test_datastructures",
+              "detected": true
+            },
+            {
+              "path": "src/werkzeug/datastructures/mixins.py",
+              "check_id": "preserve_headers_behavior",
+              "detected": true
+            }
+          ],
+          "finished_at": 1794103049.897603
+        },
+        "review": {
+          "accepted": true,
+          "issues": [],
+          "summary": "Contract accepted after inspecting the actual werkzeug source (fil_9ybwhdhqsnrt0gz6cpc0pbgba9). Verified that Headers stores entries in self._list (headers.py), _del_key (headers.py:264-272) removes all case-insensitive matches by rebuilding self._list[:], and getlist (headers.py:167-200) collects values in insertion order via list comprehension — the exact building blocks the planned poplist reuses. Confirmed ImmutableHeadersMixin (mixins.py:172-240) has NO poplist override today, so EnvironHeaders (headers.py:605) would inherit a mutating poplist without the planned override; the established ImmutableMultiDictMixin.poplist (mixins.py:162) already calls _immutable_error, confirming the mirror pattern. All five checks exercise actual runtime behavior (not source text): preserve_existing_test_datastructures runs the full 123-test suite unchanged; preserve_headers_behavior asserts pop/remove/getlist/EnvironHeaders-immutability invariants; require_poplist_behavior covers order, duplicates, case-insensitivity, absence (empty list, no mutation), list independence both directions, empty Headers, and public-method presence; require_poplist_immutable_raises asserts EnvironHeaders.poplist raises TypeError; require_poplist_typing_docstring asserts a docstring and list[str] return annotation via get_type_hints (sound given 'from __future__ import annotations' at headers.py:1 plus typing import). The two negative-control mutations are meaningful semantic faults: removing self.remove(key) from pop breaks test_defaults_and_conversion (detected=true), and changing ImmutableHeadersMixin.pop body to pass breaks the immutability assertion (detected=true). Original source requirement checks fail with the expected AttributeError missing-feature error, not an import/setup failure. Setup installs real deps from requirements/tests.txt and editable-installs werkzeug from source; prepare only sets PYTHONPATH; no original test or CI files are modified (protected_paths respected). No blocking gaps: all explicit customer requirements and existing invariants are covered."
+        }
+      }
+    ],
+    "runner": {
+      "autonomy/run.py": "4255804764ac91656095b1230a16daa059aa508597690c3228676b134ee38dbc",
+      "autonomy/egress.py": "768954c40ad38b3585d09a919bf2559ee2d6a897ebeb9742a0f3038298aa4385"
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "total": 12,
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "integrity_ok": true,
+      "verdict": "pass",
+      "created_at": "2026-11-08T02:05:55.152Z"
+    }
+  ],
+  "sessions": [
+    {
+      "session_id": "ses_9t808tqz4j8h631ce04tetvgzs",
+      "role": "assessment",
+      "purpose": "autonomous-environment",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 424329,
+      "created_at": "2026-11-08T01:37:56.208Z"
+    },
+    {
+      "session_id": "ses_f0b067shjq24gdekrccg5v2fch",
+      "role": "assessment",
+      "purpose": "autonomous-environment",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 1056925,
+      "created_at": "2026-11-08T01:40:56.501Z"
+    },
+    {
+      "session_id": "ses_kfbxvqtn8mebzm1mtbyjzcpc7w",
+      "role": "assessment",
+      "purpose": "autonomous-environment",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 166683,
+      "created_at": "2026-11-08T01:52:10.383Z"
+    },
+    {
+      "session_id": "ses_2mkqk55zh7t6csnqkk6r7twks9",
+      "role": "assessment",
+      "purpose": "autonomous-environment",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 81696,
+      "created_at": "2026-11-08T01:55:24.861Z"
+    },
+    {
+      "session_id": "ses_wgpx99g0w8wtcgvvzh18aapf3e",
+      "role": "verification",
+      "purpose": "review-discovered-tests",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 126631,
+      "created_at": "2026-11-08T01:57:33.478Z"
+    },
+    {
+      "session_id": "ses_17hkg7jjazvjbg5xzx892fv35h",
+      "role": "coordinator",
+      "purpose": "proposal",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 5864,
+      "created_at": "2026-11-08T02:00:53.963Z"
+    },
+    {
+      "session_id": "ses_emrxk841kf5znn7he02q2xq91f",
+      "role": "implementation",
+      "purpose": "implement",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 135067,
+      "created_at": "2026-11-08T02:02:58.014Z"
+    }
+  ],
+  "stages": [
+    {
+      "stage": "intake",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "coordinator",
+      "started_at": "2026-11-08T01:37:53.091Z",
+      "finished_at": "2026-11-08T01:37:53.310Z",
+      "error": null
+    },
+    {
+      "stage": "inspect",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "assessment",
+      "started_at": "2026-11-08T01:37:53.313Z",
+      "finished_at": "2026-11-08T01:37:53.342Z",
+      "error": null
+    },
+    {
+      "stage": "plan",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "assessment",
+      "started_at": "2026-11-08T01:37:53.345Z",
+      "finished_at": "2026-11-08T02:00:50.565Z",
+      "error": null
+    },
+    {
+      "stage": "propose",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "coordinator",
+      "started_at": "2026-11-08T02:00:50.599Z",
+      "finished_at": "2026-11-08T02:00:58.340Z",
+      "error": null
+    },
+    {
+      "stage": "baseline",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "verification",
+      "started_at": "2026-11-08T02:00:58.355Z",
+      "finished_at": "2026-11-08T02:02:53.788Z",
+      "error": null
+    },
+    {
+      "stage": "freeze",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "verification",
+      "started_at": "2026-11-08T02:02:53.810Z",
+      "finished_at": "2026-11-08T02:02:53.926Z",
+      "error": null
+    },
+    {
+      "stage": "implement",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "implementation",
+      "started_at": "2026-11-08T02:02:53.930Z",
+      "finished_at": "2026-11-08T02:05:06.622Z",
+      "error": null
+    },
+    {
+      "stage": "verify",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "verification",
+      "started_at": "2026-11-08T02:05:06.625Z",
+      "finished_at": "2026-11-08T02:05:55.184Z",
+      "error": null
+    },
+    {
+      "stage": "package",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "coordinator",
+      "started_at": "2026-11-08T02:05:55.199Z",
+      "finished_at": "2026-11-08T02:05:55.436Z",
+      "error": null
+    },
+    {
+      "stage": "invoice",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "coordinator",
+      "started_at": "2026-11-08T02:05:55.453Z",
+      "finished_at": "2026-11-08T02:05:55.558Z",
+      "error": null
+    },
+    {
+      "stage": "follow_up",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "coordinator",
+      "started_at": "2026-11-08T02:05:55.565Z",
+      "finished_at": "2026-11-08T02:05:57.033Z",
+      "error": null
+    }
+  ],
+  "approvals": [
+    {
+      "kind": "proposal",
+      "decision": "accepted",
+      "by_name": "Synthetic validation harness",
+      "statement": "TEST approval after autonomous environment reproduction and independent acceptance review. No real customer agreement.",
+      "at": "2026-11-08T02:00:58.343Z"
+    },
+    {
+      "kind": "delivery",
+      "decision": "accepted",
+      "by_name": "Synthetic validation harness",
+      "statement": "TEST acceptance of verified upstream repository changes. No real customer or revenue.",
+      "at": "2026-11-08T02:05:55.439Z"
+    }
+  ],
+  "interventions": [],
+  "invoices": [
+    {
+      "number": "TEST-GS-INV-0007",
+      "status": "paid",
+      "is_test": true,
+      "amount_cents": 800000
+    }
+  ],
+  "payments": [
+    {
+      "method": "local_test",
+      "is_test": true,
+      "amount_cents": 800000
+    }
+  ],
+  "events": [
+    {
+      "actor": "verification",
+      "kind": "decision",
+      "summary": "Contract accepted after inspecting the actual werkzeug source (fil_9ybwhdhqsnrt0gz6cpc0pbgba9). Verified that Headers stores entries in self._list (headers.py), _del_key (headers.py:264-272) removes all case-insensitive matches by rebuilding self._list[:], and getlist (headers.py:167-200) collects values in insertion order via list comprehension — the exact building blocks the planned poplist reuses. Confirmed ImmutableHeadersMixin (mixins.py:172-240) has NO poplist override today, so EnvironHeaders (headers.py:605) would inherit a mutating poplist without the planned override; the established ImmutableMultiDictMixin.poplist (mixins.py:162) already calls _immutable_error, confirming the mirror pattern. All five checks exercise actual runtime behavior (not source text): preserve_existing_test_datastructures runs the full 123-test suite unchanged; preserve_headers_behavior asserts pop/remove/getlist/EnvironHeaders-immutability invariants; require_poplist_behavior covers order, duplicates, case-insensitivity, absence (empty list, no mutation), list independence both directions, empty Headers, and public-method presence; require_poplist_immutable_raises asserts EnvironHeaders.poplist raises TypeError; require_poplist_typing_docstring asserts a docstring and list[str] return annotation via get_type_hints (sound given 'from __future__ import annotations' at headers.py:1 plus typing import). The two negative-control mutations are meaningful semantic faults: removing self.remove(key) from pop breaks test_defaults_and_conversion (detected=true), and changing ImmutableHeadersMixin.pop body to pass breaks the immutability assertion (detected=true). Original source requirement checks fail with the expected AttributeError missing-feature error, not an import/setup failure. Setup installs real deps from requirements/tests.txt and editable-installs werkzeug from source; prepare only sets PYTHONPATH; no original test or CI files are modified (protected_paths respected). No blocking gaps: all explicit customer requirements and existing invariants are covered.",
+      "origin": "agent",
+      "at": "2026-11-08T01:59:13.482Z"
+    },
+    {
+      "actor": "coordinator",
+      "kind": "decision",
+      "summary": "Proposal v1 sent: Add Headers.poplist(key) to werkzeug.datastructures.Headers, fixed price $8,000 (Add Headers.poplist(key) to werkzeug.datastructures.Headers + Size: 46,877 lines + 1 code change(s) made by the implementation agent), 5 acceptance items.",
+      "origin": "agent",
+      "at": "2026-11-08T02:00:58.337Z"
+    },
+    {
+      "actor": "customer",
+      "kind": "approval",
+      "summary": "Synthetic validation harness accepted proposal v1 ($8,000 fixed).",
+      "origin": "human",
+      "at": "2026-11-08T02:00:58.352Z"
+    },
+    {
+      "actor": "implementation",
+      "kind": "decision",
+      "summary": "Added a public Headers.poplist(key) method to werkzeug.datastructures.Headers and a blocking poplist override to ImmutableHeadersMixin (so EnvironHeaders raises TypeError). poplist returns all values for the given header name in original insertion order, removes all case-insensitive occurrences of that name, returns a new empty list when absent without modifying other headers, preserves duplicate values and the relative order of unrelated headers, and returns a new list independent of later changes. Added focused tests in a NEW file tests/test_poplist.py (no original tests or CI files were modified). Existing test_datastructures.py suite plus focused assertions all pass; test_http.py/test_wrappers.py/test_test.py also pass. All protected files verified byte-for-byte unchanged.",
+      "origin": "agent",
+      "at": "2026-11-08T02:05:06.620Z"
+    },
+    {
+      "actor": "verification",
+      "kind": "check",
+      "summary": "Autonomous verification: 12/12 checks passed",
+      "origin": "tool",
+      "at": "2026-11-08T02:05:55.182Z"
+    },
+    {
+      "actor": "customer",
+      "kind": "approval",
+      "summary": "Synthetic validation harness accepted the delivery.",
+      "origin": "human",
+      "at": "2026-11-08T02:05:55.450Z"
+    },
+    {
+      "actor": "coordinator",
+      "kind": "decision",
+      "summary": "Invoice TEST-GS-INV-0007 prepared for $8,000 (TEST - demonstration job, not sent).",
+      "origin": "tool",
+      "at": "2026-11-08T02:05:55.491Z"
+    }
+  ],
+  "spend_micro_usd": {
+    "total": 2006570,
+    "metered": 1997195,
+    "estimated": 9375
+  },
+  "contract_manifest_sha256": "ef8fa35e4c269c437848a862ca3f517f1e1b79395d36765ebac67366674fbaa8",
+  "verification": {
+    "integrity": {
+      "ok": true
+    },
+    "candidate_digest": "33fad33a4bbeab53712f5a7e256df6edc36affc10698eb96c80e1106f844a10f",
+    "summary": {
+      "total": 12,
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "verdict": "pass"
+    },
+    "checks": [
+      {
+        "id": "frozen_evidence",
+        "title": "Acceptance plan and runner are unchanged",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "actual": true
+      },
+      {
+        "id": "original_tests",
+        "title": "Original tests and CI are unchanged",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "actual": true
+      },
+      {
+        "id": "file:src/werkzeug/datastructures/headers.py",
+        "title": "Required deliverable src/werkzeug/datastructures/headers.py",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "actual": "src/werkzeug/datastructures/headers.py"
+      },
+      {
+        "id": "file:src/werkzeug/datastructures/mixins.py",
+        "title": "Required deliverable src/werkzeug/datastructures/mixins.py",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "actual": "src/werkzeug/datastructures/mixins.py"
+      },
+      {
+        "id": "fresh_environment",
+        "title": "Candidate builds in a fresh environment",
+        "category": "build",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "Collecting flit_core<4\n  Downloading flit_core-3.12.0-py3-none-any.whl.metadata (888 bytes)\nCollecting MarkupSafe>=2.1.1\n  Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (2.7 kB)\nDownloading flit_core-3.12.0-py3-none-any.whl (45 kB)\nDownloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (24 kB)\nInstalling collected packages: MarkupSafe, flit_core\nSuccessfully installed MarkupSafe-3.0.4 flit_core-3.12.0\nWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n\n[notice] A new release of pip is available: 25.0.1 -> 26.3\n[notice] To update, run: pip install --upgrade pip\nCollecting cffi==1.17.1 (from -r requirements/tests.txt (line 7))\n  Downloading cffi-1.17.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (1.5 kB)\nCollecting cryptography==43.0.3 (from -r requirements/tests.txt (line 11))\n  Downloading cryptography-43.0.3-cp39-abi3-manylinux_2_28_aarch64.whl.metadata (5.4 kB)\nCollecting ephemeral-port-reserve==1.1.4 (from -r requirements/tests.txt (line 13))\n  Downloading ephemeral_port_reserve-1.1.4-py2.py3-none-any.whl.metadata (2.6 kB)\nCollecting iniconfig==2.0.0 (from -r requirements/tests.txt (line 15))\n  Downloading iniconfig-2.0.0-py3-none-any.whl.metadata (2.6 kB)\nCollecting packaging==24.1 (from -r requirements/tests.txt (line 17))\n  Downloading packaging-24.1-py3-none-any.whl.metadata (3.2 kB)\nCollecting pluggy==1.5.0 (from -r requirements/tests.txt (line 19))\n  Downloading pluggy-1.5.0-py3-none-any.whl.metadata (4.8 kB)\nCollecting pycparser==2.22 (from -r requirements/tests.txt (line 21))\n  Downloading pycparser-2.22-py3-none-any.whl.metadata (943 bytes)\nCollecting pytest==8.3.3 (from -r requirements/tests.txt (line 23))\n  Downloading pytest-8.3.3-py3-none-any.whl.metadata (7.5 kB)\nCollecting pytest-timeout==2.3.1 (from -r requirements/tests.txt (line 27))\n  Downloading pytest_timeout-2.3.1-py3-none-any.whl.metadata (20 kB)\nCollecting watchdog==5.0.3 (from -r requirements/tests.txt (line 29))\n  Downloading watchdog-5.0.3-py3-none-manylinux2014_aarch64.whl.metadata (41 kB)\nDownloading cffi-1.17.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (478 kB)\nDownloading cryptography-43.0.3-cp39-abi3-manylinux_2_28_aarch64.whl (3.7 MB)\n   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.7/3.7 MB 29.2 MB/s eta 0:00:00\nDownloading ephemeral_port_reserve-1.1.4-py2.py3-none-any.whl (4.4 kB)\nDownloading iniconfig-2.0.0-py3-none-any.whl (5.9 kB)\nDownloading packaging-24.1-py3-none-any.whl (53 kB)\nDownloading pluggy-1.5.0-py3-none-any.whl (20 kB)\nDownloading pycparser-2.22-py3-none-any.whl (117 kB)\nDownloading pytest-8.3.3-py3-none-any.whl (342 kB)\nDownloading pytest_timeout-2.3.1-py3-none-any.whl (14 kB)\nDownloading watchdog-5.0.3-py3-none-manylinux2014_aarch64.whl (79 kB)\nInstalling collected packages: watchdog, pycparser, pluggy, packaging, iniconfig, ephemeral-port-reserve, pytest, cffi, pytest-timeout, cryptography\nSuccessfully installed cffi-1.17.1 cryptography-43.0.3 ephemeral-port-reserve-1.1.4 iniconfig-2.0.0 packaging-24.1 pluggy-1.5.0 pycparser-2.22 pytest-8.3.3 pytest-timeout-2.3.1 watchdog-5.0.3\nWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n\n[notice] A new release of pip is available: 25.0.1 -> 26.3\n[notice] To update, run: pip install --upgrade pip\nObtaining file:///workspace\n  Installing build dependencies: started\n  Installing build dependencies: finished with status 'done'\n  Checking if build backend supports build_editable: started\n  Checking if build backend supports build_editable: finished with status 'done'\n  Getting requirements to build editable: started\n  Getting requirements to build editable: finished with status 'done'\n  Preparing editable metadata (pyproject.toml): started\n  Preparing editable metadata (pyproject.toml): finished with status 'done'\nBuilding wheels for collected packages: Werkzeug\n  Building editable for Werkzeug (pyproject.toml): started\n  Building editable for Werkzeug (pyproject.toml): finished with status 'done'\n  Created wheel for Werkzeug: filename=werkzeug-3.1.3-py3-none-any.whl size=3507 sha256=f7c74cfddb71777c90b4838536a9f2492f24a323aff6f380ec5445d810a6782f\n  Stored in directory: /tmp/pip-ephem-wheel-cache-x487o6qc/wheels/b0/41/ab/4e04a8678980f3355548f1261923479fbf2a713a7393a7dea8\nSuccessfully built Werkzeug\nInstalling collected packages: Werkzeug\nSuccessfully installed Werkzeug-3.1.3\nWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n\n[notice] A new release of pip is available: 25.0.1 -> 26.3\n[notice] To update, run: pip install --upgrade pip\nwerkzeug installed:\n/workspace/src/werkzeug/__init__.py\n"
+        }
+      },
+      {
+        "id": "preserve_existing_test_datastructures",
+        "title": "Existing test_datastructures.py suite passes unchanged",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "prepare ok\n........................................................................ [ 58%]\n...................................................                      [100%]\n123 passed in 0.48s\nexisting test_datastructures suite passed\n",
+          "seconds": 1.378
+        }
+      },
+      {
+        "id": "preserve_headers_behavior",
+        "title": "Focused preservation assertions for existing Headers mutating and immutable behavior",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "prepare ok\npreserve assertions ok\npreserve ok\n",
+          "seconds": 0.514
+        }
+      },
+      {
+        "id": "require_poplist_behavior",
+        "title": "poplist returns all values in order, removes them, independent list, empty when absent",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "prepare ok\nrequirement assertions ok\nrequirement ok\n",
+          "seconds": 0.4
+        }
+      },
+      {
+        "id": "require_poplist_immutable_raises",
+        "title": "poplist on ImmutableHeadersMixin (EnvironHeaders) raises TypeError",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "prepare ok\nimmutable poplist raises ok\nimmutable ok\n",
+          "seconds": 0.358
+        }
+      },
+      {
+        "id": "require_poplist_typing_docstring",
+        "title": "poplist has a docstring and a list[str] return annotation",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "prepare ok\ntyping/docstring ok {'key': <class 'str'>, 'return': list[str]}\ntyping ok\n",
+          "seconds": 0.296
+        }
+      },
+      {
+        "id": "unchanged_candidate",
+        "title": "Delivered source is the source that was verified",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "actual": "33fad33a4bbeab53712f5a7e256df6edc36affc10698eb96c80e1106f844a10f"
+      },
+      {
+        "id": "unchanged_evidence",
+        "title": "Acceptance evidence remains unchanged after execution",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "actual": true
+      }
+    ],
+    "results": [
+      {
+        "id": "frozen_evidence",
+        "title": "Acceptance plan and runner are unchanged",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "actual": true
+      },
+      {
+        "id": "original_tests",
+        "title": "Original tests and CI are unchanged",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "actual": true
+      },
+      {
+        "id": "file:src/werkzeug/datastructures/headers.py",
+        "title": "Required deliverable src/werkzeug/datastructures/headers.py",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "actual": "src/werkzeug/datastructures/headers.py"
+      },
+      {
+        "id": "file:src/werkzeug/datastructures/mixins.py",
+        "title": "Required deliverable src/werkzeug/datastructures/mixins.py",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "actual": "src/werkzeug/datastructures/mixins.py"
+      },
+      {
+        "id": "fresh_environment",
+        "title": "Candidate builds in a fresh environment",
+        "category": "build",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "Collecting flit_core<4\n  Downloading flit_core-3.12.0-py3-none-any.whl.metadata (888 bytes)\nCollecting MarkupSafe>=2.1.1\n  Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (2.7 kB)\nDownloading flit_core-3.12.0-py3-none-any.whl (45 kB)\nDownloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (24 kB)\nInstalling collected packages: MarkupSafe, flit_core\nSuccessfully installed MarkupSafe-3.0.4 flit_core-3.12.0\nWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n\n[notice] A new release of pip is available: 25.0.1 -> 26.3\n[notice] To update, run: pip install --upgrade pip\nCollecting cffi==1.17.1 (from -r requirements/tests.txt (line 7))\n  Downloading cffi-1.17.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (1.5 kB)\nCollecting cryptography==43.0.3 (from -r requirements/tests.txt (line 11))\n  Downloading cryptography-43.0.3-cp39-abi3-manylinux_2_28_aarch64.whl.metadata (5.4 kB)\nCollecting ephemeral-port-reserve==1.1.4 (from -r requirements/tests.txt (line 13))\n  Downloading ephemeral_port_reserve-1.1.4-py2.py3-none-any.whl.metadata (2.6 kB)\nCollecting iniconfig==2.0.0 (from -r requirements/tests.txt (line 15))\n  Downloading iniconfig-2.0.0-py3-none-any.whl.metadata (2.6 kB)\nCollecting packaging==24.1 (from -r requirements/tests.txt (line 17))\n  Downloading packaging-24.1-py3-none-any.whl.metadata (3.2 kB)\nCollecting pluggy==1.5.0 (from -r requirements/tests.txt (line 19))\n  Downloading pluggy-1.5.0-py3-none-any.whl.metadata (4.8 kB)\nCollecting pycparser==2.22 (from -r requirements/tests.txt (line 21))\n  Downloading pycparser-2.22-py3-none-any.whl.metadata (943 bytes)\nCollecting pytest==8.3.3 (from -r requirements/tests.txt (line 23))\n  Downloading pytest-8.3.3-py3-none-any.whl.metadata (7.5 kB)\nCollecting pytest-timeout==2.3.1 (from -r requirements/tests.txt (line 27))\n  Downloading pytest_timeout-2.3.1-py3-none-any.whl.metadata (20 kB)\nCollecting watchdog==5.0.3 (from -r requirements/tests.txt (line 29))\n  Downloading watchdog-5.0.3-py3-none-manylinux2014_aarch64.whl.metadata (41 kB)\nDownloading cffi-1.17.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (478 kB)\nDownloading cryptography-43.0.3-cp39-abi3-manylinux_2_28_aarch64.whl (3.7 MB)\n   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.7/3.7 MB 29.2 MB/s eta 0:00:00\nDownloading ephemeral_port_reserve-1.1.4-py2.py3-none-any.whl (4.4 kB)\nDownloading iniconfig-2.0.0-py3-none-any.whl (5.9 kB)\nDownloading packaging-24.1-py3-none-any.whl (53 kB)\nDownloading pluggy-1.5.0-py3-none-any.whl (20 kB)\nDownloading pycparser-2.22-py3-none-any.whl (117 kB)\nDownloading pytest-8.3.3-py3-none-any.whl (342 kB)\nDownloading pytest_timeout-2.3.1-py3-none-any.whl (14 kB)\nDownloading watchdog-5.0.3-py3-none-manylinux2014_aarch64.whl (79 kB)\nInstalling collected packages: watchdog, pycparser, pluggy, packaging, iniconfig, ephemeral-port-reserve, pytest, cffi, pytest-timeout, cryptography\nSuccessfully installed cffi-1.17.1 cryptography-43.0.3 ephemeral-port-reserve-1.1.4 iniconfig-2.0.0 packaging-24.1 pluggy-1.5.0 pycparser-2.22 pytest-8.3.3 pytest-timeout-2.3.1 watchdog-5.0.3\nWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n\n[notice] A new release of pip is available: 25.0.1 -> 26.3\n[notice] To update, run: pip install --upgrade pip\nObtaining file:///workspace\n  Installing build dependencies: started\n  Installing build dependencies: finished with status 'done'\n  Checking if build backend supports build_editable: started\n  Checking if build backend supports build_editable: finished with status 'done'\n  Getting requirements to build editable: started\n  Getting requirements to build editable: finished with status 'done'\n  Preparing editable metadata (pyproject.toml): started\n  Preparing editable metadata (pyproject.toml): finished with status 'done'\nBuilding wheels for collected packages: Werkzeug\n  Building editable for Werkzeug (pyproject.toml): started\n  Building editable for Werkzeug (pyproject.toml): finished with status 'done'\n  Created wheel for Werkzeug: filename=werkzeug-3.1.3-py3-none-any.whl size=3507 sha256=f7c74cfddb71777c90b4838536a9f2492f24a323aff6f380ec5445d810a6782f\n  Stored in directory: /tmp/pip-ephem-wheel-cache-x487o6qc/wheels/b0/41/ab/4e04a8678980f3355548f1261923479fbf2a713a7393a7dea8\nSuccessfully built Werkzeug\nInstalling collected packages: Werkzeug\nSuccessfully installed Werkzeug-3.1.3\nWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n\n[notice] A new release of pip is available: 25.0.1 -> 26.3\n[notice] To update, run: pip install --upgrade pip\nwerkzeug installed:\n/workspace/src/werkzeug/__init__.py\n"
+        }
+      },
+      {
+        "id": "preserve_existing_test_datastructures",
+        "title": "Existing test_datastructures.py suite passes unchanged",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "prepare ok\n........................................................................ [ 58%]\n...................................................                      [100%]\n123 passed in 0.48s\nexisting test_datastructures suite passed\n",
+          "seconds": 1.378
+        }
+      },
+      {
+        "id": "preserve_headers_behavior",
+        "title": "Focused preservation assertions for existing Headers mutating and immutable behavior",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "prepare ok\npreserve assertions ok\npreserve ok\n",
+          "seconds": 0.514
+        }
+      },
+      {
+        "id": "require_poplist_behavior",
+        "title": "poplist returns all values in order, removes them, independent list, empty when absent",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "prepare ok\nrequirement assertions ok\nrequirement ok\n",
+          "seconds": 0.4
+        }
+      },
+      {
+        "id": "require_poplist_immutable_raises",
+        "title": "poplist on ImmutableHeadersMixin (EnvironHeaders) raises TypeError",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "prepare ok\nimmutable poplist raises ok\nimmutable ok\n",
+          "seconds": 0.358
+        }
+      },
+      {
+        "id": "require_poplist_typing_docstring",
+        "title": "poplist has a docstring and a list[str] return annotation",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "prepare ok\ntyping/docstring ok {'key': <class 'str'>, 'return': list[str]}\ntyping ok\n",
+          "seconds": 0.296
+        }
+      },
+      {
+        "id": "unchanged_candidate",
+        "title": "Delivered source is the source that was verified",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "actual": "33fad33a4bbeab53712f5a7e256df6edc36affc10698eb96c80e1106f844a10f"
+      },
+      {
+        "id": "unchanged_evidence",
+        "title": "Acceptance evidence remains unchanged after execution",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "actual": true
+      }
+    ],
+    "failed": [],
+    "by_category": {
+      "integrity": {
+        "total": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "delivery": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0
+      },
+      "build": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0
+      },
+      "behavior": {
+        "total": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    "not_tested": [
+      "The negative-control mutations above alter ORIGINAL behavior to be wrong so a preservation check fails; per task instructions the real (correct) implementation is NOT applied during planning. The host applies the real implementation into the working copy that the checks validate, and the negative-control mutations are applied to a separate copy to confirm the preservation check catches regressions.",
+      "The full tox matrix (py3.9-3.13, pypy, Windows, Mac), the style/pre-commit env, the docs env, and the mypy/pyright typing tox env are not executed here; only the test_datastructures.py suite plus focused assertions run as the substantive preservation check in a single python:3.12 container. A lightweight typing-hint sanity assertion is used instead of mypy.",
+      "Tests that start live dev servers (tests/test_serving.py, dev_server-marked tests in tests/test_debug.py, tests/middleware/test_http_proxy.py) are intentionally excluded from the preservation check to avoid spawning subprocesses in the offline check container; test_datastructures.py does not use the dev_server fixture.",
+      "No production deployment is performed.",
+      "The requirement checks verify runtime behavior by calling Headers.poplist; on the original (unmutated) source they fail with AttributeError because Headers has no poplist attribute, which is the intended clear missing-feature error."
+    ]
+  },
+  "delivery": {
+    "sha256": "2d32c3619ce8157caa6bb3c9f6c796a3b8895f8823bde65f0cf139bb1bd29b83",
+    "bytes": 986503
+  },
+  "claims": {
+    "synthetic_customer": true,
+    "production_deployment": false,
+    "paid_real_customer": false,
+    "agent_work": "Live Naive sessions and their actual roles are listed above, including independent acceptance review when used.",
+    "tool_work": "Source execution, stable baseline recording, independent comparisons, isolation, packaging and durable orchestration.",
+    "acceptance": "Synthetic fixture approvals, not real customer acceptance.",
+    "limitations": [
+      "The negative-control mutations above alter ORIGINAL behavior to be wrong so a preservation check fails; per task instructions the real (correct) implementation is NOT applied during planning. The host applies the real implementation into the working copy that the checks validate, and the negative-control mutations are applied to a separate copy to confirm the preservation check catches regressions.",
+      "The full tox matrix (py3.9-3.13, pypy, Windows, Mac), the style/pre-commit env, the docs env, and the mypy/pyright typing tox env are not executed here; only the test_datastructures.py suite plus focused assertions run as the substantive preservation check in a single python:3.12 container. A lightweight typing-hint sanity assertion is used instead of mypy.",
+      "Tests that start live dev servers (tests/test_serving.py, dev_server-marked tests in tests/test_debug.py, tests/middleware/test_http_proxy.py) are intentionally excluded from the preservation check to avoid spawning subprocesses in the offline check container; test_datastructures.py does not use the dev_server fixture.",
+      "No production deployment is performed.",
+      "The requirement checks verify runtime behavior by calling Headers.poplist; on the original (unmutated) source they fail with AttributeError because Headers has no poplist attribute, which is the intended clear missing-feature error."
+    ]
+  }
+}

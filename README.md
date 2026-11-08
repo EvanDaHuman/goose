@@ -22,11 +22,13 @@ Built for the [Naïve Autonomous Companies Hackathon](https://events.ycombinator
 | Continuing care | Scheduled delivery-integrity checks and follow-up change requests |
 | Accountability | Metered Naïve cost, labelled compute estimates, session provenance, approvals, founder interventions and job leases |
 
-Customers can use a GitHub link or ZIP. New repository jobs need no Goose-specific adapter: see [autonomous engineering](docs/autonomous-engineering.md).
+Customers can use a GitHub link or ZIP. Public links have a credential-free Git fallback when REST quotas are exhausted. New repository jobs need no Goose-specific adapter: see [autonomous engineering](docs/autonomous-engineering.md).
 
 See [execution scope](docs/scope.md), [commerce setup](docs/commerce.md) and [demo guide](docs/demo.md). Production deployment and broad dependency monitoring are not implemented. A passing contract is evidence for its scope, not proof of all possible behavior.
 
 ## Recorded proof
+
+The unfamiliar-repository engagement `GS-1022` added `Headers.poplist` to upstream Werkzeug 3.1.3 and completed discovery, independent review, proposal, implementation, verification, delivery, synthetic acceptance, test invoice and follow-up. Naïve authored the environment and tests from the repository, without a Werkzeug adapter. The accepted scope preserves 123 existing data-structure tests plus focused assertions, checks the requested API and immutable subclass behavior, and detects two deliberate semantic faults. Other upstream suites and the cross-platform matrix were excluded and are explicitly listed. Four discovery attempts were needed. A separate [local commerce run](docs/evidence/autonomous-werkzeug-commerce.json) exercised test settlement, support, delivery-integrity monitoring and follow-up intake without external emails or real money. See the [actual run](docs/evidence/autonomous-werkzeug-live.json) and [unchanged delivery](docs/evidence/deliveries/GS-1022.zip).
 
 The live routing-engine engagement `GS-1001` migrated Python to Node.js, added blocked-link support and completed proposal, implementation, verification, delivery, acceptance, invoice and follow-up. Naïve performed assessment and coding; tools executed original and candidate separately. The [exported record](docs/evidence/workspace-routing-live.json) contains actual sessions, costs, checks, stage history and a development intervention. Its [unchanged delivery archive](docs/evidence/deliveries/GS-1001.zip) includes the generated source, frozen contract and verification evidence.
 
@@ -38,7 +40,7 @@ The [validation record](docs/evidence/build-validation.json) covers 67 integrati
 
 ## Run locally
 
-The native executor targets macOS on Apple Silicon. Install Node 22 or later, Homebrew `python@3.13`, `uv` and `postgresql@17`. The AgentMail signature library requires Node 22 or later. The ROS adapter additionally needs Docker with a running Linux VM and its image built from `robotics/Dockerfile`.
+The current local setup targets macOS on Apple Silicon. New autonomous repository jobs additionally require Docker with a running Linux backend. The native executor targets macOS on Apple Silicon. Install Node 22 or later, Homebrew `python@3.13`, `uv` and `postgresql@17`. The AgentMail signature library requires Node 22 or later. The ROS adapter additionally needs Docker with a running Linux VM and its image built from `robotics/Dockerfile`.
 
 ```bash
 npm run setup
@@ -65,6 +67,8 @@ Add AgentMail and Stripe keys when ready. Their absence does not prevent test en
 | Command | Purpose |
 | --- | --- |
 | `npm start` / `npm stop` | Start or stop this checkout's web app and worker |
+| `npm run autonomy:demo -- docs/validation/werkzeug-request.json` | Live discovery and full workflow on an unfamiliar upstream repository |
+| `npm run test:autonomy` | Real Docker isolation, negative controls and copied-data migration tests |
 | `npm run workspace:demo` | Full live Naïve engagement on a synthetic engineering fixture |
 | `npm run workspace:demo -- --robotics` | Full company workflow on the pinned ROS migration fixture |
 | `npm run workspace:evidence -- GS-id evidence.json` | Export actual engineering history without workspace tokens |
