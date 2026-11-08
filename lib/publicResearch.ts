@@ -4,7 +4,7 @@ import { RECIPES, type Candidate, type Qualification } from "./growthRules";
 
 export type PublicPage = { url:string; repositoryUrl:string; fetchedAt:string; sha256:string; bytes:number; excerpt:string };
 export type PublicRepository = { url:string; fullName:string; description:string; branch:string };
-export type PublicResearch = { repositories:PublicRepository[]; pages:PublicPage[]; errors:{url:string;reason:string}[]; requests:number; discovery:"recovery_urls"|"github_repository_search" };
+export type PublicResearch = { repositories:PublicRepository[]; pages:PublicPage[]; errors:{url:string;reason:string}[]; requests:number; discovery:"recovery_urls"|"github_repository_search"|"github_code_search" };
 const HOSTS=new Set(["github.com","api.github.com","raw.githubusercontent.com"]);
 const MAX_BYTES=128*1024,MAX_FILES=10,MAX_REPOS=5;
 function safeUrl(value:string){
@@ -44,6 +44,23 @@ export async function fetchPublicResearch(recoveryUrls:string[],knownUrls:string
   const roots=[...new Set(recoveryUrls.map(repositoryUrl).filter((u):u is string=>Boolean(u)&&!known.has(u)))].slice(0,MAX_REPOS);
   const result:PublicResearch={repositories:[],pages:[],errors:[],requests:0,discovery:roots.length?"recovery_urls":"github_repository_search"};
   const get=async(url:string)=>{if(result.requests>=MAX_FILES)throw new Error("Public source request limit reached");result.requests++;return fetchPublicPage(url,fetcher);};
+  // With a token, GitHub code search finds what the research agent is looking for directly: organisation-owned
+  // applications whose requirements file pins an end-of-life framework. The matched file is supplied as evidence.
+  const supplied:string[]=[];
+  if(!roots.length&&process.env.GITHUB_TOKEN){
+    const pins=["Django==1.11","Django==2.2","Django==3.2","Flask==1.1","Flask==0.12"],pin=pins[(new Date().getUTCHours()+new Date().getUTCDate())%pins.length];
+    const url="https://api.github.com/search/code?"+new URLSearchParams({q:`"${pin}" filename:requirements.txt`,per_page:"30",page:String(1+new Date().getUTCHours()%3)});
+    try{
+      const data=JSON.parse((await get(url)).text);result.discovery="github_code_search";
+      for(const item of data.items??[]){
+        const repo=item.repository,root=repositoryUrl(repo?.html_url??"");
+        if(!root||repo.private!==false||repo.fork||repo.owner?.type!=="Organization"||known.has(root)||roots.includes(root)||roots.length>=3)continue;
+        const sha=new URL(item.html_url).pathname.split("/")[4];
+        if(!/^[0-9a-f]{40}$/.test(sha??""))continue;
+        roots.push(root);supplied.push(`https://raw.githubusercontent.com/${repo.full_name}/${sha}/${String(item.path).split("/").map(encodeURIComponent).join("/")}`);
+      }
+    }catch(e){result.errors.push({url,reason:(e as Error).message});}
+  }
   if(!roots.length){
     // active applications on stacks Goose can upgrade, rotating by hour so successive cycles see different candidates
     const stacks=["django","flask"],stack=stacks[new Date().getUTCHours()%stacks.length];
@@ -64,8 +81,8 @@ export async function fetchPublicResearch(recoveryUrls:string[],knownUrls:string
       result.pages.push({url:page.url,sha256:page.sha256,bytes:page.bytes,fetchedAt:page.fetchedAt,repositoryUrl:root,excerpt});
     }catch(e){result.errors.push({url:metadataUrl,reason:(e as Error).message});continue;}
     // Metadata and three small source documents per repository. All requests share the ten-file cap.
-    const supplied=recoveryUrls.filter(u=>repositoryUrl(u)===root&&new URL(u).hostname==="raw.githubusercontent.com");
-    const files=[...new Set([...supplied,`https://raw.githubusercontent.com/${fullName}/${encodeURIComponent(repo.branch)}/requirements.txt`,`https://raw.githubusercontent.com/${fullName}/${encodeURIComponent(repo.branch)}/pyproject.toml`,`https://raw.githubusercontent.com/${fullName}/${encodeURIComponent(repo.branch)}/README.md`])].slice(0,3);
+    const given=[...recoveryUrls,...supplied].filter(u=>repositoryUrl(u)===root&&new URL(u).hostname==="raw.githubusercontent.com");
+    const files=[...new Set([...given,`https://raw.githubusercontent.com/${fullName}/${encodeURIComponent(repo.branch)}/requirements.txt`,`https://raw.githubusercontent.com/${fullName}/${encodeURIComponent(repo.branch)}/pyproject.toml`,`https://raw.githubusercontent.com/${fullName}/${encodeURIComponent(repo.branch)}/README.md`])].slice(0,3);
     for(const url of files){if(result.requests>=MAX_FILES)break;try{const page=await get(url);if(repositoryUrl(page.url)!==root)throw new Error("Source redirected to another repository");result.pages.push({url:page.url,sha256:page.sha256,bytes:page.bytes,fetchedAt:page.fetchedAt,repositoryUrl:root,excerpt:page.text.slice(0,6000)});}catch(e){result.errors.push({url,reason:(e as Error).message});}}
   }
   return result;
