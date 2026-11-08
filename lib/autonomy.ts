@@ -5,6 +5,7 @@
 //   a data question for the founder    route it to the customer, whose data it is
 //   unsafe or impossible to continue   end the job honestly ("not a fit"); nothing is invoiced before delivery
 //   anything else (agent/step failure) retry the step with exponential backoff, up to a bound, then end the job
+// A job whose reason starts "Stopped by the operator" or "Paused by the operator" was halted on purpose and is left alone.
 // Every action is a recorded system event, not a founder intervention. GOOSE_PUBLIC_JOBS_REQUIRE_APPROVAL, when an
 // operator deliberately sets it, is the one wait left for a person.
 import { q } from "./db";
@@ -20,11 +21,15 @@ const EXTRA_ROUNDS = () => Math.max(0, Number(process.env.GOOSE_AUTO_EXTRA_ROUND
 const EXTRA_REPAIRS = () => Math.max(0, Number(process.env.GOOSE_AUTO_EXTRA_REPAIRS ?? 2) || 0);
 const APPROVAL_WAIT = "Your request is awaiting operator approval";
 
-export type Recovery = "infra" | "approval" | "new_round" | "raise_limit" | "extra_repair" | "route_question" | "end" | "retry" | "backoff";
+export type Recovery = "infra" | "approval" | "operator_hold" | "new_round" | "raise_limit" | "extra_repair" | "route_question" | "end" | "retry" | "backoff";
+
+/** A person deliberately stopped or paused this job: recovery never restarts it. */
+export const OPERATOR_HOLD = /^(Stopped|Paused) by the operator\b/i;
 
 /** Decide what to do with a waiting job. Pure: tested in tests/integration/autonomy.test.ts. */
 export function classify(reason: string, job: { auto_recoveries: number; auto_extra_repairs: number; cost_limit_micro_usd: number; mode?: string; round?: number }, now = Date.now(), lastAt: number | null = null): { action: Recovery; why: string } {
   const r = reason ?? "";
+  if (OPERATOR_HOLD.test(r)) return { action: "operator_hold", why: "a person stopped this job on purpose; only they resume it" };
   if (isInfraWait(r)) return { action: "infra", why: "execution backend" };
   if (r.startsWith(APPROVAL_WAIT)) return { action: "approval", why: "operator approval was explicitly required (GOOSE_PUBLIC_JOBS_REQUIRE_APPROVAL)" };
   if (/integrity|evidence changed|no longer reproduce/i.test(r)) return { action: "end", why: "the frozen acceptance evidence could not be trusted, so the work cannot be verified" };
@@ -56,7 +61,7 @@ export async function serviceAutonomy(now = Date.now()) {
   for (const job of jobs) {
     const reason = job.waiting_reason ?? "";
     const c = classify(reason, job, now, job.auto_recovered_at ? Date.parse(job.auto_recovered_at) : null);
-    if (c.action === "infra" || c.action === "backoff") continue;
+    if (c.action === "infra" || c.action === "backoff" || c.action === "operator_hold") continue;
     if (c.action === "approval") { if (config.publicJobsRequireApproval) continue; await resume(job); }
     else if (c.action === "new_round") {
       await q("UPDATE proposals SET status='superseded' WHERE job_id=$1 AND status='sent'", [job.id]);

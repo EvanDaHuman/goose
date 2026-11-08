@@ -133,7 +133,11 @@ def execute(source,plan,out,phase='baseline',data=None):
             r=check(c);r['expected']='pass' if phase=='verify' or c['kind']=='preserve' else 'fail'
             r['accepted']=(r['code']==0 if r['expected']=='pass' else requirement_fails_for_the_right_reason(r))
             report['checks'].append(r);save()
-        if phase=='baseline':
+        # A check that misbehaves on the original code already rejects the plan, so the deliberate breaks would only cost time.
+        bad=[c['id'] for c in report['checks'] if not c['accepted']]
+        if phase=='baseline' and bad:
+            report['mutations_skipped']='Deliberate breaks were not run because these checks did not behave as required on the original code: '+', '.join(bad)
+        if phase=='baseline' and not bad:
             for i,m in enumerate(plan['mutations']):
                 file=pathlib.Path(source)/m['path'];text=file.read_text()
                 if text.count(m['find'])!=1:raise RuntimeError('Negative control must match exactly once: '+m['path'])

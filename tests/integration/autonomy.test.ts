@@ -18,6 +18,13 @@ after(async () => { for (const id of made) { makeWritable(jobDir(id)); fs.rmSync
 
 const base = { auto_recoveries: 0, auto_extra_repairs: 0, cost_limit_micro_usd: 25_000_000, mode: "naive" };
 
+test("classification: a job a person stopped or paused on purpose is never restarted", () => {
+  assert.equal(classify("Stopped by the operator to start a fresh test after fixing agent workspace reuse", base).action, "operator_hold");
+  assert.equal(classify("Paused by the operator while the scoring rule is fixed", base).action, "operator_hold");
+  // the words alone, elsewhere in a reason, are not an operator hold
+  assert.equal(classify("Discovery agent stopped: the session was stopped by the operator of Naive", base).action, "retry");
+});
+
 test("classification: retry transient failures, raise limits and repairs within bounds, end what cannot be done safely", () => {
   assert.equal(classify(`${DOCKER_WAIT} No agent task was started.`, base).action, "infra");
   assert.equal(classify("Discovery agent stopped: the service is at capacity", base).action, "retry");

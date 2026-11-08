@@ -27,7 +27,7 @@ const calls: { method: string; path: string; body: any; headers: Record<string, 
 const problems: string[] = [];
 const agents: any[] = [];
 const files = new Map<string, Uint8Array>();
-type Step = { status: string; stop: string | null; consumed: number; out?: any; pending?: any[] };
+type Step = { status: string; stop: string | null; consumed: number; out?: any; pending?: any[]; modelStop?: string; seq?: number };   // modelStop: how the last model reply ended; seq: last event number
 const scripts: Step[][] = [];            // one queued script per future session
 const sessions = new Map<string, { steps: Step[]; i: number; schema: any }>();
 let runningMessageConflicts = 0;
@@ -43,7 +43,7 @@ function sessionObj(id: string, s: Step, schema: any) {
   return { id, object: "session", agent_id: agents[0]?.id ?? ID("agt"), agent_version: 1, deployment_id: null, identity_id: null, computer_id: null,
     parent_session_id: null, root_session_id: null, thread_role: null, status: s.status, stop_reason: s.stop, window: "immediate",
     budget_micro_usd: 400000, consumed_micro_usd: s.consumed, token_usage: { input: 1200, cache_write: 0, cache_read: 0, output: 300, reasoning: 0 },
-    pending_actions: s.pending ?? [], output_schema: schema, structured_output: s.out ?? null, last_seq: 3, metadata: {}, started_at: now,
+    pending_actions: s.pending ?? [], output_schema: schema, structured_output: s.out ?? null, last_seq: s.seq ?? 3, metadata: {}, started_at: now,
     ended_at: null, created_at: now };
 }
 const fileObj = (id: string, name: string, size: number) => ({ id, object: "file", name, content_type: "application/zip", size_bytes: size, scope: "published",
@@ -109,8 +109,12 @@ const fakeFetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   if (sm && sessions.has(sm[1])) {
     const s = sessions.get(sm[1])!;
     if (method === "GET" && !sm[2]) { const st = s.steps[Math.min(s.i, s.steps.length - 1)]; s.i++; return json(sessionObj(sm[1], st, s.schema)); }
-    if (method === "GET" && sm[2] === "/events") return json({ data: [{ id: ID("evt"), seq: 1, type: "session.idle", session_id: sm[1], data: { stop_reason: "end_turn" }, created_at: now }],
-      has_more: false, next_cursor: null });
+    if (method === "GET" && sm[2] === "/events") {
+      const st = s.steps[Math.max(0, Math.min(s.i - 1, s.steps.length - 1))];
+      const model = st.modelStop ? [{ id: ID("evt"), seq: 1, type: "span.model_request.end", session_id: sm[1], data: { stop_reason: st.modelStop }, created_at: now }] : [];
+      return json({ data: [...model, { id: ID("evt"), seq: 2, type: "session.idle", session_id: sm[1], data: { stop_reason: st.stop ?? "end_turn" }, created_at: now }],
+        has_more: false, next_cursor: null });
+    }
     if (method === "POST" && sm[2] === "/messages") {
       if (runningMessageConflicts > 0) {
         runningMessageConflicts--;
@@ -230,6 +234,29 @@ test("stop reasons: max_iterations continues, budget_paused stops, awaiting_appr
   assert.ok(calls.some((x) => x.method === "POST" && /\/cancel$/.test(x.path)), "a timed-out session is cancelled so it stops spending");
   const e = await task("floor", { budgetMicroUsd: 10 });
   assert.equal((e as any).reason, "budget", "no session starts when the job has almost no budget left");
+});
+
+test("length cut-off: the same session is asked once to submit; if it still has nothing, the result says 'length'", async () => {
+  const schema = { type: "object", required: ["decision"], properties: { decision: { type: "string" } } };
+  const task = (purpose: string) => runAgentTask(client(), { jobId: JOB, stage: "plan", attempt: 1, role: "assessment", purpose, title: purpose,
+    message: purpose, outputSchema: schema, budgetMicroUsd: 1_000_000, pollMs: 5 });
+  const submits = () => calls.filter((c) => c.method === "POST" && /\/messages$/.test(c.path) && /submit your result now/.test(c.body.message)).length;
+  // cut off, asked to submit, then hands in its result
+  scripts.push([{ status: "idle", stop: "error", consumed: 300, modelStop: "length" }, { status: "idle", stop: "end_turn", consumed: 320, out: { decision: "plan" } }]);
+  const before = submits();
+  const a = await task("cut-off-then-submits");
+  assert.equal(a.ok, true);
+  assert.equal(submits() - before, 1, "one request to submit, in the same session");
+  // cut off twice: asked once only, then reported as a length cut-off rather than a generic failure
+  scripts.push([{ status: "idle", stop: "error", consumed: 300, modelStop: "length" }, { status: "idle", stop: "error", consumed: 340, modelStop: "length", seq: 7 }]);
+  const b = await task("cut-off-twice");
+  assert.equal((b as any).reason, "length");
+  assert.equal(submits() - before, 2, "never asked twice in one session");
+  // a session that ended without a result for another reason is not nudged
+  scripts.push([{ status: "idle", stop: "error", consumed: 50, modelStop: "end_turn" }]);
+  const c = await task("other-error");
+  assert.equal((c as any).reason, "no_output");
+  assert.equal(submits() - before, 2);
 });
 
 test("implementation: the agent's published result is downloaded as bytes", async () => {

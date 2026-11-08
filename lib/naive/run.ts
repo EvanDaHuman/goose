@@ -12,7 +12,17 @@ import { agentId, taskCeiling, type TeamRole } from "./team";
 
 export type TaskResult =
   | { ok: true; output: Record<string, any>; sessionId: string; model: string | null; consumedMicroUsd: number }
-  | { ok: false; reason: "budget" | "failed" | "timeout" | "no_output" | "blocked"; message: string; sessionId?: string };
+  | { ok: false; reason: "budget" | "failed" | "timeout" | "no_output" | "blocked" | "length"; message: string; sessionId?: string };
+
+// Sent once when the agent's reply was cut off at the model's length limit before it submitted anything.
+const SUBMIT_NOW = "Your last reply was cut off at the model's length limit before you submitted a result. Do not re-read files or reconsider: submit your result now with submit_output, using what you already have and keeping it as short as the schema allows.";
+
+/** True when the agent's last model reply hit the length limit and no result was submitted. */
+export function cutOffAtLength(events: any[]): boolean {
+  if (events.some((e) => e.type === "session.idle" && e.data?.structured_output && typeof e.data.structured_output === "object")) return false;
+  const last = [...events].reverse().find((e) => e.type === "span.model_request.end");
+  return last?.data?.stop_reason === "length";
+}
 
 const FLOOR_MICRO_USD = 50_000;      // do not start a session that the first pre-flight quote would refuse
 
@@ -59,13 +69,16 @@ export async function runAgentTask(client: VettaClient, opts: {
         { origin: "agent", originDetail: { session_id: s.id } });
     }
     let continues = 0;
+    let nudged: { seq: number; stop: string } | null = null;   // the cut-off state we asked the agent to move on from
     const continuedStops = new Set<number>();
     let s: any;
     for (;;) {
       s = await capacityRetry(()=>client.sessions.get(sessionId!));
       await recordSession(opts.jobId, opts.stage, opts.attempt, opts.role, s);
       const settled = ["completed", "failed", "cancelled"].includes(s.status) || (s.status === "idle" && s.stop_reason !== "awaiting_delegation");
-      if (Date.now() > deadline && (!settled || s.stop_reason === "max_iterations")) {
+      const staleAfterNudge = settled && nudged !== null && s.last_seq === nudged.seq && s.stop_reason === nudged.stop
+        && !(s.structured_output && typeof s.structured_output === "object");
+      if (Date.now() > deadline && (!settled || s.stop_reason === "max_iterations" || staleAfterNudge)) {
         await client.sessions.cancel(sessionId).catch(() => undefined);
         await saveTranscript(client, opts.jobId, sessionId);
         return { ok: false, reason: "timeout", message: "The agent did not finish in time; the session was cancelled.", sessionId };
@@ -90,6 +103,26 @@ export async function runAgentTask(client: VettaClient, opts: {
         await sleep(opts.pollMs ?? 8000);
         continue;
       }
+      // The model can run out of room mid-thought and never call submit_output. Retrying the same task repeats that,
+      // so ask this same session, once, to hand in what it has. If Naive will not take the message, report "length".
+      if (staleAfterNudge) {
+        // The read endpoint may briefly return the cut-off state after accepting the request to submit.
+        await sleep(opts.pollMs ?? 8000);
+        continue;
+      }
+      if (settled && s.status === "idle" && nudged === null && !(s.structured_output && typeof s.structured_output === "object")
+          && cutOffAtLength(await saveTranscript(client, opts.jobId, sessionId))) {
+        nudged = { seq: s.last_seq, stop: s.stop_reason };
+        try {
+          await capacityRetry(()=>client.sessions.send(sessionId!, { message: SUBMIT_NOW } as any, { idempotencyKey: `${key}:submit-now:seq-${nudged!.seq}` }));
+          await logEvent(opts.jobId, "system", "status", "The agent ran out of room before handing in its result; asked it to submit what it has.", { session_id: sessionId }, { origin: "tool" });
+          await sleep(opts.pollMs ?? 8000);
+          continue;
+        } catch (e) {
+          if (e instanceof ApiError && e.status === 409 && e.code === "session_running") { await sleep(opts.pollMs ?? 8000); continue; }
+          // Naive refused the follow-up: fall through and report the cut-off.
+        }
+      }
       if (settled) break;
       await sleep(opts.pollMs ?? 8000);
     }
@@ -113,6 +146,9 @@ export async function runAgentTask(client: VettaClient, opts: {
     if (s.structured_output && typeof s.structured_output === "object") {
       await q("UPDATE naive_sessions SET status = 'completed', output = $2, updated_at = now() WHERE session_id = $1", [sessionId, JSON.stringify(s.structured_output)]);
       return { ok: true, output: s.structured_output, sessionId, model: s.model ?? null, consumedMicroUsd: Number(s.consumed_micro_usd ?? 0) };
+    }
+    if (cutOffAtLength(events)) {
+      return { ok: false, reason: "length", message: `The agent ran out of room (model length limit) before submitting a result${nudged ? ", even after being asked to submit" : ""}.`, sessionId };
     }
     return { ok: false, reason: s.status === "failed" ? "failed" : "no_output",
       message: `The session ended (${s.status}/${s.stop_reason ?? "-"}) without a structured result.${await lastError(client, sessionId, s)}`, sessionId };

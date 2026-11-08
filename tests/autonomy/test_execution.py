@@ -106,3 +106,10 @@ def test_failure_judgement_is_language_neutral():
     assert runner.requirement_fails_for_the_right_reason(r(1,'AssertionError: expected 7'))
     assert not runner.requirement_fails_for_the_right_reason(r(127,'sh: cargo: command not found'))
     assert not runner.requirement_fails_for_the_right_reason(r(1,'something unrelated'))
+
+@pytest.mark.skipif(os.environ.get('GOOSE_TEST_DOCKER')!='1',reason='requires Docker')
+def test_baseline_skips_deliberate_breaks_when_a_check_already_misbehaves(tmp_path):
+    # a preserve check that fails on the original code rejects the plan, so the slow deliberate breaks are not run
+    source,p=fixture(tmp_path);p['checks'][0]['script']='python -c "import calc; assert calc.add(2,3)==6"'
+    r=runner.execute(source,p,tmp_path/'result','baseline')
+    assert not r['ok'];assert r['mutations']==[];assert 'original' in r['mutations_skipped']

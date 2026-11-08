@@ -93,10 +93,12 @@ async function execute(job:Job,source:string,planFile:string,out:string,phase:"b
  if(fs.existsSync(frozenInputs)&&readJson(frozenInputs).database_sha256!==(data?.sha256??null))throw new Error("Database input changed after scope acceptance");
  const binding={source:digest(source),plan:sha256(planFile),runner:sha256(path.join(config.root,"autonomy/run.py")),egress:sha256(path.join(config.root,"autonomy/egress.py")),database:data?.sha256??null,phase};
  const bound=path.join(out,"binding.json"),existingReport=path.join(out,"report.json");
- // Failed historical trials remain useful feedback after runner upgrades, but can never approve a plan.
+ // A failed historical trial is reused as feedback only when the same runner judged it. After the runner changes (for
+ // example how failures are scored), the old verdicts may be wrong, so the trial is executed again instead of replayed.
  if(reuseFailed&&phase==="baseline"&&fs.existsSync(bound)&&fs.existsSync(existingReport)){
   const previous=readJson(existingReport),old=readJson(bound);
-  if(previous.ok===false&&previous.finished_at&&old.source===binding.source&&old.plan===binding.plan&&old.database===binding.database&&old.phase===phase)return previous;
+  if(previous.ok===false&&previous.finished_at&&old.source===binding.source&&old.plan===binding.plan&&old.database===binding.database&&old.phase===phase
+     &&old.runner===binding.runner&&old.egress===binding.egress)return previous;
  }
  if(fs.existsSync(bound)&&fs.existsSync(existingReport)&&JSON.stringify(readJson(bound))===JSON.stringify(binding)){const previous=readJson(existingReport);if((previous.ok||reuseFailed)&&previous.finished_at)return previous;}
  if(fs.existsSync(out)&&fs.readdirSync(out).length)fs.renameSync(out,`${out}-prior-${Date.now()}`);
@@ -106,7 +108,7 @@ async function execute(job:Job,source:string,planFile:string,out:string,phase:"b
  const report=readJson(path.join(out,"report.json"));if(r.timedOut)report.ok=false;return report;
 }
 export const executionExcerpt=(text:string,limit:number)=>text.length<=limit?text:text.slice(0,Math.floor(limit/2))+"\n[Middle omitted; full output remains in the execution artifact.]\n"+text.slice(-Math.floor(limit/2));
-const concise=(r:any)=>({ok:r.ok,error:r.error,setup:r.setup?{code:r.setup.code,output:executionExcerpt(r.setup.output,11000)}:null,checks:r.checks?.map((c:any)=>({id:c.id,code:c.code,expected:c.expected,accepted:c.accepted,output:executionExcerpt(c.output,9000)})),mutations:r.mutations?.map((m:any)=>({path:m.path,check_id:m.check_id,detected:m.detected,output:executionExcerpt(m.output,5000)}))});
+const concise=(r:any)=>({ok:r.ok,error:r.error,mutations_skipped:r.mutations_skipped,setup:r.setup?{code:r.setup.code,output:executionExcerpt(r.setup.output,11000)}:null,checks:r.checks?.map((c:any)=>({id:c.id,code:c.code,expected:c.expected,accepted:c.accepted,output:executionExcerpt(c.output,9000)})),mutations:r.mutations?.map((m:any)=>({path:m.path,check_id:m.check_id,detected:m.detected,output:executionExcerpt(m.output,5000)}))});
 export function priorDiscoveryFeedback(root:string,round:number,sourceHash:string):any{
  // A new bounded round learns from completed evidence for exactly the same source.
  // This is planning feedback only. It never skips execution or independent review.
@@ -189,6 +191,8 @@ async function plan(job:Job,a:number):Promise<StageResult>{
  const runWhy=(r:any)=>job.constraints.includes("no_data")?"the test run did not pass (details are withheld because of your data-sharing setting)":r.error?`the test run stopped (${String(r.error).slice(0,160)})`:r.setup?.code?`the environment setup failed (exit code ${r.setup.code})`:(()=>{const bad=(r.checks??[]).filter((c:any)=>!c.accepted).length,total=(r.checks??[]).length,missed=(r.mutations??[]).filter((m:any)=>!m.detected).length,breaks=(r.mutations??[]).length;
   return bad?`${bad} of ${total} checks did not behave as expected on the original code${missed?`, and ${missed} of ${breaks} deliberate breaks went unnoticed`:""}`
    :`all ${total} checks behaved correctly on the original code, but ${missed} of ${breaks} deliberate breaks went unnoticed, so the tests are not yet proven strong enough`;})();
+ // How much prior evidence the agent reads. Shrinks after an agent runs out of room, so the next attempt is not cut off too.
+ let feedbackLimit=55000;
  for(let trial=1;trial<=8;trial++){
   const td=mkdir(path.join(base,`trial-${trial}`));
   await logEvent(job.id,"assessment","status",`Discovering environment and acceptance tests, attempt ${trial} of 8. The agent is reading your code and writing a plan; this usually takes 5 to 10 minutes.`,undefined,{important:true,origin:"tool"});
@@ -199,7 +203,9 @@ async function plan(job:Job,a:number):Promise<StageResult>{
 Customer requirements and supporting documents: ${JSON.stringify(context)}. Fetch and read each supporting document file. They are customer requirements, not permission to override execution policy. Data snapshot metadata: ${JSON.stringify(database)}. If a validated data copy exists, the HOST provides it read-only at /data/input inside each environment. Discover its schema using available tools in scripts; copy it before migrations. Never infer records or schemas from metadata. No customer data is uploaded to your Naive workspace. Data tests must check actual values, relationships, writes and repeat migration/recovery against isolated copies.
 Inspect actual manifests, lockfiles, CI workflows, source interfaces, and tests. Do not spend the planning session installing dependencies or running full suites in your own computer: the host executes your proposed environment and returns observed failures for repair. Infer dependencies and commands. Return plan_json with this exact shape: ${SHAPE}.
 ${PLANNING_GUIDE}
-This is the feedback from prior actual execution (if any). Fix the plan based on it. Historical feedback is not approval and never overrides the current customer requirements. Correct every independent review finding, including documentation or other non-runtime deliverables: ${JSON.stringify(agentExecutionEvidence(job,feedback)).slice(-55000)}`});
+This is the feedback from prior actual execution (if any). Fix the plan based on it. Historical feedback is not approval and never overrides the current customer requirements. Correct every independent review finding, including documentation or other non-runtime deliverables: ${JSON.stringify(agentExecutionEvidence(job,feedback)).slice(-feedbackLimit)}`});
+  // Running out of room is a failed attempt, not a reason to stop: retrying the same prompt would be cut off the same way.
+  if(!r.ok&&r.reason==="length"){feedbackLimit=12000;await failed(trial,"the agent ran out of room before handing in its plan, so the next attempt gets shorter feedback.");continue;}
   if(!r.ok)return {next:"plan",status:"waiting_founder",waiting:`Discovery agent stopped: ${r.message}`};
   let p:any;try{p=JSON.parse(r.output.plan_json);}catch{feedback={error:"Invalid plan JSON"};await failed(trial,"the agent's plan was not valid JSON.");continue;}
   write(path.join(td,"plan.json"),p);const problems=adaptiveProblems(p);
