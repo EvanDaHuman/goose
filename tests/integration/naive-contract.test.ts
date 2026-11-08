@@ -282,12 +282,13 @@ test("every request body we sent uses only fields the published API accepts", ()
 
 test("provider capacity errors resume the same live task without cancelling or duplicating it",async()=>{
  scripts.push([{status:"idle",stop:"end_turn",consumed:50,out:{decision:"done"}}]);
- let limited=true;const before=calls.length;
+ let limited=true,createLimited=true;const creationKeys:string[]=[];const before=calls.length;
  const c=createClient({baseUrl:config.naive.baseUrl,apiKey:"sk_test_contract",idempotencyKey:()=>ID("req"),fetch:(async(input:any,init:any)=>{
+  if(init?.method==="POST"&&String(input).endsWith("/sessions")){creationKeys.push(new Headers(init.headers).get("idempotency-key")!);if(createLimited){createLimited=false;return json({error:{type:"rate_limit",code:"rate_limited",message:"at capacity",request_id:"req_capacity_create"}},429);}}
   if(limited&&(init?.method??"GET")==="GET"&&/\/sessions\/[^/?]+$/.test(String(input))){limited=false;return json({error:{type:"rate_limit",code:"rate_limited",message:"at capacity",request_id:"req_capacity"}},429);}
   return fakeFetch(input,init);
  }) as typeof fetch});
  const result=await runAgentTask(c,{jobId:JOB,stage:"verify",attempt:1,role:"coordinator",purpose:"capacity-recovery",title:"Capacity recovery",message:"Resume the same session",outputSchema:{type:"object",properties:{decision:{type:"string"}},required:["decision"]},budgetMicroUsd:100000,pollMs:1,timeoutMs:1000});
- assert.equal(result.ok,true,JSON.stringify(result));assert.equal(limited,false);
+ assert.equal(result.ok,true,JSON.stringify(result));assert.equal(limited,false);assert.equal(creationKeys.length,2);assert.equal(creationKeys[0],creationKeys[1]);
  const added=calls.slice(before);assert.equal(added.filter(c=>c.method==="POST"&&c.path==="/v1/sessions").length,1);assert.equal(added.filter(c=>c.path.endsWith("/cancel")).length,0);
 });

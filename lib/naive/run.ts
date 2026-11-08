@@ -35,13 +35,22 @@ export async function runAgentTask(client: VettaClient, opts: {
     return { ok: false, reason: "budget", message: `Only ${(opts.budgetMicroUsd / 1e6).toFixed(4)} USD left in the job's spending limit; not starting a session.` };
   }
   let sessionId = prior?.session_id;
+  const deadline=Date.now()+(opts.timeoutMs??15*60_000);let capacityNoted=false;
+  async function capacityRetry<T>(request:()=>Promise<T>):Promise<T>{
+    for(;;)try{return await request();}catch(e){
+      if(!(e instanceof ApiError)||![429,500,502,503,504].includes(e.status)||Date.now()>=deadline)throw e;
+      if(!capacityNoted){await logEvent(opts.jobId,"system","status","Naive is temporarily busy. Retrying the same task with its original idempotency key.",{session_id:sessionId??null},{origin:"tool"});capacityNoted=true;}
+      await sleep(opts.pollMs??15000);
+    }
+  }
   try {
     if (!sessionId) {
-      const s = await client.sessions.create({
-        agent_id: await agentId(opts.role as Role), message: opts.message, output_schema: opts.outputSchema,
+      const roleId=await agentId(opts.role as Role);
+      const s = await capacityRetry(()=>client.sessions.create({
+        agent_id: roleId, message: opts.message, output_schema: opts.outputSchema,
         structured_output_required: true, budget_micro_usd: budget,
         metadata: { company: "goose", job_id: opts.jobId, stage: opts.stage, attempt: String(opts.attempt), purpose: opts.purpose },
-      } as any, { idempotencyKey: key });
+      } as any, { idempotencyKey: key }));
       sessionId = s.id;
       await q(`INSERT INTO naive_sessions (job_id, stage, role, session_id, status, idem_key, attempt, purpose, model)
                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (session_id) DO NOTHING`,
@@ -49,18 +58,11 @@ export async function runAgentTask(client: VettaClient, opts: {
       await logEvent(opts.jobId, opts.role as Role, "handoff", `Naive session ${s.id} started: ${opts.title}`, { session_id: s.id, budget_micro_usd: budget },
         { origin: "agent", originDetail: { session_id: s.id } });
     }
-    const deadline = Date.now() + (opts.timeoutMs ?? 15 * 60_000);
     let continues = 0;
     const continuedStops = new Set<number>();
-    let s: any;let capacityNoted=false;
+    let s: any;
     for (;;) {
-      try{s = await client.sessions.get(sessionId);}catch(e){
-        if(e instanceof ApiError && [429,500,502,503,504].includes(e.status) && Date.now()<deadline){
-          if(!capacityNoted){await logEvent(opts.jobId,"system","status","Naive is temporarily busy. Waiting to resume the same session; no replacement task was started.",{session_id:sessionId},{origin:"tool"});capacityNoted=true;}
-          await sleep(opts.pollMs??15000);continue;
-        }
-        throw e;
-      }
+      s = await capacityRetry(()=>client.sessions.get(sessionId!));
       await recordSession(opts.jobId, opts.stage, opts.attempt, opts.role, s);
       const settled = ["completed", "failed", "cancelled"].includes(s.status) || (s.status === "idle" && s.stop_reason !== "awaiting_delegation");
       if (Date.now() > deadline && (!settled || s.stop_reason === "max_iterations")) {
@@ -76,7 +78,7 @@ export async function runAgentTask(client: VettaClient, opts: {
       if (settled && s.stop_reason === "max_iterations" && continues < 3) {
         const stopSeq = s.last_seq;
         try {
-          await client.sessions.send(sessionId, { message: opts.continuationMessage ?? "Continue, then submit the result." } as any, { idempotencyKey: `${key}:continue:seq-${stopSeq}` });
+          await capacityRetry(()=>client.sessions.send(sessionId!, { message: opts.continuationMessage ?? "Continue, then submit the result." } as any, { idempotencyKey: `${key}:continue:seq-${stopSeq}` }));
         } catch (e) {
           if (!(e instanceof ApiError) || e.status !== 409 || e.code !== "session_running") throw e;
           const current = await client.sessions.get(sessionId);
