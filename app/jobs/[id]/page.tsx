@@ -6,6 +6,7 @@ import { JobRun } from "@/components/job/JobRun";
 import { dollars, JobStatus, KindTag, ROLE_NAMES, runScene, runStages, Steps, when } from "@/components/ui";
 import { Workspace } from "@/components/Workspace";
 import { customerView, workspaceView } from "@/lib/views";
+import { isInfraWait } from "@/lib/infraWait";
 
 export const dynamic = "force-dynamic";
 
@@ -41,13 +42,13 @@ export default async function CustomerJob({ params, searchParams }: { params: Pr
         <p style={{ margin: "12px 0 0" }}>
           <b>Now:</b> {v.stageLabel}. {job.status === "running" && <span className="muted">The {ROLE_NAMES[job.responsible]?.toLowerCase()} is working on it.</span>}
           {job.status === "waiting_customer" && <span className="muted">{job.waiting_reason}.</span>}
-          {job.status === "waiting_founder" && <span className="muted">Our founder is looking at something before work continues.</span>}
+          {job.status === "waiting_founder" && <span className="muted">{isInfraWait(job.waiting_reason) ? "Waiting for the build environment to start; work resumes automatically." : "Our founder is looking at something before work continues."}</span>}
           {job.status === "rejected" && <span className="muted">This application is outside what we can upgrade today. See the message below.</span>}
         </p>
       </div>
 
       <div className="job-run">
-        <JobRun src={v.runSig ? `/api/jobs/${id}/live?t=${encodeURIComponent(token)}` : null} sig={v.runSig?.sig ?? null} scene={runScene(job.stage, job.status, open.length)}
+        <JobRun src={v.runSig ? `/api/jobs/${id}/live?t=${encodeURIComponent(token)}` : null} sig={v.runSig?.sig ?? null} scene={runScene(job.stage, job.status, open.length)} paused={isInfraWait(job.waiting_reason) ? "environment" : undefined}
           attempt={v.runSig?.attempt ?? null} now={v.stageLabel} checks={runs.length ? { passed: runs.at(-1).passed, total: runs.at(-1).total } : null}
           stages={runStages(job.stage, job.status, job.pipeline, { failedAttempts: failedRuns, checks: runs.length ? { passed: runs.at(-1).passed, total: runs.at(-1).total } : null })} />
       </div>

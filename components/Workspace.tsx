@@ -6,6 +6,7 @@ import { MigrationPreview } from "@/components/MigrationPreview";
 import { ActionButton, AnswerForm, AutoRefresh, MessageForm, SignForm, UploadForm } from "@/components/client";
 import { JobRun } from "@/components/job/JobRun";
 import { dollars, JobStatus, KindTag, ModeBanner, Origin, ROLE_NAMES, runScene, runStages, usd, when } from "@/components/ui";
+import { isInfraWait } from "@/lib/infraWait";
 
 const CONSTRAINT_TEXT: Record<string, string> = {
   keep_framework: "Keep the current web framework", keep_database: "Keep the current database", keep_api: "Pages and API responses must not change",
@@ -71,7 +72,7 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
 
       <div className="job-run">
         <JobRun src={v.runSig ? `/api/jobs/${id}/live?${ops ? "ops=1" : `t=${encodeURIComponent(token)}`}` : null} sig={v.runSig?.sig ?? null}
-          scene={runScene(job.stage, job.status, open.length)} attempt={v.runSig?.attempt ?? null} now={v.stageLabel}
+          scene={runScene(job.stage, job.status, open.length)} paused={isInfraWait(job.waiting_reason) ? "environment" : undefined} attempt={v.runSig?.attempt ?? null} now={v.stageLabel}
           stages={runStages(job.stage, job.status, 2, { failedAttempts: runs.filter((r: any) => r.verdict === "fail").length, checks: runs.length ? { passed: runs.at(-1).passed, total: runs.at(-1).total } : null })}
           checks={runs.length ? { passed: runs.at(-1).passed, total: runs.at(-1).total } : null}
           checksCount={engineeringContract?.checks?.length ?? p?.adaptive_plan?.checks?.length ?? p?.acceptance_checks?.length ?? null} />
@@ -83,7 +84,7 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
           {job.status === "running" && <span className="muted">{job.mode === "naive" ? `The ${ROLE_NAMES[job.responsible]?.toLowerCase()} is on it.`
             : `The ${who(job.responsible, null).toLowerCase()} is running (deterministic tools, no AI).`}</span>}
           {job.status === "waiting_customer" && <span className="muted">{job.waiting_reason}.</span>}
-          {job.status === "waiting_founder" && <span className="muted">Our founder is looking at something before work continues: {job.waiting_reason}</span>}
+          {job.status === "waiting_founder" && <span className="muted">{isInfraWait(job.waiting_reason) ? "Waiting for the build environment to start; work resumes automatically." : <>Our founder is looking at something before work continues: {job.waiting_reason}</>}</span>}
           {job.status === "rejected" && <span className="muted">This goal is outside what we can carry out and verify today. See the plan and the message below.</span>}</p>
       </div>
       <div className="section"><ModeBanner mode={job.mode} /></div>

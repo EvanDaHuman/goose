@@ -1,5 +1,6 @@
 // Repository-independent Naive discovery and acceptance. Existing jobs keep their original executor.
 import fs from "node:fs";
+import { DOCKER_WAIT } from "./infraWait";
 import path from "node:path";
 import crypto from "node:crypto";
 import type { Job, StageResult } from "./jobs";
@@ -105,7 +106,7 @@ const SHAPE=`{version:1,title:string,image:string,dependency_hosts:[exactPublicH
 async function plan(job:Job,a:number):Promise<StageResult>{
  if(config.mode!=="naive")return {next:"plan",status:"waiting_founder",waiting:"Autonomous discovery requires live Naive"};
  const backend=await run({cmd:"docker",args:["version","--format","{{.Server.Os}}"],cwd:config.root,env:cleanEnv({PATH:"/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",...(process.env.DOCKER_HOST?{DOCKER_HOST:process.env.DOCKER_HOST}:{})},config.home),timeoutMs:10000});
- if(backend.code!==0||backend.stdout.trim()!=="linux")return {next:"plan",status:"waiting_founder",waiting:"Start the Docker Linux execution backend before autonomous discovery. No agent task was started."};
+ if(backend.code!==0||backend.stdout.trim()!=="linux")return {next:"plan",status:"waiting_founder",waiting:`${DOCKER_WAIT} No agent task was started. Goose resumes automatically when the backend is available.`};
  const client=naiveClient(),source=await uploadFile(client,job.id,await sourceSnapshot(job),`${job.id}-unfamiliar-source.zip`,["source"]);
  const context=await customerContext(job);
  const database=await one("SELECT filename,validation FROM job_inputs WHERE job_id=$1 AND kind='database' AND validation IS NOT NULL ORDER BY id DESC LIMIT 1",[job.id]);
