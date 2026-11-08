@@ -45,6 +45,7 @@ test("contact choice: own-domain role addresses only, never no-reply/legal, plac
   assert.equal(usableProfileEmail("12345+bob@users.noreply.github.com"), null);
   assert.equal(usableProfileEmail(" Bob@Example.dev "), "bob@example.dev");
   assert.equal(usableProfileEmail(null), null);
+  assert.deepEqual(extractEmails('dsn: "https://6f5550e684e4421aacf26ae17045a8d2@sentry.webarchiv.cz/3"'), []);
 });
 
 test("opt-outs are read from the reply, not the quoted footer; bounces and auto-replies are recognised", () => {

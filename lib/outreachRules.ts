@@ -65,8 +65,10 @@ const NEVER = /^(no-?reply|do-?not-?reply|mailer-daemon|postmaster|abuse|privacy
 const JUNK_DOMAIN = /(example\.(com|org|net)|sentry\.io|wixpress\.com|users\.noreply\.github\.com|noreply\.github\.com|domain\.com|email\.com|yourdomain|sentry-next)/i;
 const ASSET = /\.(png|jpe?g|gif|svg|webp|css|js)$/i;
 
+// machine addresses: error-tracker DSNs (hex keys @sentry.*), hashed or tokenised local parts
+const MACHINE = (e: string) => /^[0-9a-f]{16,}$/i.test(e.split("@")[0]) || /@(o\d+\.)?(ingest\.)?sentry\.|@sentry\./i.test(e);
 export function validEmail(s: string) {
-  return s.length <= 254 && /^[^\s@<>,;"]+@[^\s@<>,;"]+\.[A-Za-z]{2,}$/.test(s) && !ASSET.test(s);
+  return s.length <= 254 && /^[^\s@<>,;"]+@[^\s@<>,;"]+\.[A-Za-z]{2,}$/.test(s) && !ASSET.test(s) && !MACHINE(s);
 }
 
 /** Addresses published on a page: mailto links first, then plain text (with simple [at]/[dot] obfuscation undone). */
