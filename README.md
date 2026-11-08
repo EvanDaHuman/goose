@@ -82,3 +82,10 @@ This is a working local prototype, not a production multi-tenant hosting service
 `app/` and `components/` contain UI and APIs. `lib/` and `worker/` contain the company engine, Naïve team and commerce. `engine/` contains service/data executors. `robotics/` contains pinned source, the container adapter and independent harness. `db/migrations/`, `scripts/` and `tests/` provide setup and validation.
 
 The migration foundation comes from `adhvaidhsunny/portwright`, `goose-rebrand`. Pinned `rrt_exploration` source retains its MIT license and revision manifest. ROS, Nav2, Gazebo and SLAM infrastructure are reused with attribution. The legacy SuiteCRM test fixture retains its AGPL attribution. Goose does not claim authorship of these projects.
+
+
+### Readiness and commercial workflow
+
+Run `npm run doctor` to check the local database, current schema, operator access, Naïve readiness, supported execution tools and provider activation without printing credentials. `npm run commerce:status` reports configuration presence only. Email and payment keys can be added later; their missing state is explicit and local TEST flows remain available.
+
+After a synthetic engineering job has completed with a TEST invoice, `npm run commerce:demo -- GS-1001` exercises its local commercial lifecycle while preserving the verified delivery. It records no real payment, sends no external email and starts no follow-up engineering job. See [commerce setup](docs/commerce.md) and [recorded commercial evidence](docs/evidence/commerce-live.md).

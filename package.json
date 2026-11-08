@@ -34,7 +34,10 @@
     "build": "next build",
     "serve": "next start --port 3100",
     "workspace:demo": "tsx --env-file=.env scripts/workspace-demo.ts",
-    "workspace:evidence": "tsx --env-file=.env scripts/workspace-evidence.ts"
+    "workspace:evidence": "tsx --env-file=.env scripts/workspace-evidence.ts",
+    "doctor": "tsx --env-file=.env scripts/doctor.ts",
+    "commerce:status": "tsx --env-file=.env scripts/commerce-status.ts",
+    "commerce:demo": "GOOSE_MODE=local tsx --env-file=.env scripts/commerce-demo.ts"
   },
   "dependencies": {
     "@usenaive-sdk/vetta": "0.10.0",

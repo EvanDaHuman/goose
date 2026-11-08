@@ -9,6 +9,7 @@ import { logEvent } from "../lib/records";
 import { serviceShowrooms, stopAllShowrooms } from "../lib/showroom";
 import { IMPL_ALL as IMPL } from "../lib/pipeline";
 import { serviceGrowth } from "../lib/growth";
+import { runMaintenanceChecks, serviceCommerce } from "../lib/commerce";
 
 let stopping = false;
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
@@ -27,7 +28,13 @@ async function main() {
   }
   await releaseDeadLeases();
   let idle = 0;
+  let lastMaintenance = 0;
   while (!stopping) {
+    if (Date.now() - lastMaintenance > 60_000) {
+      lastMaintenance = Date.now();
+      await serviceCommerce().catch(e => console.error("[worker] commerce", e.message));
+      await runMaintenanceChecks().catch(e => console.error("[worker] maintenance", e.message));
+    }
     await serviceShowrooms().catch((e) => console.error("[worker] showroom", e.message));
     await serviceGrowth().catch((e) => console.error("[worker] growth", e.message));   // runs in the background; never blocks jobs
     const job = await claimJob();
