@@ -15,15 +15,15 @@ const KIND_TEXT = { chg: "rewritten", add: "added", del: "removed" } as const;
 const short = (p: string) => (p.length > 34 ? "…" + p.slice(-33) : p);
 
 type Copy = { eyebrow: string; title: ReactNode; meta: string; pill: string; note: string };
-function copyFor(scene: RunScene, o: { paused?: "environment" | "review"; attempt: number | null; checks: { passed: number; total: number } | null; checksCount: number | null; replay: boolean }): Copy {
+function copyFor(scene: RunScene, o: { paused?: "environment" | "review"; attempt: number | null; checks: { passed: number; total: number } | null; checksCount: number | null; replay: boolean; detail?: string | null }): Copy {
   const checks = o.checks ? `${o.checks.passed} of ${o.checks.total} checks passed` : null;
   switch (scene) {
     case "inspect": return { eyebrow: "Inspect", title: <>The geese are <em>reading your code</em>.</>, meta: "Inspecting your application · nothing changed", pill: "reading", note: "Goose is reading your repository to work out what it is and how it runs." };
-    case "plan": return { eyebrow: "Plan", title: <>The geese are <em>thinking it over</em>.</>, meta: "Planning the work · your code isn't touched", pill: "planning", note: "The assessment agent is writing the plan, the checks and the price. Nothing in your code changes." };
+    case "plan": return { eyebrow: "Plan", title: <>The geese are <em>thinking it over</em>.</>, meta: "Planning the work · your code isn't touched", pill: "planning", note: o.detail ?? "The assessment agent is writing the plan, the checks and the price. Nothing in your code changes." };
     case "agree": return { eyebrow: "Agree", title: <>Waiting <em>for you</em>.</>, meta: "Your proposal is ready above", pill: "waiting for you", note: "Review the proposal above. Nothing is built until you accept it." };
     case "answer": return { eyebrow: "Question", title: <>The geese have <em>a question</em>.</>, meta: "Answer above to carry on", pill: "waiting for your answer", note: "Goose needs an answer from you before work can continue. The question is above." };
     case "founder": if (o.paused === "environment") return { eyebrow: "Starting up", title: <>Waiting for <em>the build environment</em>.</>, meta: "The isolated machine that runs your code is starting", pill: "starting environment", note: "Goose is waiting for its isolated execution environment to come online. Work resumes automatically; nothing in your code has changed." };
-      return { eyebrow: "With our founder", title: <>Resting while <em>our founder</em> takes a look.</>, meta: "A person is checking something before work continues", pill: "with our founder", note: "Our founder is looking at something before work continues. You'll see it here when the job moves on." };
+      return { eyebrow: "With our founder", title: <>Resting while <em>our founder</em> takes a look.</>, meta: "A person is checking something before work continues", pill: "with our founder", note: o.detail ? `Work is paused: ${o.detail}` : "Our founder is looking at something before work continues. You'll see it here when the job moves on." };
     case "record": return { eyebrow: "Record", title: <>Recording how <em>your code behaves</em>.</>, meta: "An exact record of the original, before anything changes", pill: "recording the original", note: "Goose runs your original code and records how it behaves, so the new version can be compared with it." };
     case "freeze": return { eyebrow: "Freeze checks", title: <>Freezing <em>the checks</em>.</>, meta: o.checksCount ? `${o.checksCount} acceptance checks, locked before any code changes` : "Acceptance checks, locked before any code changes", pill: "freezing checks", note: "The agreed checks are locked so nobody, including the agents, can change them later." };
     case "build": return o.replay
@@ -42,8 +42,8 @@ function copyFor(scene: RunScene, o: { paused?: "environment" | "review"; attemp
       the code comes from /api/jobs/[id]/live and is only fetched again when `sig` changes, so the page's 2-second
       refresh never restarts the animation;
     - every other stage: the same geese in that stage's scene (components/site/goose/scenes.ts). */
-export function JobRun({ src, sig, scene, attempt, now, stages, checks = null, checksCount = null, paused }: {
-  src?: string | null; sig?: string | null; scene: RunScene; paused?: "environment" | "review"; attempt: number | null; now: string; stages: RunStage[];
+export function JobRun({ src, sig, scene, attempt, now, stages, checks = null, checksCount = null, paused, detail = null }: {
+  src?: string | null; sig?: string | null; detail?: string | null; scene: RunScene; paused?: "environment" | "review"; attempt: number | null; now: string; stages: RunStage[];
   checks?: { passed: number; total: number } | null; checksCount?: number | null;
 }) {
   const page = useRef<HTMLDivElement>(null), scroll = useRef<HTMLDivElement>(null), code = useRef<HTMLOListElement>(null);
@@ -129,7 +129,7 @@ export function JobRun({ src, sig, scene, attempt, now, stages, checks = null, c
   const files = data?.files ?? [];
   const file = files[fileIdx];
   const fileCount = files.length + (data?.moreFiles.length ?? 0);
-  const c = copyFor(scene, { paused, attempt, checks, checksCount, replay });
+  const c = copyFor(scene, { paused, attempt, checks, checksCount, replay, detail });
   const meta = replay && data ? `${data.totalChanged.toLocaleString("en-US")} changed lines across ${fileCount} file${fileCount === 1 ? "" : "s"}${survey && checks ? ` · ${checks.passed} of ${checks.total} checks passed` : ""}`
     : onCode && !replay && data ? `${files.length} of your files · nothing changed yet` : c.meta;
   return (

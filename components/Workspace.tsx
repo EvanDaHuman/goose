@@ -73,6 +73,7 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
       <div className="job-run">
         <JobRun src={v.runSig ? `/api/jobs/${id}/live?${ops ? "ops=1" : `t=${encodeURIComponent(token)}`}` : null} sig={v.runSig?.sig ?? null}
           scene={runScene(job.stage, job.status, open.length)} paused={isInfraWait(job.waiting_reason) ? "environment" : undefined} attempt={v.runSig?.attempt ?? null} now={v.stageLabel}
+          detail={job.status === "waiting_founder" ? job.waiting_reason : (events.filter((e: any) => /^Attempt \d+ of \d+ did not work/.test(e.summary)).at(-1)?.summary ?? null)}
           stages={runStages(job.stage, job.status, 2, { failedAttempts: runs.filter((r: any) => r.verdict === "fail").length, checks: runs.length ? { passed: runs.at(-1).passed, total: runs.at(-1).total } : null })}
           checks={runs.length ? { passed: runs.at(-1).passed, total: runs.at(-1).total } : null}
           checksCount={engineeringContract?.checks?.length ?? p?.adaptive_plan?.checks?.length ?? p?.acceptance_checks?.length ?? null} />
