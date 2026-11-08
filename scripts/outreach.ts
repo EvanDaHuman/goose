@@ -4,9 +4,10 @@
 //   npm run outreach -- preview <id>       compose the exact email for prospect <id> and print it (nothing is sent)
 //   npm run outreach -- test <id>          send a TEST copy of prospect <id>'s email to OUTREACH_TEST_RECIPIENT only
 //   npm run outreach -- send <id> --yes    send prospect <id>'s email to the prospect (authorizes this exact message)
+//   npm run outreach -- batch <minutes> <id> <id> ...  send each prospect's email (founder-approved batch), at least <minutes> after the last real send
 //   npm run outreach -- replies            poll AgentMail for replies to sent outreach
 //   npm run outreach -- policy on <cap> [High|Medium] [spacing minutes] | policy off
-import { pool, q } from "../lib/db";
+import { one, pool, q } from "../lib/db";
 import { outreachDashboard, outreachStatus, pollReplies, POLICY_PHRASE, queueOutreach, resolveContact, sendOutreach, setOutreachPolicy } from "../lib/outreach";
 
 const [cmd = "status", arg, ...rest] = process.argv.slice(2);
@@ -34,6 +35,21 @@ try {
     const m = await queueOutreach(id()); show(m);
     if (!rest.includes("--yes")) console.log("\nNot sent. Re-run with --yes to authorize and send this exact message to the prospect.");
     else { const r = await sendOutreach(m.id, "Send this exact message"); console.log(`Sent via AgentMail: ${r.messageId} (thread ${r.threadId})`); }
+  } else if (cmd === "batch") {
+    const gap = Math.max(3, Number(arg) || 10), ids = rest.map(Number).filter((n) => Number.isInteger(n) && n > 0);
+    for (const pid of ids) {
+      // wait until no real outreach (from this batch or the worker's policy) went out in the last <gap> minutes
+      for (;;) {
+        const busy = await one("SELECT 1 FROM outreach_messages WHERE NOT is_test AND authorized_at > now() - make_interval(mins => $1)", [gap]);
+        if (!busy) break;
+        await new Promise((r) => setTimeout(r, 30_000));
+      }
+      try {
+        const m = await queueOutreach(pid);
+        const r = await sendOutreach(m.id, "Send this exact message");
+        console.log(`${new Date().toISOString()} sent prospect ${pid} to ${m.delivered_to} (${r.messageId})`);
+      } catch (e) { console.log(`${new Date().toISOString()} prospect ${pid} not sent: ${(e as Error).message}`); }
+    }
   } else if (cmd === "replies") {
     console.log(await pollReplies());
   } else if (cmd === "policy") {
