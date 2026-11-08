@@ -1,0 +1,1719 @@
+{
+  "generated_at": "2026-11-08T04:44:26.254Z",
+  "job": {
+    "id": "GS-1021",
+    "title": "Add fluent batch response-header removal to Fastify",
+    "goal": "Add reply.removeHeaders(names), a fluent API that takes an array of header-name strings, removes those response headers case-insensitively using the same behavior as reply.removeHeader, and returns the same reply instance. An empty array is a no-op. Duplicate and missing names are harmless. Validate the entire input before mutation: non-array inputs or any non-string element must throw TypeError and leave all headers unchanged. Update the public TypeScript Reply interface and document the new API. Preserve existing behavior and all original tests and CI files; new test files are allowed. Discover and run the repository's substantive existing test suite, including relevant type checks when executable, and verify behavior through real Fastify requests. No production deployment is requested.",
+    "kind": "demo",
+    "mode": "naive",
+    "stage": "closed",
+    "status": "done"
+  },
+  "source": {
+    "url": "https://github.com/fastify/fastify",
+    "owner": "fastify",
+    "repository": "fastify",
+    "requested_ref": "v5.2.1",
+    "commit": "eafe0aa25ced21033310ae708b33e645ffb0d532",
+    "archive_sha256": "2ffcb185db84a8af603b81e31c01c36442e082b3c6b9a9ca13e78c1bc2da276f",
+    "retrieved_at": "2026-11-08T01:22:42.892Z"
+  },
+  "autonomous": {
+    "plan": {
+      "image": "node:22-bookworm",
+      "setup": "#!/bin/sh\nset -eu\ncd /workspace\n\nnode -v\nnpm -v\n\n# Install all dependencies from project metadata (no package-lock ships; .npmrc sets package-lock=false).\nnpm install --ignore-scripts\n\n# Guard against the ERR_REQUIRE_ESM regression: the latest light-my-request@6.x (6.2.0+)\n# declares cookie ^1.0.1 or ^2.0.0; cookie@2.x is { \"type\":\"module\" } ESM-only,\n# so require('cookie') inside light-my-request/lib/request.js fails with ERR_REQUIRE_ESM.\n# Pin light-my-request to 6.0.0 (declares cookie ^0.6.0, the CJS require()-able line)\n# via --no-save so package.json is left untouched.\nnpm install light-my-request@6.0.0 --no-save --ignore-scripts\n\n# Verify the cookie CJS entry that light-my-request requires actually loads.\nif [ ! -f node_modules/cookie/index.js ]; then\n  echo \"cookie CJS entry (index.js) missing; require('cookie') would fail. Aborting.\"\n  exit 1\nfi\nif [ -f node_modules/cookie/package.json ]; then\n  cookie_type=$(node -e \"try{console.log(require('node:fs').readFileSync('node_modules/cookie/package.json','utf8').match(/\\\"type\\\"\\s*:\\s*\\\"module\\\"/)?'module':'cjs')}catch(e){console.log('cjs')}\")\n  if [ \"$cookie_type\" = \"module\" ]; then\n    echo \"cookie is ESM (type:module); require('cookie') would fail. Aborting.\"\n    exit 1\n  fi\nfi\n\nnode -e \"require('cookie'); console.log('require cookie OK')\" || { echo \"require(\\\"cookie\\\") failed in setup\"; exit 1; }\n\necho \"setup complete\"",
+      "title": "Add reply.removeHeaders(names) fluent API to Fastify",
+      "checks": [
+        {
+          "id": "preserve-reply-suite",
+          "kind": "preserve",
+          "title": "Existing reply unit tests (test/internals/reply.test.js) pass unchanged",
+          "script": "#!/bin/sh\nset -eu\ncd /workspace\nnode_modules/.bin/borp --concurrency=1 test/internals/reply.test.js\necho \"PASS: reply suite, zero failures\"",
+          "timeout_seconds": 300
+        },
+        {
+          "id": "preserve-typescript-import",
+          "kind": "preserve",
+          "title": "Existing TypeScript import check (tsc test/types/import.ts) passes unchanged",
+          "script": "#!/bin/sh\nset -eu\ncd /workspace\nnode_modules/.bin/tsc test/types/import.ts --target es2022 --moduleResolution node16 --module node16 --noEmit\necho \"PASS: tsc import check OK\"",
+          "timeout_seconds": 300
+        },
+        {
+          "id": "preserve-typescript-reply-tsd",
+          "kind": "preserve",
+          "title": "Existing reply type assertions (tsd scoped to test/types/reply.test-d.ts) pass unchanged",
+          "script": "#!/bin/sh\nset -eu\ncd /workspace\nnode_modules/.bin/tsd --files 'test/types/reply.test-d.ts'\necho \"PASS: reply tsd type checks clean\"",
+          "timeout_seconds": 300
+        },
+        {
+          "id": "require-removeheaders-behavior",
+          "kind": "requirement",
+          "title": "removeHeaders removes a batch case-insensitively, returns the same reply, no-op on empty, harmless dupes/missing, validates entire input before mutation, throws TypeError on non-array or non-string element",
+          "script": "#!/bin/sh\nset -eu\ncd /workspace\ncat > /workspace/.acceptance-removeheaders.test.js <<'EOF'\n'use strict'\nconst { test } = require('node:test')\nconst assert = require('node:assert/strict')\nconst Fastify = require('.')\n\ntest('removeHeaders removes multiple headers case-insensitively and returns same reply', async () => {\n  const app = Fastify()\n  app.get('/', (req, reply) => {\n    reply.header('X-Foo', 'foo')\n    reply.header('X-Bar', 'bar')\n    reply.header('X-Baz', 'baz')\n    const ret = reply.removeHeaders(['x-foo', 'X-BAR'])\n    assert.strictEqual(ret, reply, 'must return same reply instance')\n    assert.strictEqual(reply.getHeader('x-foo'), undefined)\n    assert.strictEqual(reply.getHeader('x-bar'), undefined)\n    assert.strictEqual(reply.getHeader('x-baz'), 'baz')\n    reply.send()\n  })\n  await app.ready()\n  const res = await app.inject({ method: 'GET', url: '/' })\n  assert.equal(res.statusCode, 200)\n  assert.equal(res.headers['x-foo'], undefined)\n  assert.equal(res.headers['x-bar'], undefined)\n  assert.equal(res.headers['x-baz'], 'baz')\n  await app.close()\n})\n\ntest('removeHeaders empty array is a no-op and returns same reply', async () => {\n  const app = Fastify()\n  app.get('/', (req, reply) => {\n    reply.header('x-foo', 'foo')\n    const ret = reply.removeHeaders([])\n    assert.strictEqual(ret, reply)\n    assert.strictEqual(reply.getHeader('x-foo'), 'foo')\n    reply.send()\n  })\n  await app.ready()\n  const res = await app.inject({ method: 'GET', url: '/' })\n  assert.equal(res.headers['x-foo'], 'foo')\n  await app.close()\n})\n\ntest('removeHeaders duplicate and missing names are harmless', async () => {\n  const app = Fastify()\n  app.get('/', (req, reply) => {\n    reply.header('x-foo', 'foo')\n    const ret = reply.removeHeaders(['x-foo', 'x-foo', 'x-missing', 'X-FOO'])\n    assert.strictEqual(ret, reply)\n    assert.strictEqual(reply.getHeader('x-foo'), undefined)\n    reply.send()\n  })\n  await app.ready()\n  const res = await app.inject({ method: 'GET', url: '/' })\n  assert.equal(res.headers['x-foo'], undefined)\n  await app.close()\n})\n\ntest('removeHeaders non-array input throws TypeError and leaves headers unchanged', async () => {\n  const app = Fastify()\n  app.get('/', (req, reply) => {\n    reply.header('x-foo', 'foo')\n    assert.throws(() => reply.removeHeaders('x-foo'), TypeError)\n    assert.throws(() => reply.removeHeaders({ 0: 'x-foo' }), TypeError)\n    assert.throws(() => reply.removeHeaders(42), TypeError)\n    assert.throws(() => reply.removeHeaders(null), TypeError)\n    assert.strictEqual(reply.getHeader('x-foo'), 'foo', 'headers unchanged after invalid input')\n    reply.send()\n  })\n  await app.ready()\n  const res = await app.inject({ method: 'GET', url: '/' })\n  assert.equal(res.statusCode, 200)\n  assert.equal(res.headers['x-foo'], 'foo')\n  await app.close()\n})\n\ntest('removeHeaders non-string element throws TypeError and leaves headers unchanged (validate-before-mutate)', async () => {\n  const app = Fastify()\n  app.get('/', (req, reply) => {\n    reply.header('x-foo', 'foo')\n    reply.header('x-bar', 'bar')\n    assert.throws(() => reply.removeHeaders(['x-foo', 123]), TypeError)\n    assert.throws(() => reply.removeHeaders(['x-foo', null]), TypeError)\n    assert.throws(() => reply.removeHeaders(['x-foo', undefined]), TypeError)\n    assert.throws(() => reply.removeHeaders(['x-foo', { bad: true }]), TypeError)\n    assert.strictEqual(reply.getHeader('x-foo'), 'foo', 'validate-before-mutate: x-foo preserved')\n    assert.strictEqual(reply.getHeader('x-bar'), 'bar', 'validate-before-mutate: x-bar preserved')\n    reply.send()\n  })\n  await app.ready()\n  const res = await app.inject({ method: 'GET', url: '/' })\n  assert.equal(res.statusCode, 200)\n  assert.equal(res.headers['x-foo'], 'foo')\n  assert.equal(res.headers['x-bar'], 'bar')\n  await app.close()\n})\n\ntest('removeHeaders chains fluently with removeHeader and returns same reply', async () => {\n  const app = Fastify()\n  app.get('/', (req, reply) => {\n    reply.header('x-foo', 'foo')\n    reply.header('x-bar', 'bar')\n    const ret = reply.removeHeader('x-foo').removeHeaders(['x-bar'])\n    assert.strictEqual(ret, reply)\n    assert.strictEqual(reply.getHeader('x-foo'), undefined)\n    assert.strictEqual(reply.getHeader('x-bar'), undefined)\n    reply.send()\n  })\n  await app.ready()\n  const res = await app.inject({ method: 'GET', url: '/' })\n  assert.equal(res.headers['x-foo'], undefined)\n  assert.equal(res.headers['x-bar'], undefined)\n  await app.close()\n})\nEOF\nnode --test --test-reporter=spec /workspace/.acceptance-removeheaders.test.js\necho \"PASS: removeHeaders behavior\"",
+          "timeout_seconds": 300
+        },
+        {
+          "id": "require-removeheaders-typed",
+          "kind": "requirement",
+          "title": "TypeScript: removeHeaders(names: HttpHeader[]) signature present on FastifyReply and returns FastifyReply",
+          "script": "#!/bin/sh\nset -eu\ncd /workspace\ncat > /workspace/.acceptance-removeheaders-types.ts <<'EOF'\nimport fastify, { FastifyReply } from './fastify'\n\nconst handler = function (_req: any, reply: FastifyReply) {\n  const r1: FastifyReply = reply.removeHeaders(['x-foo', 'x-bar'])\n  const r2: FastifyReply = reply.removeHeaders([])\n  const r3: FastifyReply = reply.removeHeader('x-foo').removeHeaders(['x-bar'])\n  void r1; void r2; void r3\n}\nvoid handler\nvoid fastify\nEOF\nset +e\nnode_modules/.bin/tsc --noEmit --strict --target es2022 --moduleResolution node16 --module node16 /workspace/.acceptance-removeheaders-types.ts >/tmp/tscout 2>&1\ntsc_code=$?\nset -e\nif [ \"$tsc_code\" -eq 0 ]; then\n  echo \"PASS: removeHeaders typed\"\n  exit 0\nelse\n  echo \"FAIL: tsc reported type errors (removeHeaders missing or mis-typed):\"\n  cat /tmp/tscout\n  exit 1\nfi",
+          "timeout_seconds": 300
+        },
+        {
+          "id": "require-removeheaders-docs",
+          "kind": "requirement",
+          "title": "docs/Reference/Reply.md documents removeHeaders: TOC entry, summary bullet, and section heading present",
+          "script": "#!/bin/sh\nset -eu\ncd /workspace\ndocs=docs/Reference/Reply.md\n[ -f \"$docs\" ] || { echo \"FAIL: $docs missing\"; exit 1; }\n\n# TOC entry for the anchor\nif ! grep -Fq '[.removeHeaders(names)](#removeheadersnames)' \"$docs\"; then\n  echo \"FAIL: TOC entry '[.removeHeaders(names)](#removeheadersnames)' missing in $docs\"\n  exit 1\nfi\n\n# Summary bullet line describing the API\nif ! grep -Fq '`.removeHeaders(names)`' \"$docs\"; then\n  echo \"FAIL: summary bullet '.removeHeaders(names)' missing in $docs\"\n  exit 1\nfi\n\n# Section heading + anchor\nif ! grep -Eq '^### .removeHeaders\\(names\\)' \"$docs\"; then\n  echo \"FAIL: section heading '### .removeHeaders(names)' missing in $docs\"\n  exit 1\nfi\nif ! grep -Fq '<a id=\"removeheaders\"></a>' \"$docs\"; then\n  echo \"FAIL: anchor '<a id=\"removeheaders\"></a>' missing in $docs\"\n  exit 1\nfi\n\necho \"PASS: removeHeaders documented\"",
+          "timeout_seconds": 300
+        }
+      ],
+      "prepare": "#!/bin/sh\nset -eu\ncd /workspace\n[ -d node_modules ] || { echo \"node_modules missing in prepare\"; exit 1; }\n[ -x node_modules/.bin/borp ] || { echo \"borp not executable\"; exit 1; }\n[ -x node_modules/.bin/tsd ] || { echo \"tsd not executable\"; exit 1; }\n[ -f node_modules/cookie/index.js ] || { echo \"cookie CJS entry missing in prepare\"; exit 1; }\nnode -e \"require('cookie')\" || { echo \"require(\\\"cookie\\\") failed in prepare\"; exit 1; }\necho \"prepare complete\"",
+      "version": 1,
+      "mutations": [
+        {
+          "find": "Reply.prototype.removeHeader = function (key) {\n  // Node.js does not like headers with keys set to undefined,\n  // so we have to delete the key.\n  delete this[kReplyHeaders][key.toLowerCase()]\n  return this\n}",
+          "path": "lib/reply.js",
+          "replace": "Reply.prototype.removeHeader = function (key) {\n  // Node.js does not like headers with keys set to undefined,\n  // so we have to delete the key.\n  delete this[kReplyHeaders][key.toLowerCase()]\n  return null\n}",
+          "check_id": "preserve-reply-suite"
+        }
+      ],
+      "rationale": "Prior execution feedback: setup succeeded (code 0) and all three preservation checks passed (preserve-reply-suite code 0, preserve-typescript-import code 0, preserve-typescript-reply-tsd code 0). The behavior requirement check failed on original source as intended (code 1, accepted true): subtests 1, 3, 6 fail with 'removeHeaders is not a function' / header-still-present assertions. The negative-control mutation (removeHeader returns null) was correctly detected (preserve-reply-suite failed, 2 failures). The typed check (require-removeheaders-typed) failed on original source as intended (code 1, accepted true) with a captured, controlled TS2551 'Property removeHeaders does not exist' diagnostic. All checks are accepted.\n\nThe ONLY rejection from the prior round was a single blocking review finding: the explicit customer requirement to 'document the new API' (docs/Reference/Reply.md, deliverables[2]) had no verification check, so an executor could omit the docs and still pass. FIX (the only change): add require-removeheaders-docs, which greps docs/Reference/Reply.md for the TOC entry '[.removeHeaders(names)](#removeheadersnames)', the summary bullet backticked '.removeHeaders(names)', the '### .removeHeaders(names)' section heading, and the '<a id=\"removeheaders\"></a>' anchor. On original source all are absent, so the check fails (missing-feature); on the documented implementation all are present and it passes. Every other script is unchanged from the prior accepted plan.\n\nGoal: add reply.removeHeaders(names) to Fastify's Reply prototype.\n\nImplementation (lib/reply.js, inserted immediately after the existing removeHeader at lines 237-241): removeHeader does `delete this[kReplyHeaders][key.toLowerCase()]; return this`. removeHeaders(names) will: (1) validate Array.isArray(names), else throw TypeError; (2) iterate every element and throw TypeError on the first where typeof !== 'string' BEFORE any mutation (validate-before-mutate), so all headers stay unchanged on invalid input; (3) for each name perform the same lowercasing-delete via this.removeHeader(name) — case-insensitive, duplicate/missing harmless; (4) return this (same reply instance). An empty array short-circuits to return this (no-op). This reuses the exact lowercasing-delete of removeHeader so existing semantics are preserved.\n\nTypeScript (types/reply.d.ts): add a sibling declaration after the removeHeader line (line 58): `removeHeaders(names: HttpHeader[]): FastifyReply<RouteGeneric, RawServer, RawRequest, RawReply, ContextConfig, SchemaCompiler, TypeProvider>;` mirroring removeHeader's return type and using the same HttpHeader element type as removeHeader's key parameter.\n\nDocs (docs/Reference/Reply.md): add a TOC entry `  - [.removeHeaders(names)](#removeheadersnames)` after the `.removeHeader(key)` line (line 14), a summary bullet `- \\`.removeHeaders(names)\\` - Remove the values of previously set headers.` after line 59, and a new `### .removeHeaders(names)` section with `<a id=\"removeheaders\"></a>` after the `.removeHeader(key)` section (which ends at line 227, before `.hasHeader`).\n\nPreservation: removeHeader is untouched; the new method delegates to the same lowercasing-delete. The preserve-reply-suite check runs test/internals/reply.test.js, which at line 1268 asserts reply.removeHeader('x-foo') === reply strictly, so the negative-control mutation changing `return this` to `return null` inside removeHeader makes that preservation check fail with an assertion error.\n\nRequirement checks verify the real requested behavior via app.inject (the real Fastify request lifecycle): batch removal, case-insensitivity, returns-the-same-instance, empty-array no-op, duplicate/missing harmlessness, TypeError on non-array (string/object/number/null), TypeError on any non-string element, validate-before-mutate (headers unchanged when a later element is invalid), and fluent chaining with removeHeader. On original source the behavior test throws `reply.removeHeaders is not a function` (a clear missing-feature TypeError); the typed check fails with a captured TS2551; the docs check fails with a missing TOC entry. All three pass on the correct implementation.",
+      "limitations": [
+        "The full borp suite (184 test files) is not run in every check because many spawn live HTTP servers with timeouts (70 test files use fastify.listen + simple-get) and the http2 tests require h2url; running all would exceed per-check limits and several reference external hostnames in their request fixtures (e.g. constrained-routes.test.js uses 'example.com'/'google.com' as constrained-route Host values, which is fine offline, but the http2 h2url tests need an h2 client). test/internals/reply.test.js (asserting at line 1268 that removeHeader returns the reply instance, so the negative-control mutation makes it fail) is run as a preservation check covering the header/removeHeader surface; the tsc import check and a tsd run scoped to test/types/reply.test-d.ts cover the TypeScript surface.",
+        "The default tsd run (tsd.directory = test/types) includes register.test-d.ts, which has a pre-existing failure: the installed pino's BaseLogger requires msgPrefix that the test's custom logger type lacks (a version-drift issue from package-lock=false, unrelated to this change). The preserve-typescript-reply-tsd check scopes tsd to test/types/reply.test-d.ts via --files to avoid that pre-existing failure; the full tsd is deliberately not run as a gate because it fails on original source independent of this change.",
+        "No package-lock ships with the repo (.npmrc sets package-lock=false), so dependency versions resolve from the registry at install time. To keep the suite reproducible and avoid the ERR_REQUIRE_ESM regression seen when the latest light-my-request 6.x hoists cookie@2.x (ESM-only, type:module), setup pins light-my-request to 6.0.0 (whose cookie dep is the CJS 0.6.x line, require()-able) via --no-save so package.json is left untouched.",
+        "No production deployment is requested; behavior is verified through app.inject (the real Fastify request lifecycle via light-my-request) rather than a live network server.",
+        "tsd reads its test directory from package.json (test/types), which is a protected path and therefore read-only at check time, so the typed requirement check uses tsc --noEmit on a temp file in /workspace instead of writing a new .test-d.ts into test/types.",
+        "protected_paths intentionally covers only test/ and .github/ (original tests and CI). The deliverables lib/reply.js, types/reply.d.ts and docs/Reference/Reply.md must be modified to deliver the feature and therefore are NOT protected; source/documentation that must change cannot be immutable.",
+        "The documentation requirement check (require-removeheaders-docs) inspects docs/Reference/Reply.md (a deliverable, not protected) for the TOC entry, summary bullet, section heading, and anchor. It fails on original source where these are absent."
+      ],
+      "deliverables": [
+        "lib/reply.js",
+        "types/reply.d.ts",
+        "docs/Reference/Reply.md"
+      ],
+      "protected_paths": [
+        "test/",
+        ".github/"
+      ],
+      "dependency_hosts": [
+        "registry.npmjs.org",
+        "registry.npmjs.com"
+      ],
+      "base_image_digest": "sha256:7702d8aa4d5910871692af4480eb3ba86f23047a6417a44d857d06c95d060d3f",
+      "missing_requirements": []
+    },
+    "discovery": {
+      "trial": 1,
+      "first": {
+        "ok": true,
+        "setup": {
+          "code": 0,
+          "output": "v22.23.4\n10.9.9\nnpm warn deprecated uuid@8.3.2: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).\nnpm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me\nnpm warn deprecated eslint@9.39.5: This version is no longer supported. Please see https://eslint.org/version-support for other options.\n\nadded 943 packages, and audited 944 packages in 1m\n\n293 packages are looking for funding\n  run `npm fund` for details\n\n43 vulnerabilities (2 low, 34 moderate, 5 high, 2 critical)\n\nTo address issues that do not require attention, run:\n  npm audit fix\n\nTo address all issues possible (including breaking changes), run:\n  npm audit fix --force\n\nSome issues need review, and may require choosing\na different dependency.\n\nRun `npm audit` for details.\nnpm notice\nnpm notice New major version of npm available! 10.9.9 -> 12.2.2\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2\nnpm notice To update run: npm install -g npm@12.2.2\nnpm notice\n\nremoved 2 packages, changed 3 packages, and audited 942 packages in 2s\n\n290 packages are looking for funding\n  run `npm fund` for details\n\n45 vulnerabilities (4 low, 34 moderate, 5 high, 2 critical)\n\nTo address issues that do not require attention, run:\n  npm audit fix\n\nTo address all issues possible (including breaking changes), run:\n  npm audit fix --force\n\nSome issues need review, and may require choosing\na different dependency.\n\nRun `npm audit` for details.\nrequire cookie OK\nsetup complete\n"
+        },
+        "checks": [
+          {
+            "id": "preserve-reply-suite",
+            "code": 0,
+            "expected": "pass",
+            "accepted": true,
+            "output": "  ▶ Type: number\n    ✔ should be equal\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: number (1.812ms)\n  ▶ Type: string\n    ✔ should be equal\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: string (1.236ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (1.229ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (1.183ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (1.397ms)\n✔ Support rejection with values that are not Error instances (18.507ms)\n▶ invalid schema - ajv\n  ✔ should be equal\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equal\n✔ invalid schema - ajv (28.666ms)\n▶ should set the status code and the headers from the error object (from route handler) (no custom error handler)\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equivalent\n✔ should set the status code and the headers from the error object (from route handler) (no custom error handler) (2.9ms)\n▶ should set the status code and the headers from the error object (from custom error handler)\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equivalent\n✔ should set the status code and the headers from the error object (from custom error handler) (2.038ms)\n▶ '*' should throw an error due to serializer can not handle the payload type\n  ✔ type is TypeError\n  ✔ should be equal\n  ✔ should be equal\n✔ '*' should throw an error due to serializer can not handle the payload type (1.746ms)\n▶ should throw an error if the custom serializer does not serialize the payload to a valid type\n  ✔ type is TypeError\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw an error if the custom serializer does not serialize the payload to a valid type (1.593ms)\n▶ should not set headers or status code for custom error handler\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equivalent\n✔ should not set headers or status code for custom error handler (2.093ms)\n▶ error thrown by custom error handler routes to default error handler\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equivalent\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equivalent\n✔ error thrown by custom error handler routes to default error handler (2.888ms)\n▶ allow re-thrown error to default error handler when route handler is async and error handler is sync\n  ✔ should be equal\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equivalent\n✔ allow re-thrown error to default error handler when route handler is async and error handler is sync (3.488ms)\n▶ should throw error if error code is undefined\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is undefined (1.262ms)\n▶ should throw error if error code is null\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is null (0.941ms)\n▶ should throw error if error code is error_code\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is error_code (0.842ms)\n▶ should throw error if error code is 0\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is 0 (0.896ms)\n▶ should throw error if error code is 1\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is 1 (1.841ms)\n▶ should throw error if error code is 99\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is 99 (2.181ms)\n▶ should throw error if error code is 600\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is 600 (1.747ms)\n▶ should throw error if error code is 700\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is 700 (1.956ms)\n▶ error handler is triggered when a string is thrown from sync handler\n  ✔ should be equal\n  ✔ should not error\n  ✔ should be equal\n✔ error handler is triggered when a string is thrown from sync handler (3.251ms)\n▶ status code should be set to 500 and return an error json payload if route handler throws any non Error object expression\n  ✔ should be equal\n  ✔ should be equal\n✔ status code should be set to 500 and return an error json payload if route handler throws any non Error object expression (3.544ms\n[Middle omitted; full output remains in the execution artifact.]\n(26.67723ms)\n✔ shorthand - move (2.49099ms)\n▶ move test\n  ✔ request - move (6.435864ms)\n✔ move test (17.348843ms)\n✔ can be created - mkcol (2.004124ms)\n▶ mkcol test\n  ✔ request - mkcol (10.05508ms)\n✔ mkcol test (23.962287ms)\n✔ can be created - mkcalendar (1.83742ms)\n▶ mkcalendar test\n  ✔ request - mkcalendar (7.302305ms)\n  ✔ request with other path - mkcalendar (2.137538ms)\n  ✔ request with body - mkcalendar (2.992187ms)\n  ✔ request with body and no content type (415 error) - mkcalendar (1.992542ms)\n  ✔ request without body - mkcalendar (1.424011ms)\n✔ mkcalendar test (29.047599ms)\n✔ can be created - lock (1.774421ms)\n▶ lock test\n  ✔ request with body - lock (8.022664ms)\n  ✔ request with body and no content type (415 error) - lock (2.704276ms)\n  ✔ request without body - lock (1.471886ms)\n✔ lock test (23.254887ms)\n✔ shorthand - head (2.224578ms)\n✔ shorthand - custom head (0.908314ms)\n✔ shorthand - custom head with constraints (0.432325ms)\n✔ shorthand - should not reset a head route (0.687152ms)\n✔ shorthand - should set get and head route in the same api call (0.475282ms)\n✔ shorthand - head params (0.376367ms)\n✔ shorthand - head, querystring schema (0.170371ms)\n✔ missing schema - head (0.22387ms)\n▶ head test\n  ✔ shorthand - request head (16.492278ms)\n  ✔ shorthand - request head params schema (2.746359ms)\n  ✔ shorthand - request head params schema error (1.905626ms)\n  ✔ shorthand - request head querystring schema (1.787213ms)\n  ✔ shorthand - request head querystring schema error (1.472094ms)\n  ✔ shorthand - request head missing schema (1.312972ms)\n  ✔ shorthand - request head custom head (1.160309ms)\n  ✔ shorthand - request head custom head with constraints (1.197266ms)\n  ✔ shorthand - should not reset a head route (3.089977ms)\n  ✔ shorthand - should set get and head route in the same api call (1.487135ms)\n✔ head test (80.583558ms)\n✔ shorthand - get (2.066748ms)\n✔ shorthand - get (return null) (0.63732ms)\n✔ shorthand - get params (0.433074ms)\n✔ shorthand - get, querystring schema (0.412825ms)\n✔ shorthand - get, headers schema (0.411908ms)\n✔ missing schema - get (0.273745ms)\n✔ custom serializer - get (0.150705ms)\n✔ empty response (0.218871ms)\n✔ send a falsy boolean (0.482115ms)\n✔ shorthand - get, set port (0.512823ms)\n▶ get test\n  ✔ shorthand - request get (9.170099ms)\n  ✔ shorthand - request get params schema (2.583112ms)\n  ✔ shorthand - request get params schema error (1.791254ms)\n  ✔ shorthand - request get headers schema (2.239453ms)\n  ✔ shorthand - request get headers schema error (2.206329ms)\n  ✔ shorthand - request get querystring schema (1.559259ms)\n  ✔ shorthand - request get querystring schema error (3.149393ms)\n  ✔ shorthand - request get missing schema (1.760338ms)\n  ✔ shorthand - custom serializer (2.609778ms)\n  ✔ shorthand - empty response (1.244724ms)\n  ✔ shorthand - send a falsy boolean (0.921898ms)\n  ✔ shorthand - send null value (0.89769ms)\n  ✔ shorthand - request get headers - test fall back port (1.131685ms)\n✔ get test (80.37602ms)\n✔ missing method from http client (21.419259ms)\n✔ addHttpMethod increase the supported HTTP methods supported (8.46203ms)\n✔ addHttpMethod adds a new custom method without body (0.659236ms)\n✔ addHttpMethod adds a new custom method with body (4.284369ms)\n✔ addHttpMethod rejects fake http method (0.501781ms)\n✔ can be created - copy (19.010768ms)\n✔ named exports support (8.308533ms)\n✔ diagnostics channel sync events fire in expected order (41.578545ms)\n✔ diagnostics channel sync events fire in expected order (24.272533ms)\n✔ diagnostics channel sync events fire in expected order (23.068267ms)\n✔ diagnostics_channel when present and subscribers (95.485457ms)\n✔ diagnostics_channel when present and no subscribers (1.499093ms)\n✔ Error.status property support (14.130704ms)\n✔ diagnostics channel events report on errors (21.157432ms)\n✔ diagnostics channel handles an error before calling context handler (0.966064ms)\n✔ diagnostics channel async events fire in expected order (20.308366ms)\n✔ diagnostics channel async events fire in expected order (21.898708ms)\n✔ diagnostics channel sync events fire in expected order (22.028164ms)\n✔ should be the same as package.json (1.155101ms)\n✔ check generated code syntax (1138.356559ms)\n﹣ ensure the current error serializer is latest (0.299702ms) # SKIP\n✔ esm support (8.966355ms)\n✔ errorCodes in ESM (0.62707ms)\nℹ tests 5553\nℹ suites 1030\nℹ pass 5543\nℹ fail 0\nℹ cancelled 0\nℹ skipped 10\nℹ todo 0\nℹ duration_ms 75548.104741\nPASS: reply suite, zero failures\n"
+          },
+          {
+            "id": "preserve-typescript-import",
+            "code": 0,
+            "expected": "pass",
+            "accepted": true,
+            "output": "prepare complete\nPASS: tsc import check OK\n"
+          },
+          {
+            "id": "preserve-typescript-reply-tsd",
+            "code": 0,
+            "expected": "pass",
+            "accepted": true,
+            "output": "prepare complete\nPASS: reply tsd type checks clean\n"
+          },
+          {
+            "id": "require-removeheaders-behavior",
+            "code": 1,
+            "expected": "fail",
+            "accepted": true,
+            "output": "prepare complete\n✖ removeHeaders removes multiple headers case-insensitively and returns same reply (15.456351ms)\n✔ removeHeaders empty array is a no-op and returns same reply (3.90492ms)\n✖ removeHeaders duplicate and missing names are harmless (2.572031ms)\n✔ removeHeaders non-array input throws TypeError and leaves headers unchanged (2.177206ms)\n✔ removeHeaders non-string element throws TypeError and leaves headers unchanged (validate-before-mutate) (2.944189ms)\n✖ removeHeaders chains fluently with removeHeader and returns same reply (1.832004ms)\nℹ tests 6\nℹ suites 0\nℹ pass 3\nℹ fail 3\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 145.786308\n\n✖ failing tests:\n\ntest at .acceptance-removeheaders.test.js:6:1\n✖ removeHeaders removes multiple headers case-insensitively and returns same reply (15.456351ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  \n  500 !== 200\n  \n      at TestContext.<anonymous> (/workspace/.acceptance-removeheaders.test.js:21:10)\n      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n      at async Test.run (node:internal/test_runner/test:1054:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 500,\n    expected: 200,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n\ntest at .acceptance-removeheaders.test.js:43:1\n✖ removeHeaders duplicate and missing names are harmless (2.572031ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  \n  'foo' !== undefined\n  \n      at TestContext.<anonymous> (/workspace/.acceptance-removeheaders.test.js:54:10)\n      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n      at async Test.run (node:internal/test_runner/test:1054:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:744:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 'foo',\n    expected: undefined,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n\ntest at .acceptance-removeheaders.test.js:97:1\n✖ removeHeaders chains fluently with removeHeader and returns same reply (1.832004ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  \n  'bar' !== undefined\n  \n      at TestContext.<anonymous> (/workspace/.acceptance-removeheaders.test.js:111:10)\n      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n      at async Test.run (node:internal/test_runner/test:1054:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:744:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 'bar',\n    expected: undefined,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n"
+          },
+          {
+            "id": "require-removeheaders-typed",
+            "code": 1,
+            "expected": "fail",
+            "accepted": true,
+            "output": "prepare complete\nFAIL: tsc reported type errors (removeHeaders missing or mis-typed):\n.acceptance-removeheaders-types.ts(4,34): error TS2551: Property 'removeHeaders' does not exist on type 'FastifyReply<RouteGenericInterface, RawServerDefault, IncomingMessage, ServerResponse<IncomingMessage>, unknown, FastifySchema, FastifyTypeProviderDefault, unknown>'. Did you mean 'removeHeader'?\n.acceptance-removeheaders-types.ts(5,34): error TS2551: Property 'removeHeaders' does not exist on type 'FastifyReply<RouteGenericInterface, RawServerDefault, IncomingMessage, ServerResponse<IncomingMessage>, unknown, FastifySchema, FastifyTypeProviderDefault, unknown>'. Did you mean 'removeHeader'?\n.acceptance-removeheaders-types.ts(6,56): error TS2551: Property 'removeHeaders' does not exist on type 'FastifyReply<RouteGenericInterface, RawServerDefault, IncomingMessage, ServerResponse<IncomingMessage>, unknown, FastifySchema, FastifyTypeProviderDefault, unknown>'. Did you mean 'removeHeader'?\n"
+          },
+          {
+            "id": "require-removeheaders-docs",
+            "code": 1,
+            "expected": "fail",
+            "accepted": true,
+            "output": "prepare complete\nFAIL: TOC entry '[.removeHeaders(names)](#removeheadersnames)' missing in docs/Reference/Reply.md\n"
+          }
+        ],
+        "mutations": [
+          {
+            "path": "lib/reply.js",
+            "check_id": "preserve-reply-suite",
+            "detected": true,
+            "output": "ernal done (1.227ms)\n▶ Should reply 400 on client error\n  ✔ should not error\n  ✔ should be equal\n✔ Should reply 400 on client error (9.158ms)\n▶ Should set the response from client error handler\n  ✔ should not error\n  ✔ type is Error\n  ✔ should be equal\n  ✔ Log level is not warn\n  ✔ should be equal\n✔ Should set the response from client error handler (15.302ms)\n▶ Error instance sets HTTP status code\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equivalent\n✔ Error instance sets HTTP status code (1.684ms)\n▶ Error status code below 400 defaults to 500\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equivalent\n✔ Error status code below 400 defaults to 500 (1.4ms)\n▶ Error.status property support\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equivalent\n✔ Error.status property support (1.396ms)\n▶ Support rejection with values that are not Error instances\n  ▶ Type: number\n    ✔ should be equal\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: number (3.729ms)\n  ▶ Type: string\n    ✔ should be equal\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: string (1.106ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (1.168ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (1.062ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (1.001ms)\n  ▶ Type: undefined\n    ✔ should be equal\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: undefined (0.993ms)\n  ▶ Type: number\n    ✔ should be equal\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: number (1.053ms)\n  ▶ Type: string\n    ✔ should be equal\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: string (0.976ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (1.112ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (1.139ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (1.589ms)\n✔ Support rejection with values that are not Error instances (17.081ms)\n▶ invalid schema - ajv\n  ✔ should be equal\n  ✔\n[Middle omitted; full output remains in the execution artifact.]\nhorthand - request get params schema (1.964344ms)\n  ✔ shorthand - request get params schema error (1.689222ms)\n  ✔ shorthand - request get headers schema (1.386977ms)\n  ✔ shorthand - request get headers schema error (1.698389ms)\n  ✔ shorthand - request get querystring schema (1.270563ms)\n  ✔ shorthand - request get querystring schema error (0.984234ms)\n  ✔ shorthand - request get missing schema (0.974359ms)\n  ✔ shorthand - custom serializer (2.099591ms)\n  ✔ shorthand - empty response (0.932651ms)\n  ✔ shorthand - send a falsy boolean (0.795737ms)\n  ✔ shorthand - send null value (0.936818ms)\n  ✔ shorthand - request get headers - test fall back port (0.910068ms)\n✔ get test (84.166016ms)\n✔ missing method from http client (20.780456ms)\n✔ addHttpMethod increase the supported HTTP methods supported (7.888789ms)\n✔ addHttpMethod adds a new custom method without body (0.566491ms)\n✔ addHttpMethod adds a new custom method with body (4.499803ms)\n✔ addHttpMethod rejects fake http method (0.634615ms)\n✔ can be created - copy (19.041901ms)\n✔ named exports support (10.307626ms)\n✔ diagnostics channel sync events fire in expected order (24.704268ms)\n✔ diagnostics channel sync events fire in expected order (23.415872ms)\n✔ diagnostics channel sync events fire in expected order (22.49247ms)\n✔ diagnostics_channel when present and subscribers (97.315096ms)\n✔ diagnostics_channel when present and no subscribers (1.74343ms)\n✔ Error.status property support (13.675655ms)\n✔ diagnostics channel events report on errors (21.999396ms)\n✔ diagnostics channel handles an error before calling context handler (1.561058ms)\n✔ diagnostics channel async events fire in expected order (21.33724ms)\n✔ diagnostics channel async events fire in expected order (25.14297ms)\n✔ diagnostics channel sync events fire in expected order (22.020521ms)\n✔ should be the same as package.json (0.950318ms)\n✔ check generated code syntax (1377.147972ms)\n﹣ ensure the current error serializer is latest (0.172039ms) # SKIP\n✔ esm support (8.821692ms)\n✔ errorCodes in ESM (0.602157ms)\nℹ tests 5493\nℹ suites 1030\nℹ pass 5480\nℹ fail 3\nℹ cancelled 0\nℹ skipped 10\nℹ todo 0\nℹ duration_ms 87821.089287\n\n✖ failing tests:\n\ntest at test/internals/reply.test.js:1:1\n✖ test/internals/reply.test.js (4379.766334ms)\n  'test failed'\n\ntest at test/async-await.test.js:46:1\n✖ async await (234.890473ms)\n  'plan expected 16 assertions but received 12'\n\ntest at test/internals/reply.test.js:1:1\n✖ test/internals/reply.test.js (3746.70381ms)\n  'test failed'\n"
+          }
+        ]
+      },
+      "reproduction": {
+        "ok": true,
+        "setup": {
+          "code": 0,
+          "output": "v22.23.4\n10.9.9\nnpm warn deprecated uuid@8.3.2: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).\nnpm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me\nnpm warn deprecated eslint@9.39.5: This version is no longer supported. Please see https://eslint.org/version-support for other options.\n\nadded 943 packages, and audited 944 packages in 2m\n\n293 packages are looking for funding\n  run `npm fund` for details\n\n43 vulnerabilities (2 low, 34 moderate, 5 high, 2 critical)\n\nTo address issues that do not require attention, run:\n  npm audit fix\n\nTo address all issues possible (including breaking changes), run:\n  npm audit fix --force\n\nSome issues need review, and may require choosing\na different dependency.\n\nRun `npm audit` for details.\nnpm notice\nnpm notice New major version of npm available! 10.9.9 -> 12.2.2\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2\nnpm notice To update run: npm install -g npm@12.2.2\nnpm notice\n\nremoved 2 packages, changed 3 packages, and audited 942 packages in 2s\n\n290 packages are looking for funding\n  run `npm fund` for details\n\n45 vulnerabilities (4 low, 34 moderate, 5 high, 2 critical)\n\nTo address issues that do not require attention, run:\n  npm audit fix\n\nTo address all issues possible (including breaking changes), run:\n  npm audit fix --force\n\nSome issues need review, and may require choosing\na different dependency.\n\nRun `npm audit` for details.\nrequire cookie OK\nsetup complete\n"
+        },
+        "checks": [
+          {
+            "id": "preserve-reply-suite",
+            "code": 0,
+            "expected": "pass",
+            "accepted": true,
+            "output": "should be equal\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: number (1.021ms)\n  ▶ Type: string\n    ✔ should be equal\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: string (1.071ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (1.286ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (1.386ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (2.139ms)\n✔ Support rejection with values that are not Error instances (19.631ms)\n▶ invalid schema - ajv\n  ✔ should be equal\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equal\n✔ invalid schema - ajv (31.541ms)\n▶ should set the status code and the headers from the error object (from route handler) (no custom error handler)\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equivalent\n✔ should set the status code and the headers from the error object (from route handler) (no custom error handler) (2.214ms)\n▶ should set the status code and the headers from the error object (from custom error handler)\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equivalent\n✔ should set the status code and the headers from the error object (from custom error handler) (1.734ms)\n▶ '*' should throw an error due to serializer can not handle the payload type\n  ✔ type is TypeError\n  ✔ should be equal\n  ✔ should be equal\n✔ '*' should throw an error due to serializer can not handle the payload type (1.776ms)\n▶ should throw an error if the custom serializer does not serialize the payload to a valid type\n  ✔ type is TypeError\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw an error if the custom serializer does not serialize the payload to a valid type (3.832ms)\n▶ should not set headers or status code for custom error handler\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equivalent\n✔ should not set headers or status code for custom error handler (5.723ms)\n▶ error thrown by custom error handler routes to default error handler\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equivalent\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equivalent\n✔ error thrown by custom error handler routes to default error handler (4.363ms)\n▶ allow re-thrown error to default error handler when route handler is async and error handler is sync\n  ✔ should be equal\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equivalent\n✔ allow re-thrown error to default error handler when route handler is async and error handler is sync (1.562ms)\n▶ should throw error if error code is undefined\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is undefined (1.705ms)\n▶ should throw error if error code is null\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is null (1.216ms)\n▶ should throw error if error code is error_code\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is error_code (1.137ms)\n▶ should throw error if error code is 0\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is 0 (1.193ms)\n▶ should throw error if error code is 1\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is 1 (1.562ms)\n▶ should throw error if error code is 99\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is 99 (1.819ms)\n▶ should throw error if error code is 600\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is 600 (1.163ms)\n▶ should throw error if error code is 700\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is 700 (2.832ms)\n▶ error handler is triggered when a string is thrown from sync handler\n  ✔ should be equal\n  ✔ should not error\n  ✔ should be equal\n✔ error handler is triggered when a string is thrown from sync handler (3.3ms)\n▶ status code should be set to 500 and return an error json payload if route handler throws any non Error object expression\n  ✔ should be equal\n  ✔ should be equal\n✔ status code should be set to 500 and return an error json payload if route handler throws any non Error object expression (4.549ms)\n▶ should preserve the\n[Middle omitted; full output remains in the execution artifact.]\n FST_ERR_CTP_INVALID_CONTENT_LENGTH (0.071417ms)\n✔ FST_ERR_CTP_EMPTY_JSON_BODY (0.072208ms)\n✔ FST_ERR_CTP_INSTANCE_ALREADY_STARTED (0.085958ms)\n✔ FST_ERR_DEC_ALREADY_PRESENT (0.068792ms)\n✔ FST_ERR_DEC_DEPENDENCY_INVALID_TYPE (0.071208ms)\n✔ FST_ERR_DEC_MISSING_DEPENDENCY (0.069624ms)\n✔ FST_ERR_DEC_AFTER_START (0.087125ms)\n✔ FST_ERR_DEC_REFERENCE_TYPE (0.073999ms)\n✔ FST_ERR_HOOK_INVALID_TYPE (0.070749ms)\n✔ FST_ERR_HOOK_INVALID_HANDLER (0.072083ms)\n✔ FST_ERR_HOOK_INVALID_ASYNC_HANDLER (0.068832ms)\n✔ FST_ERR_HOOK_NOT_SUPPORTED (0.072458ms)\n✔ FST_ERR_MISSING_MIDDLEWARE (0.072749ms)\n✔ FST_ERR_HOOK_TIMEOUT (0.071708ms)\n✔ FST_ERR_LOG_INVALID_DESTINATION (0.068166ms)\n✔ FST_ERR_LOG_INVALID_LOGGER (0.070041ms)\n✔ FST_ERR_LOG_INVALID_LOGGER_INSTANCE (0.069ms)\n✔ FST_ERR_LOG_INVALID_LOGGER_CONFIG (0.25429ms)\n✔ FST_ERR_LOG_LOGGER_AND_LOGGER_INSTANCE_PROVIDED (0.159415ms)\n✔ FST_ERR_REP_INVALID_PAYLOAD_TYPE (0.099624ms)\n✔ FST_ERR_REP_RESPONSE_BODY_CONSUMED (0.085208ms)\n✔ FST_ERR_REP_READABLE_STREAM_LOCKED (0.079916ms)\n✔ FST_ERR_REP_ALREADY_SENT (0.155916ms)\n✔ FST_ERR_REP_SENT_VALUE (0.069124ms)\n✔ FST_ERR_SEND_INSIDE_ONERR (0.070375ms)\n✔ FST_ERR_SEND_UNDEFINED_ERR (0.085416ms)\n✔ FST_ERR_BAD_STATUS_CODE (0.072125ms)\n✔ FST_ERR_BAD_TRAILER_NAME (0.080374ms)\n✔ FST_ERR_BAD_TRAILER_VALUE (0.075125ms)\n✔ FST_ERR_FAILED_ERROR_SERIALIZATION (0.074041ms)\n✔ FST_ERR_MISSING_SERIALIZATION_FN (0.073958ms)\n✔ FST_ERR_MISSING_CONTENTTYPE_SERIALIZATION_FN (0.072291ms)\n✔ FST_ERR_REQ_INVALID_VALIDATION_INVOCATION (0.077166ms)\n✔ FST_ERR_SCH_MISSING_ID (0.07275ms)\n✔ FST_ERR_SCH_ALREADY_PRESENT (0.075416ms)\n✔ FST_ERR_SCH_CONTENT_MISSING_SCHEMA (0.079708ms)\n✔ FST_ERR_SCH_DUPLICATE (0.100416ms)\n✔ FST_ERR_SCH_VALIDATION_BUILD (0.075542ms)\n✔ FST_ERR_SCH_SERIALIZATION_BUILD (0.075708ms)\n✔ FST_ERR_SCH_RESPONSE_SCHEMA_NOT_NESTED_2XX (0.182748ms)\n✔ FST_ERR_HTTP2_INVALID_VERSION (0.136457ms)\n✔ FST_ERR_INIT_OPTS_INVALID (0.085291ms)\n✔ FST_ERR_FORCE_CLOSE_CONNECTIONS_IDLE_NOT_AVAILABLE (0.093958ms)\n✔ FST_ERR_DUPLICATED_ROUTE (0.075999ms)\n✔ FST_ERR_BAD_URL (0.184791ms)\n✔ FST_ERR_ASYNC_CONSTRAINT (0.125249ms)\n✔ FST_ERR_INVALID_URL (0.085458ms)\n✔ FST_ERR_ROUTE_OPTIONS_NOT_OBJ (0.086582ms)\n✔ FST_ERR_ROUTE_DUPLICATED_HANDLER (0.082874ms)\n✔ FST_ERR_ROUTE_HANDLER_NOT_FN (0.077541ms)\n✔ FST_ERR_ROUTE_MISSING_HANDLER (0.079333ms)\n✔ FST_ERR_ROUTE_METHOD_INVALID (0.079291ms)\n✔ FST_ERR_ROUTE_METHOD_NOT_SUPPORTED (0.081708ms)\n✔ FST_ERR_ROUTE_BODY_VALIDATION_SCHEMA_NOT_SUPPORTED (0.099832ms)\n✔ FST_ERR_ROUTE_BODY_LIMIT_OPTION_NOT_INT (0.078874ms)\n✔ FST_ERR_ROUTE_BODY_LIMIT_OPTION_NOT_INT (0.079749ms)\n✔ FST_ERR_ROUTE_REWRITE_NOT_STR (0.084166ms)\n✔ FST_ERR_REOPENED_CLOSE_SERVER (0.084541ms)\n✔ FST_ERR_REOPENED_SERVER (0.103249ms)\n✔ FST_ERR_INSTANCE_ALREADY_LISTENING (0.074249ms)\n✔ FST_ERR_PLUGIN_VERSION_MISMATCH (0.075791ms)\n✔ FST_ERR_PLUGIN_NOT_PRESENT_IN_INSTANCE (0.148415ms)\n✔ FST_ERR_PLUGIN_INVALID_ASYNC_HANDLER (0.112541ms)\n✔ FST_ERR_PLUGIN_CALLBACK_NOT_FN (0.115249ms)\n✔ FST_ERR_PLUGIN_NOT_VALID (0.127874ms)\n✔ FST_ERR_ROOT_PLG_BOOTED (0.161916ms)\n✔ FST_ERR_PARENT_PLUGIN_BOOTED (0.109749ms)\n✔ FST_ERR_PLUGIN_TIMEOUT (0.084124ms)\n✔ FST_ERR_VALIDATION (0.630163ms)\n✔ FST_ERR_LISTEN_OPTIONS_INVALID (0.078625ms)\n✔ FST_ERR_ERROR_HANDLER_NOT_FN (0.083208ms)\n✔ Ensure that all errors are in Errors.md TOC (0.47433ms)\n✔ Ensure that non-existing errors are not in Errors.md TOC (0.41629ms)\n✔ Ensure that all errors are in Errors.md documented (0.337206ms)\n✔ Ensure that non-existing errors are not in Errors.md documented (0.327123ms)\n✔ decorate should add the given method to its instance (0.955452ms)\n✔ decorate is chainable (0.111666ms)\n✔ checkExistence should check if a property is part of the given instance (0.095166ms)\n✔ checkExistence should find the instance if not given (0.101166ms)\n✔ checkExistence should check the prototype as well (0.090208ms)\n✔ checkDependencies should throw if a dependency is not present (0.283832ms)\n✔ decorate should internally call checkDependencies (0.163416ms)\n✔ decorate should recognize getter/setter objects (0.139832ms)\n▶ context\n  ✔ Should not contain undefined as key prop (16.957436ms)\n✔ context (17.637391ms)\n✔ rawBody function (1.969613ms)\n✔ Should support Webpack and faux modules (2.401193ms)\n✔ fastify.all should add all the methods to the same url (17.297143ms)\n✔ esm support (8.601197ms)\n✔ errorCodes in ESM (0.601288ms)\nℹ tests 5553\nℹ suites 1030\nℹ pass 5543\nℹ fail 0\nℹ cancelled 0\nℹ skipped 10\nℹ todo 0\nℹ duration_ms 77021.177528\nPASS: reply suite, zero failures\n"
+          },
+          {
+            "id": "preserve-typescript-import",
+            "code": 0,
+            "expected": "pass",
+            "accepted": true,
+            "output": "prepare complete\nPASS: tsc import check OK\n"
+          },
+          {
+            "id": "preserve-typescript-reply-tsd",
+            "code": 0,
+            "expected": "pass",
+            "accepted": true,
+            "output": "prepare complete\nPASS: reply tsd type checks clean\n"
+          },
+          {
+            "id": "require-removeheaders-behavior",
+            "code": 1,
+            "expected": "fail",
+            "accepted": true,
+            "output": "prepare complete\n✖ removeHeaders removes multiple headers case-insensitively and returns same reply (17.204355ms)\n✔ removeHeaders empty array is a no-op and returns same reply (5.01047ms)\n✖ removeHeaders duplicate and missing names are harmless (3.992518ms)\n✔ removeHeaders non-array input throws TypeError and leaves headers unchanged (3.040232ms)\n✔ removeHeaders non-string element throws TypeError and leaves headers unchanged (validate-before-mutate) (3.237939ms)\n✖ removeHeaders chains fluently with removeHeader and returns same reply (1.731406ms)\nℹ tests 6\nℹ suites 0\nℹ pass 3\nℹ fail 3\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 177.131977\n\n✖ failing tests:\n\ntest at .acceptance-removeheaders.test.js:6:1\n✖ removeHeaders removes multiple headers case-insensitively and returns same reply (17.204355ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  \n  500 !== 200\n  \n      at TestContext.<anonymous> (/workspace/.acceptance-removeheaders.test.js:21:10)\n      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n      at async Test.run (node:internal/test_runner/test:1054:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 500,\n    expected: 200,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n\ntest at .acceptance-removeheaders.test.js:43:1\n✖ removeHeaders duplicate and missing names are harmless (3.992518ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  \n  'foo' !== undefined\n  \n      at TestContext.<anonymous> (/workspace/.acceptance-removeheaders.test.js:54:10)\n      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n      at async Test.run (node:internal/test_runner/test:1054:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:744:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 'foo',\n    expected: undefined,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n\ntest at .acceptance-removeheaders.test.js:97:1\n✖ removeHeaders chains fluently with removeHeader and returns same reply (1.731406ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  \n  'bar' !== undefined\n  \n      at TestContext.<anonymous> (/workspace/.acceptance-removeheaders.test.js:111:10)\n      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n      at async Test.run (node:internal/test_runner/test:1054:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:744:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 'bar',\n    expected: undefined,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n"
+          },
+          {
+            "id": "require-removeheaders-typed",
+            "code": 1,
+            "expected": "fail",
+            "accepted": true,
+            "output": "prepare complete\nFAIL: tsc reported type errors (removeHeaders missing or mis-typed):\n.acceptance-removeheaders-types.ts(4,34): error TS2551: Property 'removeHeaders' does not exist on type 'FastifyReply<RouteGenericInterface, RawServerDefault, IncomingMessage, ServerResponse<IncomingMessage>, unknown, FastifySchema, FastifyTypeProviderDefault, unknown>'. Did you mean 'removeHeader'?\n.acceptance-removeheaders-types.ts(5,34): error TS2551: Property 'removeHeaders' does not exist on type 'FastifyReply<RouteGenericInterface, RawServerDefault, IncomingMessage, ServerResponse<IncomingMessage>, unknown, FastifySchema, FastifyTypeProviderDefault, unknown>'. Did you mean 'removeHeader'?\n.acceptance-removeheaders-types.ts(6,56): error TS2551: Property 'removeHeaders' does not exist on type 'FastifyReply<RouteGenericInterface, RawServerDefault, IncomingMessage, ServerResponse<IncomingMessage>, unknown, FastifySchema, FastifyTypeProviderDefault, unknown>'. Did you mean 'removeHeader'?\n"
+          },
+          {
+            "id": "require-removeheaders-docs",
+            "code": 1,
+            "expected": "fail",
+            "accepted": true,
+            "output": "prepare complete\nFAIL: TOC entry '[.removeHeaders(names)](#removeheadersnames)' missing in docs/Reference/Reply.md\n"
+          }
+        ],
+        "mutations": [
+          {
+            "path": "lib/reply.js",
+            "check_id": "preserve-reply-suite",
+            "detected": true,
+            "output": "ld be equal\n  ✔ should be equivalent\n✔ onRequest hook error handling with external done (2.881ms)\n▶ Should reply 400 on client error\n  ✔ should not error\n  ✔ should be equal\n✔ Should reply 400 on client error (19.022ms)\n▶ Should set the response from client error handler\n  ✔ should not error\n  ✔ type is Error\n  ✔ should be equal\n  ✔ Log level is not warn\n  ✔ should be equal\n✔ Should set the response from client error handler (20.515ms)\n▶ Error instance sets HTTP status code\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equivalent\n✔ Error instance sets HTTP status code (2.044ms)\n▶ Error status code below 400 defaults to 500\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equivalent\n✔ Error status code below 400 defaults to 500 (1.324ms)\n▶ Error.status property support\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equivalent\n✔ Error.status property support (1.379ms)\n▶ Support rejection with values that are not Error instances\n  ▶ Type: number\n    ✔ should be equal\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: number (4.86ms)\n  ▶ Type: string\n    ✔ should be equal\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: string (1.257ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (1.421ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (3.521ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (1.489ms)\n  ▶ Type: undefined\n    ✔ should be equal\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: undefined (1.571ms)\n  ▶ Type: number\n    ✔ should be equal\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: number (2.381ms)\n  ▶ Type: string\n    ✔ should be equal\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: string (1.523ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (1.502ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (1.528ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (1.365ms)\n✔ Support rejection with values that ar\n[Middle omitted; full output remains in the execution artifact.]\nE_DUPLICATED_HANDLER (0.104333ms)\n✔ FST_ERR_ROUTE_HANDLER_NOT_FN (0.1ms)\n✔ FST_ERR_ROUTE_MISSING_HANDLER (0.138083ms)\n✔ FST_ERR_ROUTE_METHOD_INVALID (0.11125ms)\n✔ FST_ERR_ROUTE_METHOD_NOT_SUPPORTED (0.113458ms)\n✔ FST_ERR_ROUTE_BODY_VALIDATION_SCHEMA_NOT_SUPPORTED (0.093416ms)\n✔ FST_ERR_ROUTE_BODY_LIMIT_OPTION_NOT_INT (0.124292ms)\n✔ FST_ERR_ROUTE_BODY_LIMIT_OPTION_NOT_INT (0.131458ms)\n✔ FST_ERR_ROUTE_REWRITE_NOT_STR (0.114833ms)\n✔ FST_ERR_REOPENED_CLOSE_SERVER (0.124208ms)\n✔ FST_ERR_REOPENED_SERVER (0.1175ms)\n✔ FST_ERR_INSTANCE_ALREADY_LISTENING (0.110249ms)\n✔ FST_ERR_PLUGIN_VERSION_MISMATCH (0.107958ms)\n✔ FST_ERR_PLUGIN_NOT_PRESENT_IN_INSTANCE (0.189583ms)\n✔ FST_ERR_PLUGIN_INVALID_ASYNC_HANDLER (0.388456ms)\n✔ FST_ERR_PLUGIN_CALLBACK_NOT_FN (0.188083ms)\n✔ FST_ERR_PLUGIN_NOT_VALID (0.133833ms)\n✔ FST_ERR_ROOT_PLG_BOOTED (0.126ms)\n✔ FST_ERR_PARENT_PLUGIN_BOOTED (0.116874ms)\n✔ FST_ERR_PLUGIN_TIMEOUT (0.107499ms)\n✔ FST_ERR_VALIDATION (0.113166ms)\n✔ FST_ERR_LISTEN_OPTIONS_INVALID (0.096875ms)\n✔ FST_ERR_ERROR_HANDLER_NOT_FN (0.075083ms)\n✔ Ensure that all errors are in Errors.md TOC (0.531415ms)\n✔ Ensure that non-existing errors are not in Errors.md TOC (0.436915ms)\n✔ Ensure that all errors are in Errors.md documented (0.292332ms)\n✔ Ensure that non-existing errors are not in Errors.md documented (0.334665ms)\n✔ decorate should add the given method to its instance (1.113996ms)\n✔ decorate is chainable (0.123333ms)\n✔ checkExistence should check if a property is part of the given instance (0.106333ms)\n✔ checkExistence should find the instance if not given (0.163374ms)\n✔ checkExistence should check the prototype as well (0.132583ms)\n✔ checkDependencies should throw if a dependency is not present (0.35429ms)\n✔ decorate should internally call checkDependencies (0.214833ms)\n✔ decorate should recognize getter/setter objects (0.195583ms)\n▶ context\n  ✔ Should not contain undefined as key prop (19.483924ms)\n✔ context (20.185712ms)\n✔ rawBody function (2.211367ms)\n✔ Should support Webpack and faux modules (4.51019ms)\n✔ fastify.all should add all the methods to the same url (18.141596ms)\n✔ esm support (9.313089ms)\n✔ errorCodes in ESM (0.934163ms)\nℹ tests 5493\nℹ suites 1030\nℹ pass 5481\nℹ fail 2\nℹ cancelled 0\nℹ skipped 10\nℹ todo 0\nℹ duration_ms 94268.668199\n\n✖ failing tests:\n\ntest at test/internals/reply.test.js:1:1\n✖ test/internals/reply.test.js (10456.980287ms)\n  'test failed'\n\ntest at test/internals/reply.test.js:1:1\n✖ test/internals/reply.test.js (3781.162519ms)\n  'test failed'\n"
+          }
+        ]
+      },
+      "review": {
+        "issues": [],
+        "summary": "Reviewed the proposed contract against the original Fastify v5.2.1 source (fetched via fetch_file). All explicit customer requirements are covered by executable checks exercising real behavior via app.inject (the Fastify request lifecycle): batch case-insensitive removal, returns-same-reply, empty-array no-op, duplicate/missing harmlessness, TypeError on non-array and non-string element inputs, validate-before-mutate (headers unchanged), and fluent chaining. TypeScript interface update is verified by a tsc check on a temp file; docs update (TOC entry, summary bullet, section heading, anchor) is verified by grep against docs/Reference/Reply.md. The substantive existing suite (test/internals/reply.test.js, 63 tests) is retained and run via the project's borp runner (preserve-reply-suite), with the TS import check and a tsd run scoped to reply.test-d.ts also preserved. The negative-control mutation (removeHeader `return this` -> `return null`) is a meaningful semantic fault confirmed at test/internals/reply.test.js:1268, which strictly asserts removeHeader returns the reply; baseline evidence shows it was detected. Baseline evidence is consistent with a missing-API state (requirement checks fail with removeHeaders-is-not-a-function / TS2551 / missing TOC, NOT import/setup failures), and all three preservation checks passed on original source (code 0). The light-my-request@6.0.0 pin and register.test-d.ts scoping are justified environment-stability measures that leave project source untouched; protected_paths (test/, .github/) correctly cover original tests and CI while leaving the three deliverables mutable. No blocking issues found; accepted.",
+        "accepted": true
+      },
+      "session_id": "ses_ks4dtbc7rvqr96agew83g4jm1r"
+    },
+    "attempts": [
+      {
+        "round": "round-1",
+        "trial": "trial-1",
+        "plan_sha256": "86575e83d8b3458a3726ad86542aadc279403933326fd536edc9ffe86a4f0eb1",
+        "execution": {
+          "ok": false,
+          "setup_code": 2,
+          "checks": [],
+          "mutations": [],
+          "finished_at": 1794102088.44078
+        },
+        "review": null
+      },
+      {
+        "round": "round-1",
+        "trial": "trial-2",
+        "plan_sha256": "78198170b9ed3601767d9e3353999859fdcd0642ebe25351996e8dda7b88d735",
+        "execution": {
+          "ok": false,
+          "setup_code": 0,
+          "checks": [
+            {
+              "id": "preserve-reply-suite",
+              "code": 1,
+              "accepted": false,
+              "seconds": 140.896
+            },
+            {
+              "id": "preserve-typescript-types",
+              "code": 1,
+              "accepted": false,
+              "seconds": 16.002
+            },
+            {
+              "id": "require-removeheaders-behavior",
+              "code": 1,
+              "accepted": true,
+              "seconds": 0.604
+            },
+            {
+              "id": "require-removeheaders-typed",
+              "code": 2,
+              "accepted": false,
+              "seconds": 0.277
+            }
+          ],
+          "mutations": [
+            {
+              "path": "lib/reply.js",
+              "check_id": "preserve-reply-suite",
+              "detected": true
+            }
+          ],
+          "finished_at": 1794102681.422694
+        },
+        "review": null
+      },
+      {
+        "round": "round-1",
+        "trial": "trial-3",
+        "plan_sha256": "669fc98b8d3745c42f762a677a7b971d56cb0596a34436f974d667100a95e25f",
+        "execution": {
+          "ok": false,
+          "setup_code": 1,
+          "checks": [],
+          "mutations": [],
+          "finished_at": 1794103773.688052
+        },
+        "review": null
+      },
+      {
+        "round": "round-1",
+        "trial": "trial-4",
+        "plan_sha256": "f01bfd9a1c5fcabb38dece384da40d2882bc50f411ae60c26450c5f635808673",
+        "execution": {
+          "ok": false,
+          "setup_code": 0,
+          "checks": [
+            {
+              "id": "preserve-reply-suite",
+              "code": 0,
+              "accepted": true,
+              "seconds": 121.891
+            },
+            {
+              "id": "preserve-typescript-types",
+              "code": 1,
+              "accepted": false,
+              "seconds": 21.982
+            },
+            {
+              "id": "preserve-header-suite",
+              "code": 1,
+              "accepted": false,
+              "seconds": 100.833
+            },
+            {
+              "id": "require-removeheaders-behavior",
+              "code": 1,
+              "accepted": true,
+              "seconds": 0.926
+            },
+            {
+              "id": "require-removeheaders-typed",
+              "code": 2,
+              "accepted": false,
+              "seconds": 5.259
+            }
+          ],
+          "mutations": [
+            {
+              "path": "lib/reply.js",
+              "check_id": "preserve-reply-suite",
+              "detected": true
+            }
+          ],
+          "finished_at": 1794104943.126312
+        },
+        "review": null
+      },
+      {
+        "round": "round-1",
+        "trial": "trial-5",
+        "plan_sha256": "295cecbcacce973f56e02c8dd3673b617c77705a6bc6e436cdafa17599078f20",
+        "execution": null,
+        "review": null
+      },
+      {
+        "round": "round-1",
+        "trial": "trial-6",
+        "plan_sha256": "65b47cb2296b430a029e21d0567d2e0489703e63acfcdb6308697ab611ebb473",
+        "execution": {
+          "ok": false,
+          "setup_code": 0,
+          "checks": [
+            {
+              "id": "preserve-reply-suite",
+              "code": 0,
+              "accepted": true,
+              "seconds": 99.778
+            },
+            {
+              "id": "preserve-typescript-import",
+              "code": 0,
+              "accepted": true,
+              "seconds": 5.795
+            },
+            {
+              "id": "preserve-typescript-reply-tsd",
+              "code": 0,
+              "accepted": true,
+              "seconds": 12.434
+            },
+            {
+              "id": "require-removeheaders-behavior",
+              "code": 1,
+              "accepted": true,
+              "seconds": 1.303
+            },
+            {
+              "id": "require-removeheaders-typed",
+              "code": 1,
+              "accepted": false,
+              "seconds": 4.328
+            }
+          ],
+          "mutations": [],
+          "finished_at": 1794105808.782958
+        },
+        "review": null
+      },
+      {
+        "round": "round-1",
+        "trial": "trial-7",
+        "plan_sha256": "dba7b59bc635feac23809707392c0ef4f9f6b9bae9f21a45fcabd7559aaa11b0",
+        "execution": {
+          "ok": false,
+          "setup_code": 0,
+          "checks": [
+            {
+              "id": "preserve-reply-suite",
+              "code": 0,
+              "accepted": true,
+              "seconds": 79.96
+            },
+            {
+              "id": "preserve-typescript-import",
+              "code": 0,
+              "accepted": true,
+              "seconds": 3.575
+            },
+            {
+              "id": "preserve-typescript-reply-tsd",
+              "code": 0,
+              "accepted": true,
+              "seconds": 4.878
+            },
+            {
+              "id": "require-removeheaders-behavior",
+              "code": 1,
+              "accepted": true,
+              "seconds": 0.472
+            },
+            {
+              "id": "require-removeheaders-typed",
+              "code": 1,
+              "accepted": false,
+              "seconds": 3.518
+            }
+          ],
+          "mutations": [
+            {
+              "path": "lib/reply.js",
+              "check_id": "preserve-reply-suite",
+              "detected": true
+            }
+          ],
+          "finished_at": 1794106335.5270789
+        },
+        "review": null
+      },
+      {
+        "round": "round-1",
+        "trial": "trial-8",
+        "plan_sha256": "f89f4994eca335ce23411498028c0972bd0b8943a368c121e70b17fece243ab6",
+        "execution": {
+          "ok": true,
+          "setup_code": 0,
+          "checks": [
+            {
+              "id": "preserve-reply-suite",
+              "code": 0,
+              "accepted": true,
+              "seconds": 88.961
+            },
+            {
+              "id": "preserve-typescript-import",
+              "code": 0,
+              "accepted": true,
+              "seconds": 4.119
+            },
+            {
+              "id": "preserve-typescript-reply-tsd",
+              "code": 0,
+              "accepted": true,
+              "seconds": 5.34
+            },
+            {
+              "id": "require-removeheaders-behavior",
+              "code": 1,
+              "accepted": true,
+              "seconds": 0.607
+            },
+            {
+              "id": "require-removeheaders-typed",
+              "code": 1,
+              "accepted": true,
+              "seconds": 3.554
+            }
+          ],
+          "mutations": [
+            {
+              "path": "lib/reply.js",
+              "check_id": "preserve-reply-suite",
+              "detected": true
+            }
+          ],
+          "finished_at": 1794106963.603189
+        },
+        "review": {
+          "issues": [
+            "Documentation requirement unverified: the customer goal explicitly requires 'document the new API' and docs/Reference/Reply.md is listed as a deliverable (deliverables[2]), but no check verifies the documentation is updated. An executor could omit the docs entirely and still pass every check. Add a simple verification (e.g., grep for '.removeHeaders' in docs/Reference/Reply.md confirming the TOC entry, summary bullet, and section are present) to cover this explicit customer requirement."
+          ],
+          "summary": "Reviewed the proposed contract against original source (fastify v5.2.1, lib/reply.js lines 237-242, types/reply.d.ts line 58, docs/Reference/Reply.md lines 14/59/219-227, test/internals/reply.test.js line 1268).\n\nBehavior checks (require-removeheaders-behavior) are sound: they exercise real Fastify behavior via app.inject and cover all behavioral requirements — batch case-insensitive removal, returns-same-instance, empty-array no-op, duplicate/missing harmlessness, non-array TypeError (string/object/number/null), non-string-element TypeError (number/null/undefined/object), validate-before-mutate (both x-foo and x-bar preserved when a later element is invalid), and fluent chaining. The validate-before-mutate test correctly distinguishes 'validate then throw' from 'mutate then throw' by checking both headers remain unchanged.\n\nThe typed check (require-removeheaders-typed) correctly fixes the prior STDOUT-capture rejection — it now captures all tsc output (stdout+stderr via >/tmp/tscout 2>&1), preserves the exit code, and prints diagnostics in a controlled block on failure. It verifies removeHeaders exists on FastifyReply, accepts string arrays and empty arrays, returns FastifyReply, and chains with removeHeader, all under --strict.\n\nPreservation checks are substantive: preserve-reply-suite runs the 2120-line/63-test test/internals/reply.test.js (full Reply prototype surface, includes the line-1268 removeHeader return assertion the mutation targets); preserve-typescript-import runs the repo's own tsc import.ts check; preserve-typescript-reply-tsd scopes tsd to reply.test-d.ts (49 assertions), with the register.test-d.ts pino-BaseLogger/msgPrefix drift failure verified as pre-existing and unrelated.\n\nThe mutation (removeHeader returns null instead of this) is a meaningful semantic fault correctly detected by preserve-reply-suite (2 test failures including line 1268). Setup/prepare do not modify protected paths (test/, .github/) and leave package.json untouched (--no-save pin).\n\nNon-blocking improvement: subtests 2 (empty-array), 4 (non-array TypeError), and 5 (non-string TypeError) are false positives on original source — assert.throws catches the 'removeHeaders is not a function' TypeError, and Fastify preserves headers on 500 responses. The overall check still fails on original source (subtests 1, 3, 6 fail; code 1) so missing-API detection is not undermined, but adding statusCode checks and more specific error-message assertions would improve fidelity.\n\nSingle blocking gap: the explicit customer requirement to 'document the new API' (docs/Reference/Reply.md, deliverables[2]) has no verification check. Add a check confirming the docs are updated.",
+          "accepted": false
+        }
+      },
+      {
+        "round": "round-2",
+        "trial": "trial-1",
+        "plan_sha256": "a60f51e488640eba2ccada1101becef10843e2927f901ad3db3de3ca1f5c1e4f",
+        "execution": {
+          "ok": true,
+          "setup_code": 0,
+          "checks": [
+            {
+              "id": "preserve-reply-suite",
+              "code": 0,
+              "accepted": true,
+              "seconds": 76.198
+            },
+            {
+              "id": "preserve-typescript-import",
+              "code": 0,
+              "accepted": true,
+              "seconds": 3.238
+            },
+            {
+              "id": "preserve-typescript-reply-tsd",
+              "code": 0,
+              "accepted": true,
+              "seconds": 4.401
+            },
+            {
+              "id": "require-removeheaders-behavior",
+              "code": 1,
+              "accepted": true,
+              "seconds": 0.41
+            },
+            {
+              "id": "require-removeheaders-typed",
+              "code": 1,
+              "accepted": true,
+              "seconds": 3.464
+            },
+            {
+              "id": "require-removeheaders-docs",
+              "code": 1,
+              "accepted": true,
+              "seconds": 0.289
+            }
+          ],
+          "mutations": [
+            {
+              "path": "lib/reply.js",
+              "check_id": "preserve-reply-suite",
+              "detected": true
+            }
+          ],
+          "finished_at": 1794107698.418048
+        },
+        "review": {
+          "issues": [],
+          "summary": "Reviewed the proposed contract against the original Fastify v5.2.1 source (fetched via fetch_file). All explicit customer requirements are covered by executable checks exercising real behavior via app.inject (the Fastify request lifecycle): batch case-insensitive removal, returns-same-reply, empty-array no-op, duplicate/missing harmlessness, TypeError on non-array and non-string element inputs, validate-before-mutate (headers unchanged), and fluent chaining. TypeScript interface update is verified by a tsc check on a temp file; docs update (TOC entry, summary bullet, section heading, anchor) is verified by grep against docs/Reference/Reply.md. The substantive existing suite (test/internals/reply.test.js, 63 tests) is retained and run via the project's borp runner (preserve-reply-suite), with the TS import check and a tsd run scoped to reply.test-d.ts also preserved. The negative-control mutation (removeHeader `return this` -> `return null`) is a meaningful semantic fault confirmed at test/internals/reply.test.js:1268, which strictly asserts removeHeader returns the reply; baseline evidence shows it was detected. Baseline evidence is consistent with a missing-API state (requirement checks fail with removeHeaders-is-not-a-function / TS2551 / missing TOC, NOT import/setup failures), and all three preservation checks passed on original source (code 0). The light-my-request@6.0.0 pin and register.test-d.ts scoping are justified environment-stability measures that leave project source untouched; protected_paths (test/, .github/) correctly cover original tests and CI while leaving the three deliverables mutable. No blocking issues found; accepted.",
+          "accepted": true
+        }
+      }
+    ],
+    "runner": {
+      "autonomy/run.py": "f5f5bd1cfa953b90f160b73a6e2721b69842338b22d9be6acdd030c0fc7231af",
+      "autonomy/egress.py": "768954c40ad38b3585d09a919bf2559ee2d6a897ebeb9742a0f3038298aa4385"
+    }
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "total": 14,
+      "passed": 13,
+      "failed": 1,
+      "skipped": 0,
+      "integrity_ok": true,
+      "verdict": "fail",
+      "created_at": "2026-11-08T03:44:59.980Z"
+    },
+    {
+      "attempt": 2,
+      "total": 14,
+      "passed": 13,
+      "failed": 1,
+      "skipped": 0,
+      "integrity_ok": true,
+      "verdict": "fail",
+      "created_at": "2026-11-08T03:58:18.229Z"
+    },
+    {
+      "attempt": 3,
+      "total": 14,
+      "passed": 13,
+      "failed": 1,
+      "skipped": 0,
+      "integrity_ok": true,
+      "verdict": "fail",
+      "created_at": "2026-11-08T04:28:56.017Z"
+    },
+    {
+      "attempt": 4,
+      "total": 15,
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "integrity_ok": true,
+      "verdict": "pass",
+      "created_at": "2026-11-08T04:42:47.341Z"
+    }
+  ],
+  "sessions": [
+    {
+      "session_id": "ses_ppphwha6qe6n0d62ya2g3nygxw",
+      "role": "assessment",
+      "purpose": "autonomous-environment",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 720562,
+      "created_at": "2026-11-08T01:22:46.543Z"
+    },
+    {
+      "session_id": "ses_5fpsjq5ywg8bnw4p8t80rbg5dn",
+      "role": "assessment",
+      "purpose": "autonomous-environment",
+      "model": null,
+      "status": "cancelled",
+      "stop_reason": "interrupted",
+      "consumed_micro_usd": 172954,
+      "created_at": "2026-11-08T01:39:38.767Z"
+    },
+    {
+      "session_id": "ses_tdx9pnekvzd97gd64c0cat37jn",
+      "role": "assessment",
+      "purpose": "autonomous-environment",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 90514,
+      "created_at": "2026-11-08T01:41:32.239Z"
+    },
+    {
+      "session_id": "ses_fwpmd3yd04mds7xmh3fkcj5kf5",
+      "role": "assessment",
+      "purpose": "autonomous-environment",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 1327644,
+      "created_at": "2026-11-08T01:51:25.706Z"
+    },
+    {
+      "session_id": "ses_kp71yver82tf1s5tq1ttb22j5y",
+      "role": "assessment",
+      "purpose": "autonomous-environment",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 670717,
+      "created_at": "2026-11-08T02:12:19.865Z"
+    },
+    {
+      "session_id": "ses_ssnexamec0ge94yn2emdzgdef4",
+      "role": "assessment",
+      "purpose": "autonomous-environment",
+      "model": null,
+      "status": "cancelled",
+      "stop_reason": "interrupted",
+      "consumed_micro_usd": 216482,
+      "created_at": "2026-11-08T02:29:07.491Z"
+    },
+    {
+      "session_id": "ses_ckb0h757w6g4rjr9p688ph8hcv",
+      "role": "assessment",
+      "purpose": "autonomous-environment",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 676510,
+      "created_at": "2026-11-08T02:30:41.258Z"
+    },
+    {
+      "session_id": "ses_04p5phrtayj5rfvgeazt69y7pp",
+      "role": "assessment",
+      "purpose": "autonomous-environment",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 102590,
+      "created_at": "2026-11-08T02:36:08.845Z"
+    },
+    {
+      "session_id": "ses_62mhj2scxcdz57m69b0djd2efe",
+      "role": "assessment",
+      "purpose": "autonomous-environment",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 372141,
+      "created_at": "2026-11-08T02:43:31.243Z"
+    },
+    {
+      "session_id": "ses_brhejfpst86zfng2xy2frn55t3",
+      "role": "assessment",
+      "purpose": "autonomous-environment",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 348796,
+      "created_at": "2026-11-08T02:53:37.047Z"
+    },
+    {
+      "session_id": "ses_6k9g92z5kaqq7svwh48964x6nr",
+      "role": "verification",
+      "purpose": "review-discovered-tests",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 414038,
+      "created_at": "2026-11-08T03:02:47.274Z"
+    },
+    {
+      "session_id": "ses_ks4dtbc7rvqr96agew83g4jm1r",
+      "role": "assessment",
+      "purpose": "autonomous-environment",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 105353,
+      "created_at": "2026-11-08T03:07:58.194Z"
+    },
+    {
+      "session_id": "ses_y7jfazfqz6qprfcnmwtwj0sbws",
+      "role": "verification",
+      "purpose": "review-discovered-tests",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 349694,
+      "created_at": "2026-11-08T03:15:01.752Z"
+    },
+    {
+      "session_id": "ses_4pwcg2qp5fkb479vks1sbgw2h9",
+      "role": "coordinator",
+      "purpose": "proposal",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 6164,
+      "created_at": "2026-11-08T03:22:53.276Z"
+    },
+    {
+      "session_id": "ses_1p8nfswf7g5z85819b0xctj66g",
+      "role": "implementation",
+      "purpose": "implement",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 297289,
+      "created_at": "2026-11-08T03:30:50.193Z"
+    },
+    {
+      "session_id": "ses_z7yf0kez5pnhxn33vph17brx0v",
+      "role": "coordinator",
+      "purpose": "after-failure",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 22008,
+      "created_at": "2026-11-08T03:45:03.384Z"
+    },
+    {
+      "session_id": "ses_c11hghkg8ky1xh9tc6rcxb7vne",
+      "role": "implementation",
+      "purpose": "repair",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 136042,
+      "created_at": "2026-11-08T03:45:32.630Z"
+    },
+    {
+      "session_id": "ses_shmbqccn6ncn4kvvqpzpfke3mg",
+      "role": "coordinator",
+      "purpose": "after-failure",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 34182,
+      "created_at": "2026-11-08T03:58:23.948Z"
+    },
+    {
+      "session_id": "ses_4wyzr6g3ffeagc4pjnhy3gvcxa",
+      "role": "implementation",
+      "purpose": "repair",
+      "model": null,
+      "status": "cancelled",
+      "stop_reason": "interrupted",
+      "consumed_micro_usd": 81278,
+      "created_at": "2026-11-08T04:01:32.827Z"
+    },
+    {
+      "session_id": "ses_ddag8z8nfmgdx3rd2769dqma6k",
+      "role": "verification",
+      "purpose": "diagnose-autonomous-failure",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 19011,
+      "created_at": "2026-11-08T04:07:08.809Z"
+    },
+    {
+      "session_id": "ses_85esyge63xqyvnwmqeh3vvra45",
+      "role": "implementation",
+      "purpose": "repair",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 216965,
+      "created_at": "2026-11-08T04:09:22.518Z"
+    },
+    {
+      "session_id": "ses_3350aa762xepw0ey3f1s9dxs5x",
+      "role": "verification",
+      "purpose": "diagnose-autonomous-failure",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 27178,
+      "created_at": "2026-11-08T04:30:32.111Z"
+    },
+    {
+      "session_id": "ses_3vwcgrxgn2ndg4n4ef4xtnmrwj",
+      "role": "implementation",
+      "purpose": "repair",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 33968,
+      "created_at": "2026-11-08T04:32:37.706Z"
+    },
+    {
+      "session_id": "ses_e3myfmw1z7ngnz40db41txy5pw",
+      "role": "verification",
+      "purpose": "review-implementation-limitations",
+      "model": null,
+      "status": "completed",
+      "stop_reason": "end_turn",
+      "consumed_micro_usd": 81384,
+      "created_at": "2026-11-08T04:40:00.893Z"
+    }
+  ],
+  "stages": [
+    {
+      "stage": "intake",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "coordinator",
+      "started_at": "2026-11-08T01:22:42.904Z",
+      "finished_at": "2026-11-08T01:22:43.098Z",
+      "error": null
+    },
+    {
+      "stage": "inspect",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "assessment",
+      "started_at": "2026-11-08T01:22:43.101Z",
+      "finished_at": "2026-11-08T01:22:43.127Z",
+      "error": null
+    },
+    {
+      "stage": "plan",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 5,
+      "actor": "assessment",
+      "started_at": "2026-11-08T02:43:29.224Z",
+      "finished_at": "2026-11-08T03:05:51.591Z",
+      "error": null
+    },
+    {
+      "stage": "intake",
+      "attempt": 2,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "coordinator",
+      "started_at": "2026-11-08T03:07:53.685Z",
+      "finished_at": "2026-11-08T03:07:53.945Z",
+      "error": null
+    },
+    {
+      "stage": "inspect",
+      "attempt": 2,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "assessment",
+      "started_at": "2026-11-08T03:07:53.948Z",
+      "finished_at": "2026-11-08T03:07:53.974Z",
+      "error": null
+    },
+    {
+      "stage": "plan",
+      "attempt": 2,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "assessment",
+      "started_at": "2026-11-08T03:07:53.976Z",
+      "finished_at": "2026-11-08T03:22:32.137Z",
+      "error": null
+    },
+    {
+      "stage": "propose",
+      "attempt": 2,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "coordinator",
+      "started_at": "2026-11-08T03:22:32.151Z",
+      "finished_at": "2026-11-08T03:24:46.162Z",
+      "error": null
+    },
+    {
+      "stage": "baseline",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "verification",
+      "started_at": "2026-11-08T03:24:46.179Z",
+      "finished_at": "2026-11-08T03:30:44.287Z",
+      "error": null
+    },
+    {
+      "stage": "freeze",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "verification",
+      "started_at": "2026-11-08T03:30:44.294Z",
+      "finished_at": "2026-11-08T03:30:44.343Z",
+      "error": null
+    },
+    {
+      "stage": "implement",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "implementation",
+      "started_at": "2026-11-08T03:30:44.347Z",
+      "finished_at": "2026-11-08T03:41:09.349Z",
+      "error": null
+    },
+    {
+      "stage": "verify",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "verification",
+      "started_at": "2026-11-08T03:41:09.355Z",
+      "finished_at": "2026-11-08T03:45:29.708Z",
+      "error": null
+    },
+    {
+      "stage": "repair",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 2,
+      "actor": "implementation",
+      "started_at": "2026-11-08T03:53:53.754Z",
+      "finished_at": "2026-11-08T03:53:55.172Z",
+      "error": null
+    },
+    {
+      "stage": "verify",
+      "attempt": 2,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "verification",
+      "started_at": "2026-11-08T03:53:55.178Z",
+      "finished_at": "2026-11-08T04:01:28.843Z",
+      "error": null
+    },
+    {
+      "stage": "repair",
+      "attempt": 2,
+      "status": "succeeded",
+      "runs": 2,
+      "actor": "implementation",
+      "started_at": "2026-11-08T04:07:04.985Z",
+      "finished_at": "2026-11-08T04:22:57.421Z",
+      "error": null
+    },
+    {
+      "stage": "verify",
+      "attempt": 3,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "verification",
+      "started_at": "2026-11-08T04:22:57.428Z",
+      "finished_at": "2026-11-08T04:28:56.042Z",
+      "error": null
+    },
+    {
+      "stage": "repair",
+      "attempt": 3,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "implementation",
+      "started_at": "2026-11-08T04:30:27.790Z",
+      "finished_at": "2026-11-08T04:34:14.710Z",
+      "error": null
+    },
+    {
+      "stage": "verify",
+      "attempt": 4,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "verification",
+      "started_at": "2026-11-08T04:34:14.715Z",
+      "finished_at": "2026-11-08T04:42:47.348Z",
+      "error": null
+    },
+    {
+      "stage": "package",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "coordinator",
+      "started_at": "2026-11-08T04:42:47.356Z",
+      "finished_at": "2026-11-08T04:42:47.609Z",
+      "error": null
+    },
+    {
+      "stage": "invoice",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "coordinator",
+      "started_at": "2026-11-08T04:42:47.635Z",
+      "finished_at": "2026-11-08T04:42:47.692Z",
+      "error": null
+    },
+    {
+      "stage": "follow_up",
+      "attempt": 1,
+      "status": "succeeded",
+      "runs": 1,
+      "actor": "coordinator",
+      "started_at": "2026-11-08T04:42:47.694Z",
+      "finished_at": "2026-11-08T04:42:54.899Z",
+      "error": null
+    }
+  ],
+  "approvals": [
+    {
+      "kind": "proposal",
+      "decision": "accepted",
+      "by_name": "Synthetic validation harness",
+      "statement": "TEST approval after autonomous environment reproduction and independent acceptance review. No real customer agreement.",
+      "at": "2026-11-08T03:24:46.167Z"
+    },
+    {
+      "kind": "delivery",
+      "decision": "accepted",
+      "by_name": "Synthetic validation harness",
+      "statement": "TEST acceptance of verified upstream repository changes. No real customer or revenue.",
+      "at": "2026-11-08T04:42:47.616Z"
+    }
+  ],
+  "interventions": [
+    {
+      "kind": "review_gate_reload",
+      "reason": "Restarted discovery under the fail-closed independent-review gate. Successful Naive plans are retained and reused; failed attempts and cancellation costs remain recorded. No environment or test script was manually supplied.",
+      "minutes": 1,
+      "at": "2026-11-08T01:41:22.770Z"
+    },
+    {
+      "kind": "provider_retry",
+      "reason": "Resumed autonomous discovery after Naive returned service-at-capacity. Completed source, plans and execution failures are preserved. Loaded generic capacity-retry and eight-attempt bounded discovery improvements; no project-specific commands or candidate code were edited.",
+      "minutes": 1,
+      "at": "2026-11-08T02:12:14.187Z"
+    },
+    {
+      "kind": "diagnostics_reload",
+      "reason": "Stopped the just-started discovery session to reload generic head-and-tail compiler diagnostics. Previous truncation hid the first actual error. Preserved every original plan and execution result; no Fastify setup, source or tests were manually edited.",
+      "minutes": 1,
+      "at": "2026-11-08T02:30:35.508Z"
+    },
+    {
+      "kind": "contract_guard_reload",
+      "reason": "Reloaded generic contract consistency validation: a required editable deliverable cannot also be protected as immutable. Stopped the invalid trial before scope acceptance. No repository-specific script or source was edited.",
+      "minutes": 1,
+      "at": "2026-11-08T02:43:28.908Z"
+    },
+    {
+      "kind": "replan",
+      "reason": "Founder asked for a new inspection and plan: Continue the requested live validation under the existing $25 cap. Carry forward source-bound execution and independent-review feedback; Naive must add verification for every omitted requirement. No repository-specific script or candidate is supplied manually.",
+      "minutes": 3,
+      "at": "2026-11-08T03:07:53.419Z"
+    },
+    {
+      "kind": "retry_stage",
+      "reason": "Asked the agents to retry \"Repairing failed checks\". Resume the existing repaired candidate under the generic independent-completion-review gate. Agent-local testing limitations are preserved, independently executed and separately reviewed; required unfinished work still blocks delivery. No source, tests or frozen acceptance were manually edited.",
+      "minutes": 2,
+      "at": "2026-11-08T03:53:53.316Z"
+    },
+    {
+      "kind": "retry_stage",
+      "reason": "Asked the agents to retry \"Repairing failed checks\". Reload independent failed-check diagnosis after observing the repair agent follow misleading shell-quoted error text. Cancelled the old in-flight repair and reconciled its usage; no source or frozen tests were edited. Resume within the existing spending and repair limits.",
+      "minutes": 2,
+      "at": "2026-11-08T04:07:04.717Z"
+    },
+    {
+      "kind": "validation_repair_extension",
+      "reason": "Allowed one additional bounded repair to validate focused independent diagnosis after a generated repair changed an already-passing documentation link. Original source, frozen acceptance, all failed results and the existing $25 spending cap are unchanged. No candidate code or test script was edited manually.",
+      "minutes": 2,
+      "at": "2026-11-08T04:30:27.448Z"
+    }
+  ],
+  "invoices": [
+    {
+      "number": "TEST-GS-INV-0008",
+      "status": "paid",
+      "is_test": true,
+      "amount_cents": 1460000
+    }
+  ],
+  "payments": [
+    {
+      "method": "local_test",
+      "is_test": true,
+      "amount_cents": 1460000
+    }
+  ],
+  "events": [
+    {
+      "actor": "founder",
+      "kind": "intervention",
+      "summary": "Restarted discovery under the fail-closed independent-review gate. Successful Naive plans are retained and reused; failed attempts and cancellation costs remain recorded. No environment or test script was manually supplied.",
+      "origin": "human",
+      "at": "2026-11-08T01:41:22.771Z"
+    },
+    {
+      "actor": "system",
+      "kind": "status",
+      "summary": "Resuming \"Planning the work\" (attempt 1) after an interruption - run 2.",
+      "origin": "system",
+      "at": "2026-11-08T01:41:23.129Z"
+    },
+    {
+      "actor": "system",
+      "kind": "error",
+      "summary": "Naive call failed during \"Discover and reproduce an unfamiliar repository\": the service is at capacity",
+      "origin": "system",
+      "at": "2026-11-08T02:10:38.067Z"
+    },
+    {
+      "actor": "system",
+      "kind": "status",
+      "summary": "Resuming \"Planning the work\" (attempt 1) after an interruption - run 3.",
+      "origin": "system",
+      "at": "2026-11-08T02:12:14.566Z"
+    },
+    {
+      "actor": "system",
+      "kind": "status",
+      "summary": "Resuming \"Planning the work\" (attempt 1) after an interruption - run 4.",
+      "origin": "system",
+      "at": "2026-11-08T02:30:36.225Z"
+    },
+    {
+      "actor": "system",
+      "kind": "status",
+      "summary": "Resuming \"Planning the work\" (attempt 1) after an interruption - run 5.",
+      "origin": "system",
+      "at": "2026-11-08T02:43:29.225Z"
+    },
+    {
+      "actor": "verification",
+      "kind": "decision",
+      "summary": "Reviewed the proposed contract against original source (fastify v5.2.1, lib/reply.js lines 237-242, types/reply.d.ts line 58, docs/Reference/Reply.md lines 14/59/219-227, test/internals/reply.test.js line 1268).\n\nBehavior checks (require-removeheaders-behavior) are sound: they exercise real Fastify behavior via app.inject and cover all behavioral requirements — batch case-insensitive removal, returns-same-instance, empty-array no-op, duplicate/missing harmlessness, non-array TypeError (string/object/number/null), non-string-element TypeError (number/null/undefined/object), validate-before-mutate (both x-foo and x-bar preserved when a later element is invalid), and fluent chaining. The validate-before-mutate test correctly distinguishes 'validate then throw' from 'mutate then throw' by checking both headers remain unchanged.\n\nThe typed check (require-removeheaders-typed) correctly fixes the prior STDOUT-capture rejection — it now captures all tsc output (stdout+stderr via >/tmp/tscout 2>&1), preserves the exit code, and prints diagnostics in a controlled block on failure. It verifies removeHeaders exists on FastifyReply, accepts string arrays and empty arrays, returns FastifyReply, and chains with removeHeader, all under --strict.\n\nPreservation checks are substantive: preserve-reply-suite runs the 2120-line/63-test test/internals/reply.test.js (full Reply prototype surface, includes the line-1268 removeHeader return assertion the mutation targets); preserve-typescript-import runs the repo's own tsc import.ts check; preserve-typescript-reply-tsd scopes tsd to reply.test-d.ts (49 assertions), with the register.test-d.ts pino-BaseLogger/msgPrefix drift failure verified as pre-existing and unrelated.\n\nThe mutation (removeHeader returns null instead of this) is a meaningful semantic fault correctly detected by preserve-reply-suite (2 test failures including line 1268). Setup/prepare do not modify protected paths (test/, .github/) and leave package.json untouched (--no-save pin).\n\nNon-blocking improvement: subtests 2 (empty-array), 4 (non-array TypeError), and 5 (non-string TypeError) are false positives on original source — assert.throws catches the 'removeHeaders is not a function' TypeError, and Fastify preserves headers on 500 responses. The overall check still fails on original source (subtests 1, 3, 6 fail; code 1) so missing-API detection is not undermined, but adding statusCode checks and more specific error-message assertions would improve fidelity.\n\nSingle blocking gap: the explicit customer requirement to 'document the new API' (docs/Reference/Reply.md, deliverables[2]) has no verification check. Add a check confirming the docs are updated.",
+      "origin": "agent",
+      "at": "2026-11-08T03:05:51.589Z"
+    },
+    {
+      "actor": "founder",
+      "kind": "intervention",
+      "summary": "Founder asked for a new inspection and plan: Continue the requested live validation under the existing $25 cap. Carry forward source-bound execution and independent-review feedback; Naive must add verification for every omitted requirement. No repository-specific script or candidate is supplied manually.",
+      "origin": "human",
+      "at": "2026-11-08T03:07:53.421Z"
+    },
+    {
+      "actor": "verification",
+      "kind": "decision",
+      "summary": "Reviewed the proposed contract against the original Fastify v5.2.1 source (fetched via fetch_file). All explicit customer requirements are covered by executable checks exercising real behavior via app.inject (the Fastify request lifecycle): batch case-insensitive removal, returns-same-reply, empty-array no-op, duplicate/missing harmlessness, TypeError on non-array and non-string element inputs, validate-before-mutate (headers unchanged), and fluent chaining. TypeScript interface update is verified by a tsc check on a temp file; docs update (TOC entry, summary bullet, section heading, anchor) is verified by grep against docs/Reference/Reply.md. The substantive existing suite (test/internals/reply.test.js, 63 tests) is retained and run via the project's borp runner (preserve-reply-suite), with the TS import check and a tsd run scoped to reply.test-d.ts also preserved. The negative-control mutation (removeHeader `return this` -> `return null`) is a meaningful semantic fault confirmed at test/internals/reply.test.js:1268, which strictly asserts removeHeader returns the reply; baseline evidence shows it was detected. Baseline evidence is consistent with a missing-API state (requirement checks fail with removeHeaders-is-not-a-function / TS2551 / missing TOC, NOT import/setup failures), and all three preservation checks passed on original source (code 0). The light-my-request@6.0.0 pin and register.test-d.ts scoping are justified environment-stability measures that leave project source untouched; protected_paths (test/, .github/) correctly cover original tests and CI while leaving the three deliverables mutable. No blocking issues found; accepted.",
+      "origin": "agent",
+      "at": "2026-11-08T03:16:47.223Z"
+    },
+    {
+      "actor": "coordinator",
+      "kind": "decision",
+      "summary": "Proposal v1 sent: Add reply.removeHeaders(names) fluent API to Fastify, fixed price $14,600 (Add reply.removeHeaders(names) fluent API to Fastify + Size: 90,646 lines + 1 code change(s) made by the implementation agent), 6 acceptance items.",
+      "origin": "agent",
+      "at": "2026-11-08T03:24:46.161Z"
+    },
+    {
+      "actor": "customer",
+      "kind": "approval",
+      "summary": "Synthetic validation harness accepted proposal v1 ($14,600 fixed).",
+      "origin": "human",
+      "at": "2026-11-08T03:24:46.176Z"
+    },
+    {
+      "actor": "implementation",
+      "kind": "decision",
+      "summary": "Added reply.removeHeaders(names) to Fastify — a fluent API that removes a batch of response headers case-insensitively (same behavior as reply.removeHeader), returns the same reply instance, is a no-op on an empty array, treats duplicate/missing names as harmless, and validates the entire input before any mutation (non-array or any non-string element throws TypeError, leaving all headers unchanged). Updated the public TypeScript Reply interface and documented the new API in docs/Reference/Reply.md (TOC entry, summary bullet, section heading, and anchor).\n\nDeliverables changed:\n- lib/reply.js: added Reply.prototype.removeHeaders after removeHeader.\n- types/reply.d.ts: added removeHeaders(names: HttpHeader[]): FastifyReply<...>.\n- docs/Reference/Reply.md: TOC entry, summary bullet, and a .removeHeaders(names) section with anchor.\n- test-new/removeHeaders.test.js (new): behavior tests via real Fastify inject requests.\n\nTests run (all passing):\n- node --test test/internals/reply.test.js — existing reply unit tests: 81 pass, 0 fail (unchanged, preserved).\n- tsc test/types/import.ts (target es2022, moduleResolution node16, module node16, --noEmit) — existing TS import check: exit 0.\n- tsd --files test/types/reply.test-d.ts — existing reply type assertions: exit 0.\n- tsc --noEmit on a temp file exercising reply.removeHeaders(['x-foo','x-bar']) returning FastifyReply: exit 0 (signature present and returns FastifyReply).\n- node --test test-new/removeHeaders.test.js — new removeHeaders behavior tests: 6 pass, 0 fail, covering case-insensitive batch removal, same-reply return, empty-array no-op, harmless dupes/missing, pre-mutation validation (non-array TypeError, non-string element TypeError leaving headers unchanged), and fluent chaining — all verified through real app.inject (light-my-request) request lifecycle.\n\nProtected paths test/ and .github/ were not modified (only new tests added under test-new/). Per the documented limits, the full borp suite (184 files) was not run; the http2 tests requiring h2url were excluded, and the default tsd run (which has a pre-existing register.test-d.ts failure unrelated to this change) was scoped to reply.test-d.ts. The full borp suite's only failures in a spot run were the http2/closing.test.js timeouts (need h2 client), unrelated to this change.",
+      "origin": "agent",
+      "at": "2026-11-08T03:41:09.345Z"
+    },
+    {
+      "actor": "verification",
+      "kind": "check",
+      "summary": "Autonomous verification: 13/14 checks passed",
+      "origin": "tool",
+      "at": "2026-11-08T03:44:59.988Z"
+    },
+    {
+      "actor": "founder",
+      "kind": "intervention",
+      "summary": "Asked the agents to retry \"Repairing failed checks\". Resume the existing repaired candidate under the generic independent-completion-review gate. Agent-local testing limitations are preserved, independently executed and separately reviewed; required unfinished work still blocks delivery. No source, tests or frozen acceptance were manually edited.",
+      "origin": "human",
+      "at": "2026-11-08T03:53:53.322Z"
+    },
+    {
+      "actor": "system",
+      "kind": "status",
+      "summary": "Resuming \"Repairing failed checks\" (attempt 1) after an interruption - run 2.",
+      "origin": "system",
+      "at": "2026-11-08T03:53:53.756Z"
+    },
+    {
+      "actor": "implementation",
+      "kind": "decision",
+      "summary": "Fix for GS-1021 attempt 2. The only failing acceptance check was require-removeheaders-docs: it looked for the literal anchor `<a id=removeheaders></a>` (lowercase, no quotes, no parens) in docs/Reference/Reply.md, which the previous attempt's anchors did not include. I added that exact anchor while keeping the existing `removeHeaders` anchor variants, TOC entry, summary bullet, and section heading intact.\n\nChanged files:\n- docs/Reference/Reply.md: added `<a id=removeheaders></a>` anchor line (the verifier-required literal form) alongside the existing anchors. TOC entry, summary bullet, and section heading were already present from the prior attempt and remain unchanged.\n- lib/reply.js: unchanged this attempt (removeHeaders implementation from prior attempt already correct: validates non-array and non-string elements with TypeError before any mutation, no-op on empty array, harmless dupes/missing, returns same reply instance, case-insensitive via toLowerCase).\n- types/reply.d.ts: unchanged this attempt (removeHeaders(names: HttpHeader[]): FastifyReply signature already present).\n\nVerification:\n- Behavior verified via real Fastify request lifecycle (app.inject / light-my-request): removes a batch case-insensitively, returns same reply, no-op on empty array, harmless dupes/missing, throws TypeError on non-array and on non-string element (with all headers left unchanged), fluent chaining. All checks passed.\n- Existing reply unit test (test/internals/reply.test.js, removeHeader surface) passes: 1 pass / 0 fail.\n- Scoped tsd (tsd --files test/types/reply.test-d.ts) passes (exit 0).\n- tsc import check (tsc test/types/import.ts) has pre-existing @types/node drift errors (missing storage.d.ts/streams.d.ts referenced by @types/node ts5.6 index, from package-lock=false registry resolution), unrelated to this change and present on original source.\n\nProtected paths test/ and .github/ were not modified (no new test files added this attempt). node_modules excluded from the zip.",
+      "origin": "agent",
+      "at": "2026-11-08T03:53:55.171Z"
+    },
+    {
+      "actor": "verification",
+      "kind": "check",
+      "summary": "Autonomous verification: 13/14 checks passed",
+      "origin": "tool",
+      "at": "2026-11-08T03:58:18.235Z"
+    },
+    {
+      "actor": "system",
+      "kind": "status",
+      "summary": "Worker Adhvaidhs-MacBook-Pro-14.local:27006 stopped while holding this job; another worker will resume it.",
+      "origin": "system",
+      "at": "2026-11-08T04:06:40.922Z"
+    },
+    {
+      "actor": "founder",
+      "kind": "intervention",
+      "summary": "Asked the agents to retry \"Repairing failed checks\". Reload independent failed-check diagnosis after observing the repair agent follow misleading shell-quoted error text. Cancelled the old in-flight repair and reconciled its usage; no source or frozen tests were edited. Resume within the existing spending and repair limits.",
+      "origin": "human",
+      "at": "2026-11-08T04:07:04.721Z"
+    },
+    {
+      "actor": "system",
+      "kind": "status",
+      "summary": "Resuming \"Repairing failed checks\" (attempt 2) after an interruption - run 2.",
+      "origin": "system",
+      "at": "2026-11-08T04:07:04.986Z"
+    },
+    {
+      "actor": "implementation",
+      "kind": "decision",
+      "summary": "Fixed the failing require-removeheaders-docs check from attempt 2. The docs/Reference/Reply.md section anchor was the only failure: the three mismatched anchors at lines 232–234 were replaced with a single all-lowercase, double-quoted <a id=\"removeheaders\"></a> as required by the fixed-string (grep -F) check. The TOC entry link target was also corrected to #removeheaders for consistency. No other deliverables (lib/reply.js, types/reply.d.ts) needed changes — the implementation from attempt 2 was already correct.\n\nVerification run on the actual repo (node:22, light-my-request@6.0.0 pinned, cookie CJS confirmed):\n- test/internals/reply.test.js: 81 tests, 81 pass, 0 fail (preservation check — includes the line-1268 assertion that removeHeader returns the reply instance).\n- tsc test/types/import.ts (the test:typescript import check): exit 0 (the @types/node web-globals TS6053 messages are pre-existing version-drift noise; tsc exit code is 0).\n- tsd --files test/types/reply.test-d.ts (scoped reply type assertions): exit 0.\n- test-new/removeHeaders.test.js: 6 tests, 6 pass, 0 fail — covers case-insensitive batch removal, same-reply return, empty-array no-op, harmless dupes/missing, full-input validation before mutation (TypeError on non-array and on non-string element, headers unchanged), and fluency via real Fastify app.inject requests.\n- Docs fixed-string check: grep -F '<a id=\"removeheaders\"></a>' matches.\n\nThe full borp suite was not run (per task limits: many test files spawn live HTTP servers / require h2url); the relevant reply, TypeScript, and behavior surfaces were verified directly as specified.",
+      "origin": "agent",
+      "at": "2026-11-08T04:22:57.417Z"
+    },
+    {
+      "actor": "verification",
+      "kind": "check",
+      "summary": "Autonomous verification: 13/14 checks passed",
+      "origin": "tool",
+      "at": "2026-11-08T04:28:56.030Z"
+    },
+    {
+      "actor": "implementation",
+      "kind": "decision",
+      "summary": "Focused repair of the require-removeheaders-docs failure. The previous attempt left the TOC entry as `[.removeHeaders(names)](#removeheaders)` while the frozen check requires the exact literal `[.removeHeaders(names)](#removeheadersnames)`. I changed only that single TOC line's anchor fragment from `#removeheaders` to `#removeheadersnames`. All other required literals were already present and passing (summary bullet `.removeHeaders(names)` on line 61, heading `### .removeHeaders(names)` on line 231, anchor `<a id=\"removeheaders\"></a>` on line 232) and were left untouched. The lib/reply.js implementation of removeHeaders and the types/reply.d.ts signature from the prior attempt are intact and unchanged. No new tests were added or modified; no other files changed. Note: the frozen check pairs the TOC target `#removeheadersnames` with the anchor `removeheaders` (a mismatch present in the frozen definition itself), and I satisfied both literals exactly rather than \"fixing\" the mismatch.",
+      "origin": "agent",
+      "at": "2026-11-08T04:34:14.709Z"
+    },
+    {
+      "actor": "verification",
+      "kind": "check",
+      "summary": "Autonomous verification: 15/15 checks passed",
+      "origin": "tool",
+      "at": "2026-11-08T04:42:47.346Z"
+    },
+    {
+      "actor": "customer",
+      "kind": "approval",
+      "summary": "Synthetic validation harness accepted the delivery.",
+      "origin": "human",
+      "at": "2026-11-08T04:42:47.624Z"
+    },
+    {
+      "actor": "coordinator",
+      "kind": "decision",
+      "summary": "Invoice TEST-GS-INV-0008 prepared for $14,600 (TEST - demonstration job, not sent).",
+      "origin": "tool",
+      "at": "2026-11-08T04:42:47.670Z"
+    }
+  ],
+  "spend_micro_usd": {
+    "total": 6606014,
+    "metered": 6523464,
+    "estimated": 82550
+  },
+  "contract_manifest_sha256": "916ee119bbf56b86be3716d9a90b398433b706f94f237bca9e62186e48d06067",
+  "verification": {
+    "integrity": {
+      "ok": true
+    },
+    "candidate_digest": "e69a5dea2e112374608cc07fbdabd47b982b635ca3ac899a0034d63bb34eac52",
+    "summary": {
+      "total": 15,
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "verdict": "pass"
+    },
+    "checks": [
+      {
+        "id": "frozen_evidence",
+        "title": "Acceptance plan and runner are unchanged",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "actual": true
+      },
+      {
+        "id": "original_tests",
+        "title": "Original tests and CI are unchanged",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "actual": true
+      },
+      {
+        "id": "file:lib/reply.js",
+        "title": "Required deliverable lib/reply.js",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "actual": "lib/reply.js"
+      },
+      {
+        "id": "file:types/reply.d.ts",
+        "title": "Required deliverable types/reply.d.ts",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "actual": "types/reply.d.ts"
+      },
+      {
+        "id": "file:docs/Reference/Reply.md",
+        "title": "Required deliverable docs/Reference/Reply.md",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "actual": "docs/Reference/Reply.md"
+      },
+      {
+        "id": "fresh_environment",
+        "title": "Candidate builds in a fresh environment",
+        "category": "build",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "v22.23.4\n10.9.9\nnpm warn deprecated uuid@8.3.2: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).\nnpm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me\nnpm warn deprecated eslint@9.39.5: This version is no longer supported. Please see https://eslint.org/version-support for other options.\n\nadded 943 packages, and audited 944 packages in 2m\n\n293 packages are looking for funding\n  run `npm fund` for details\n\n43 vulnerabilities (2 low, 34 moderate, 5 high, 2 critical)\n\nTo address issues that do not require attention, run:\n  npm audit fix\n\nTo address all issues possible (including breaking changes), run:\n  npm audit fix --force\n\nSome issues need review, and may require choosing\na different dependency.\n\nRun `npm audit` for details.\nnpm notice\nnpm notice New major version of npm available! 10.9.9 -> 12.2.2\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2\nnpm notice To update run: npm install -g npm@12.2.2\nnpm notice\n\nremoved 2 packages, changed 3 packages, and audited 942 packages in 2s\n\n290 packages are looking for funding\n  run `npm fund` for details\n\n45 vulnerabilities (4 low, 34 moderate, 5 high, 2 critical)\n\nTo address issues that do not require attention, run:\n  npm audit fix\n\nTo address all issues possible (including breaking changes), run:\n  npm audit fix --force\n\nSome issues need review, and may require choosing\na different dependency.\n\nRun `npm audit` for details.\nrequire cookie OK\nsetup complete\n"
+        }
+      },
+      {
+        "id": "preserve-reply-suite",
+        "title": "Existing reply unit tests (test/internals/reply.test.js) pass unchanged",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "ld be equal\n  ✔ Type: number (2.101ms)\n  ▶ Type: string\n    ✔ should be equal\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: string (1.54ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (2.026ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (2.691ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (2.804ms)\n✔ Support rejection with values that are not Error instances (27.568ms)\n▶ invalid schema - ajv\n  ✔ should be equal\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equal\n✔ invalid schema - ajv (39.023ms)\n▶ should set the status code and the headers from the error object (from route handler) (no custom error handler)\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equivalent\n✔ should set the status code and the headers from the error object (from route handler) (no custom error handler) (7.042ms)\n▶ should set the status code and the headers from the error object (from custom error handler)\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equivalent\n✔ should set the status code and the headers from the error object (from custom error handler) (2.753ms)\n▶ '*' should throw an error due to serializer can not handle the payload type\n  ✔ type is TypeError\n  ✔ should be equal\n  ✔ should be equal\n✔ '*' should throw an error due to serializer can not handle the payload type (2.42ms)\n▶ should throw an error if the custom serializer does not serialize the payload to a valid type\n  ✔ type is TypeError\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw an error if the custom serializer does not serialize the payload to a valid type (2.422ms)\n▶ should not set headers or status code for custom error handler\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equivalent\n✔ should not set headers or status code for custom error handler (6.103ms)\n▶ error thrown by custom error handler routes to default error handler\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equivalent\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equivalent\n✔ error thrown by custom error handler routes to default error handler (2.895ms)\n▶ allow re-thrown error to default error handler when route handler is async and error handler is sync\n  ✔ should be equal\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equivalent\n✔ allow re-thrown error to default error handler when route handler is async and error handler is sync (1.6ms)\n▶ should throw error if error code is undefined\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is undefined (1.4ms)\n▶ should throw error if error code is null\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is null (1.144ms)\n▶ should throw error if error code is error_code\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is error_code (1.235ms)\n▶ should throw error if error code is 0\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is 0 (1.388ms)\n▶ should throw error if error code is 1\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is 1 (1.973ms)\n▶ should throw error if error code is 99\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is 99 (2.243ms)\n▶ should throw error if error code is 600\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is 600 (1.444ms)\n▶ should throw error if error code is 700\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is 700 (1.911ms)\n▶ error handler is triggered when a string is thrown from sync handler\n  ✔ should be equal\n  ✔ should not error\n  ✔ should be equal\n✔ error handler is triggered when a string is thrown from sync handler (2.323ms)\n▶ status code should be set to 500 and return an error json payload if route handler throws any non Error object expression\n  ✔ should be equal\n  ✔ should be equal\n✔ status code should be set to 500 and return an error json payload if route handler throws any non Error object expression (3.357ms)\n▶ should preserve the status code set by the user if an expression is thrown in a sync route\n  ✔ should be equal\n  ✔ should be equal\n✔ should preserve the status code set by the user if an expression is thrown in a sync route (2.675ms)\n▶ should trigger error handlers if a sync route throws any non-error object\n  ✔ should be equal\n  ✔ should be equal\n✔ should trigger error handlers if a sync route throws any non-error object (2.313ms)\n▶ should trigger error handlers if a sync route throws undefined\n  ✔ should be equal\n✔ should trigger error handlers if a sync route throws undefined (3.07ms)\n▶ setting content-type on reply object should not hang the server case 1\n  ✔ should not error\n  ✔ should be equal\n✔ setting content-type on reply object should not hang the server case 1 (4.622ms)\n▶ setting content-type on reply object should not hang the server case 2\n  ✔ should be equivalent\n✔ setting content-type on reply object should not hang the server case 2 (3.613ms)\n▶ setting content-type on reply object should not hang the server case 3\n  ✔ should not error\n  ✔ should be equal\n✔ setting content-type on reply object should not hang the server case 3 (2.578ms)\n▶ pipe stream inside error handler should not cause error\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equivalent\n✔ pipe stream inside error handler should not cause error (26.383ms)\n✔ sends early hints (29.066203ms)\n✔ sends early hints (http2) (23.416097ms)\n✔ code should handle null/undefined/float (21.757265ms)\n✔ code should handle 204 (6.03573ms)\n✔ code should handle onSend hook on 204 (5.338407ms)\n▶ register\n  ✔ should not be equal\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should not be equal\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should not error\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equivalent\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equivalent\n✔ register (42.691ms)\n▶ internal route declaration should pass the error generated by the register to the done handler / 1\n  ✔ should be equal\n✔ internal route declaration should pass the error generated by the register to the done handler / 1 (3.723ms)\n▶ internal route declaration should pass the error generated by the register to the done handler / 2\n  ✔ should be equal\n  ✔ should not error\n✔ internal route declaration should pass the error generated by the register to the done handler / 2 (3.183ms)\n▶ awaitable register and after\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equal\n✔ awaitable register and after (3.064ms\n[Middle omitted; full output remains in the execution artifact.]\n4ms)\n✔ onSendHookRunner - Be able to exit before its natural end (0.990288ms)\n✔ handleRequest function - sent reply (1.885343ms)\n✔ handleRequest function - invoke with error (0.332004ms)\n✔ handler function - invalid schema (31.295591ms)\n✔ handler function - reply (0.539559ms)\n✔ handler function - preValidationCallback with finished response (0.143015ms)\n✔ request should be defined in onSend Hook on post request with content type application/json (78.368541ms)\n✔ request should be defined in onSend Hook on post request with content type application/x-www-form-urlencoded (10.099438ms)\n✔ request should be defined in onSend Hook on options request with content type application/x-www-form-urlencoded (6.135174ms)\n✔ request should respond with an error if an unserialized payload is sent inside an async handler (6.846252ms)\n✔ should expose 84 errors (2.002214ms)\n✔ ensure name and codes of Errors are identical (0.903981ms)\n✔ FST_ERR_NOT_FOUND (0.164024ms)\n✔ FST_ERR_OPTIONS_NOT_OBJ (0.115061ms)\n✔ FST_ERR_QSP_NOT_FN (0.123775ms)\n✔ FST_ERR_SCHEMA_CONTROLLER_BUCKET_OPT_NOT_FN (0.106851ms)\n✔ FST_ERR_SCHEMA_ERROR_FORMATTER_NOT_FN (0.10163ms)\n✔ FST_ERR_AJV_CUSTOM_OPTIONS_OPT_NOT_OBJ (0.104998ms)\n✔ FST_ERR_AJV_CUSTOM_OPTIONS_OPT_NOT_ARR (0.474262ms)\n✔ FST_ERR_CTP_ALREADY_PRESENT (0.463484ms)\n✔ FST_ERR_CTP_INVALID_TYPE (0.192104ms)\n✔ FST_ERR_CTP_EMPTY_TYPE (0.105715ms)\n✔ FST_ERR_CTP_INVALID_HANDLER (0.588144ms)\n✔ FST_ERR_CTP_INVALID_PARSE_TYPE (0.102388ms)\n✔ FST_ERR_CTP_BODY_TOO_LARGE (0.095021ms)\n✔ FST_ERR_CTP_INVALID_MEDIA_TYPE (0.118429ms)\n✔ FST_ERR_CTP_INVALID_CONTENT_LENGTH (0.091821ms)\n✔ FST_ERR_CTP_EMPTY_JSON_BODY (0.09161ms)\n✔ FST_ERR_CTP_INSTANCE_ALREADY_STARTED (0.095274ms)\n✔ FST_ERR_DEC_ALREADY_PRESENT (0.089463ms)\n✔ FST_ERR_DEC_DEPENDENCY_INVALID_TYPE (0.091484ms)\n✔ FST_ERR_DEC_MISSING_DEPENDENCY (0.090432ms)\n✔ FST_ERR_DEC_AFTER_START (0.089253ms)\n✔ FST_ERR_DEC_REFERENCE_TYPE (0.09161ms)\n✔ FST_ERR_HOOK_INVALID_TYPE (0.090432ms)\n✔ FST_ERR_HOOK_INVALID_HANDLER (0.096537ms)\n✔ FST_ERR_HOOK_INVALID_ASYNC_HANDLER (0.089505ms)\n✔ FST_ERR_HOOK_NOT_SUPPORTED (0.095905ms)\n✔ FST_ERR_MISSING_MIDDLEWARE (0.090684ms)\n✔ FST_ERR_HOOK_TIMEOUT (0.089674ms)\n✔ FST_ERR_LOG_INVALID_DESTINATION (0.089632ms)\n✔ FST_ERR_LOG_INVALID_LOGGER (0.092495ms)\n✔ FST_ERR_LOG_INVALID_LOGGER_INSTANCE (0.089421ms)\n✔ FST_ERR_LOG_INVALID_LOGGER_CONFIG (0.323373ms)\n✔ FST_ERR_LOG_LOGGER_AND_LOGGER_INSTANCE_PROVIDED (0.198546ms)\n✔ FST_ERR_REP_INVALID_PAYLOAD_TYPE (0.116534ms)\n✔ FST_ERR_REP_RESPONSE_BODY_CONSUMED (0.091653ms)\n✔ FST_ERR_REP_READABLE_STREAM_LOCKED (0.270916ms)\n✔ FST_ERR_REP_ALREADY_SENT (0.20023ms)\n✔ FST_ERR_REP_SENT_VALUE (0.091358ms)\n✔ FST_ERR_SEND_INSIDE_ONERR (0.094769ms)\n✔ FST_ERR_SEND_UNDEFINED_ERR (0.090305ms)\n✔ FST_ERR_BAD_STATUS_CODE (0.089506ms)\n✔ FST_ERR_BAD_TRAILER_NAME (0.098009ms)\n✔ FST_ERR_BAD_TRAILER_VALUE (0.09641ms)\n✔ FST_ERR_FAILED_ERROR_SERIALIZATION (0.120071ms)\n✔ FST_ERR_MISSING_SERIALIZATION_FN (0.095316ms)\n✔ FST_ERR_MISSING_CONTENTTYPE_SERIALIZATION_FN (0.097463ms)\n✔ FST_ERR_REQ_INVALID_VALIDATION_INVOCATION (0.103651ms)\n✔ FST_ERR_SCH_MISSING_ID (0.094516ms)\n✔ FST_ERR_SCH_ALREADY_PRESENT (0.101883ms)\n✔ FST_ERR_SCH_CONTENT_MISSING_SCHEMA (0.116197ms)\n✔ FST_ERR_SCH_DUPLICATE (0.097379ms)\n✔ FST_ERR_SCH_VALIDATION_BUILD (0.220733ms)\n✔ FST_ERR_SCH_SERIALIZATION_BUILD (0.130385ms)\n✔ FST_ERR_SCH_RESPONSE_SCHEMA_NOT_NESTED_2XX (0.106977ms)\n✔ FST_ERR_HTTP2_INVALID_VERSION (0.101714ms)\n✔ FST_ERR_INIT_OPTS_INVALID (0.098305ms)\n✔ FST_ERR_FORCE_CLOSE_CONNECTIONS_IDLE_NOT_AVAILABLE (0.100578ms)\n✔ FST_ERR_DUPLICATED_ROUTE (0.097421ms)\n✔ FST_ERR_BAD_URL (0.204355ms)\n✔ FST_ERR_ASYNC_CONSTRAINT (0.119776ms)\n✔ FST_ERR_INVALID_URL (0.115397ms)\n✔ FST_ERR_ROUTE_OPTIONS_NOT_OBJ (0.102599ms)\n✔ FST_ERR_ROUTE_DUPLICATED_HANDLER (0.104282ms)\n✔ FST_ERR_ROUTE_HANDLER_NOT_FN (0.108408ms)\n✔ FST_ERR_ROUTE_MISSING_HANDLER (0.114513ms)\n✔ FST_ERR_ROUTE_METHOD_INVALID (0.102093ms)\n✔ FST_ERR_ROUTE_METHOD_NOT_SUPPORTED (0.102641ms)\n✔ FST_ERR_ROUTE_BODY_VALIDATION_SCHEMA_NOT_SUPPORTED (0.10803ms)\n✔ FST_ERR_ROUTE_BODY_LIMIT_OPTION_NOT_INT (0.109124ms)\n✔ FST_ERR_ROUTE_BODY_LIMIT_OPTION_NOT_INT (0.10003ms)\n✔ FST_ERR_ROUTE_REWRITE_NOT_STR (0.100326ms)\n✔ FST_ERR_REOPENED_CLOSE_SERVER (0.09662ms)\n✔ FST_ERR_REOPENED_SERVER (0.111988ms)\n✔ FST_ERR_INSTANCE_ALREADY_LISTENING (0.096705ms)\n✔ FST_ERR_PLUGIN_VERSION_MISMATCH (0.101083ms)\n✔ FST_ERR_PLUGIN_NOT_PRESENT_IN_INSTANCE (0.168275ms)\n✔ FST_ERR_PLUGIN_INVALID_ASYNC_HANDLER (0.120365ms)\n✔ FST_ERR_PLUGIN_CALLBACK_NOT_FN (0.098726ms)\n✔ FST_ERR_PLUGIN_NOT_VALID (0.095021ms)\n✔ FST_ERR_ROOT_PLG_BOOTED (0.095863ms)\n✔ FST_ERR_PARENT_PLUGIN_BOOTED (0.109924ms)\n✔ FST_ERR_PLUGIN_TIMEOUT (0.094852ms)\n✔ FST_ERR_VALIDATION (0.853713ms)\n✔ FST_ERR_LISTEN_OPTIONS_INVALID (0.141036ms)\n✔ FST_ERR_ERROR_HANDLER_NOT_FN (0.099947ms)\n✔ Ensure that all errors are in Errors.md TOC (0.563262ms)\n✔ Ensure that non-existing errors are not in Errors.md TOC (1.494904ms)\n✔ Ensure that all errors are in Errors.md documented (0.388125ms)\n✔ Ensure that non-existing errors are not in Errors.md documented (0.316722ms)\n✔ decorate should add the given method to its instance (1.5658ms)\n✔ decorate is chainable (0.183853ms)\n✔ checkExistence should check if a property is part of the given instance (0.149162ms)\n✔ checkExistence should find the instance if not given (0.142131ms)\n✔ checkExistence should check the prototype as well (0.126343ms)\n✔ checkDependencies should throw if a dependency is not present (0.395282ms)\n✔ decorate should internally call checkDependencies (0.242541ms)\n✔ decorate should recognize getter/setter objects (0.171686ms)\n▶ context\n  ✔ Should not contain undefined as key prop (22.119458ms)\n✔ context (23.029375ms)\n✔ rawBody function (4.837765ms)\n✔ Should support Webpack and faux modules (13.797291ms)\n✔ fastify.all should add all the methods to the same url (23.786426ms)\n✔ named exports support (13.498883ms)\n✔ diagnostics channel sync events fire in expected order (33.938757ms)\n✔ diagnostics channel sync events fire in expected order (31.194188ms)\n✔ diagnostics channel sync events fire in expected order (29.818685ms)\n✔ diagnostics_channel when present and subscribers (126.810399ms)\n✔ diagnostics_channel when present and no subscribers (2.120692ms)\n✔ Error.status property support (21.372598ms)\n✔ diagnostics channel events report on errors (28.394482ms)\n✔ diagnostics channel handles an error before calling context handler (1.402076ms)\n✔ diagnostics channel async events fire in expected order (29.245699ms)\n✔ diagnostics channel async events fire in expected order (30.58753ms)\n✔ diagnostics channel sync events fire in expected order (28.868837ms)\n✔ should be the same as package.json (1.737701ms)\n✔ check generated code syntax (1672.990793ms)\n﹣ ensure the current error serializer is latest (0.253695ms) # SKIP\n✔ esm support (10.820878ms)\n✔ errorCodes in ESM (0.8405ms)\nℹ tests 5553\nℹ suites 1030\nℹ pass 5543\nℹ fail 0\nℹ cancelled 0\nℹ skipped 10\nℹ todo 0\nℹ duration_ms 91192.429229\nPASS: reply suite, zero failures\n",
+          "seconds": 91.081
+        }
+      },
+      {
+        "id": "preserve-typescript-import",
+        "title": "Existing TypeScript import check (tsc test/types/import.ts) passes unchanged",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "prepare complete\nPASS: tsc import check OK\n",
+          "seconds": 4.593
+        }
+      },
+      {
+        "id": "preserve-typescript-reply-tsd",
+        "title": "Existing reply type assertions (tsd scoped to test/types/reply.test-d.ts) pass unchanged",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "prepare complete\nPASS: reply tsd type checks clean\n",
+          "seconds": 6.18
+        }
+      },
+      {
+        "id": "require-removeheaders-behavior",
+        "title": "removeHeaders removes a batch case-insensitively, returns the same reply, no-op on empty, harmless dupes/missing, validates entire input before mutation, throws TypeError on non-array or non-string element",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "prepare complete\n✔ removeHeaders removes multiple headers case-insensitively and returns same reply (21.834064ms)\n✔ removeHeaders empty array is a no-op and returns same reply (4.918317ms)\n✔ removeHeaders duplicate and missing names are harmless (3.992785ms)\n✔ removeHeaders non-array input throws TypeError and leaves headers unchanged (3.683905ms)\n✔ removeHeaders non-string element throws TypeError and leaves headers unchanged (validate-before-mutate) (3.139564ms)\n✔ removeHeaders chains fluently with removeHeader and returns same reply (3.416961ms)\nℹ tests 6\nℹ suites 0\nℹ pass 6\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 222.067246\nPASS: removeHeaders behavior\n",
+          "seconds": 0.57
+        }
+      },
+      {
+        "id": "require-removeheaders-typed",
+        "title": "TypeScript: removeHeaders(names: HttpHeader[]) signature present on FastifyReply and returns FastifyReply",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "prepare complete\nPASS: removeHeaders typed\n",
+          "seconds": 4.247
+        }
+      },
+      {
+        "id": "require-removeheaders-docs",
+        "title": "docs/Reference/Reply.md documents removeHeaders: TOC entry, summary bullet, and section heading present",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "prepare complete\nPASS: removeHeaders documented\n",
+          "seconds": 0.402
+        }
+      },
+      {
+        "id": "reported_limitations",
+        "title": "Reported incomplete work has independent resolution",
+        "category": "scope",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "issues": [],
+          "summary": "Accepted. All three deliverables verified by independent inspection and host execution.\n\nlib/reply.js (lines 244-262): removeHeaders(names) validates Array.isArray (TypeError), validates every element is a string before any mutation (validate-before-mutate), then deletes each header case-insensitively via toLowerCase() reusing removeHeader's lowercasing-delete semantics. Empty array is a no-op; duplicates/missing harmless; returns the same reply instance (fluent). removeHeader (237-241) untouched.\n\ntypes/reply.d.ts (line 59): removeHeaders(names: HttpHeader[]): FastifyReply[...] signature mirrors removeHeader's return type.\n\ndocs/Reference/Reply.md: TOC entry (line 15), summary bullet (line 61), section heading (line 231), and anchor (line 232) all present with the exact literals the frozen check requires.\n\nThe implementer's only reported unfinished item — not re-running the borp suite, tsc import check, and tsd locally — is fully resolved by the host, which ran all six checks at code 0: preserve-reply-suite (5543 pass/0 fail), preserve-typescript-import, preserve-typescript-reply-tsd, require-removeheaders-behavior (6/6), require-removeheaders-typed, require-removeheaders-docs. A new test-new/removeHeaders.test.js was added (allowed; protected test/ untouched).\n\nNo omitted requirements, no weakened existing tests, no false-positive controls. Zero unresolved issues.",
+          "accepted": true
+        }
+      },
+      {
+        "id": "unchanged_candidate",
+        "title": "Delivered source is the source that was verified",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "actual": "e69a5dea2e112374608cc07fbdabd47b982b635ca3ac899a0034d63bb34eac52"
+      },
+      {
+        "id": "unchanged_evidence",
+        "title": "Acceptance evidence remains unchanged after execution",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "actual": true
+      }
+    ],
+    "results": [
+      {
+        "id": "frozen_evidence",
+        "title": "Acceptance plan and runner are unchanged",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "actual": true
+      },
+      {
+        "id": "original_tests",
+        "title": "Original tests and CI are unchanged",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "actual": true
+      },
+      {
+        "id": "file:lib/reply.js",
+        "title": "Required deliverable lib/reply.js",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "actual": "lib/reply.js"
+      },
+      {
+        "id": "file:types/reply.d.ts",
+        "title": "Required deliverable types/reply.d.ts",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "actual": "types/reply.d.ts"
+      },
+      {
+        "id": "file:docs/Reference/Reply.md",
+        "title": "Required deliverable docs/Reference/Reply.md",
+        "category": "delivery",
+        "status": "pass",
+        "mandatory": true,
+        "actual": "docs/Reference/Reply.md"
+      },
+      {
+        "id": "fresh_environment",
+        "title": "Candidate builds in a fresh environment",
+        "category": "build",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "v22.23.4\n10.9.9\nnpm warn deprecated uuid@8.3.2: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).\nnpm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me\nnpm warn deprecated eslint@9.39.5: This version is no longer supported. Please see https://eslint.org/version-support for other options.\n\nadded 943 packages, and audited 944 packages in 2m\n\n293 packages are looking for funding\n  run `npm fund` for details\n\n43 vulnerabilities (2 low, 34 moderate, 5 high, 2 critical)\n\nTo address issues that do not require attention, run:\n  npm audit fix\n\nTo address all issues possible (including breaking changes), run:\n  npm audit fix --force\n\nSome issues need review, and may require choosing\na different dependency.\n\nRun `npm audit` for details.\nnpm notice\nnpm notice New major version of npm available! 10.9.9 -> 12.2.2\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2\nnpm notice To update run: npm install -g npm@12.2.2\nnpm notice\n\nremoved 2 packages, changed 3 packages, and audited 942 packages in 2s\n\n290 packages are looking for funding\n  run `npm fund` for details\n\n45 vulnerabilities (4 low, 34 moderate, 5 high, 2 critical)\n\nTo address issues that do not require attention, run:\n  npm audit fix\n\nTo address all issues possible (including breaking changes), run:\n  npm audit fix --force\n\nSome issues need review, and may require choosing\na different dependency.\n\nRun `npm audit` for details.\nrequire cookie OK\nsetup complete\n"
+        }
+      },
+      {
+        "id": "preserve-reply-suite",
+        "title": "Existing reply unit tests (test/internals/reply.test.js) pass unchanged",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "ld be equal\n  ✔ Type: number (2.101ms)\n  ▶ Type: string\n    ✔ should be equal\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: string (1.54ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (2.026ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (2.691ms)\n  ▶ Type: object\n    ✔ should be equivalent\n    ✔ should not error\n    ✔ should be equal\n    ✔ should be equal\n  ✔ Type: object (2.804ms)\n✔ Support rejection with values that are not Error instances (27.568ms)\n▶ invalid schema - ajv\n  ✔ should be equal\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equal\n✔ invalid schema - ajv (39.023ms)\n▶ should set the status code and the headers from the error object (from route handler) (no custom error handler)\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equivalent\n✔ should set the status code and the headers from the error object (from route handler) (no custom error handler) (7.042ms)\n▶ should set the status code and the headers from the error object (from custom error handler)\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equivalent\n✔ should set the status code and the headers from the error object (from custom error handler) (2.753ms)\n▶ '*' should throw an error due to serializer can not handle the payload type\n  ✔ type is TypeError\n  ✔ should be equal\n  ✔ should be equal\n✔ '*' should throw an error due to serializer can not handle the payload type (2.42ms)\n▶ should throw an error if the custom serializer does not serialize the payload to a valid type\n  ✔ type is TypeError\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw an error if the custom serializer does not serialize the payload to a valid type (2.422ms)\n▶ should not set headers or status code for custom error handler\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equivalent\n✔ should not set headers or status code for custom error handler (6.103ms)\n▶ error thrown by custom error handler routes to default error handler\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equivalent\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equivalent\n✔ error thrown by custom error handler routes to default error handler (2.895ms)\n▶ allow re-thrown error to default error handler when route handler is async and error handler is sync\n  ✔ should be equal\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equivalent\n✔ allow re-thrown error to default error handler when route handler is async and error handler is sync (1.6ms)\n▶ should throw error if error code is undefined\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is undefined (1.4ms)\n▶ should throw error if error code is null\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is null (1.144ms)\n▶ should throw error if error code is error_code\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is error_code (1.235ms)\n▶ should throw error if error code is 0\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is 0 (1.388ms)\n▶ should throw error if error code is 1\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is 1 (1.973ms)\n▶ should throw error if error code is 99\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is 99 (2.243ms)\n▶ should throw error if error code is 600\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is 600 (1.444ms)\n▶ should throw error if error code is 700\n  ✔ should be equal\n  ✔ should be equal\n✔ should throw error if error code is 700 (1.911ms)\n▶ error handler is triggered when a string is thrown from sync handler\n  ✔ should be equal\n  ✔ should not error\n  ✔ should be equal\n✔ error handler is triggered when a string is thrown from sync handler (2.323ms)\n▶ status code should be set to 500 and return an error json payload if route handler throws any non Error object expression\n  ✔ should be equal\n  ✔ should be equal\n✔ status code should be set to 500 and return an error json payload if route handler throws any non Error object expression (3.357ms)\n▶ should preserve the status code set by the user if an expression is thrown in a sync route\n  ✔ should be equal\n  ✔ should be equal\n✔ should preserve the status code set by the user if an expression is thrown in a sync route (2.675ms)\n▶ should trigger error handlers if a sync route throws any non-error object\n  ✔ should be equal\n  ✔ should be equal\n✔ should trigger error handlers if a sync route throws any non-error object (2.313ms)\n▶ should trigger error handlers if a sync route throws undefined\n  ✔ should be equal\n✔ should trigger error handlers if a sync route throws undefined (3.07ms)\n▶ setting content-type on reply object should not hang the server case 1\n  ✔ should not error\n  ✔ should be equal\n✔ setting content-type on reply object should not hang the server case 1 (4.622ms)\n▶ setting content-type on reply object should not hang the server case 2\n  ✔ should be equivalent\n✔ setting content-type on reply object should not hang the server case 2 (3.613ms)\n▶ setting content-type on reply object should not hang the server case 3\n  ✔ should not error\n  ✔ should be equal\n✔ setting content-type on reply object should not hang the server case 3 (2.578ms)\n▶ pipe stream inside error handler should not cause error\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equivalent\n✔ pipe stream inside error handler should not cause error (26.383ms)\n✔ sends early hints (29.066203ms)\n✔ sends early hints (http2) (23.416097ms)\n✔ code should handle null/undefined/float (21.757265ms)\n✔ code should handle 204 (6.03573ms)\n✔ code should handle onSend hook on 204 (5.338407ms)\n▶ register\n  ✔ should not be equal\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should not be equal\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should not error\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equivalent\n  ✔ should not error\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equivalent\n✔ register (42.691ms)\n▶ internal route declaration should pass the error generated by the register to the done handler / 1\n  ✔ should be equal\n✔ internal route declaration should pass the error generated by the register to the done handler / 1 (3.723ms)\n▶ internal route declaration should pass the error generated by the register to the done handler / 2\n  ✔ should be equal\n  ✔ should not error\n✔ internal route declaration should pass the error generated by the register to the done handler / 2 (3.183ms)\n▶ awaitable register and after\n  ✔ should be equal\n  ✔ should be equal\n  ✔ should be equal\n✔ awaitable register and after (3.064ms\n[Middle omitted; full output remains in the execution artifact.]\n4ms)\n✔ onSendHookRunner - Be able to exit before its natural end (0.990288ms)\n✔ handleRequest function - sent reply (1.885343ms)\n✔ handleRequest function - invoke with error (0.332004ms)\n✔ handler function - invalid schema (31.295591ms)\n✔ handler function - reply (0.539559ms)\n✔ handler function - preValidationCallback with finished response (0.143015ms)\n✔ request should be defined in onSend Hook on post request with content type application/json (78.368541ms)\n✔ request should be defined in onSend Hook on post request with content type application/x-www-form-urlencoded (10.099438ms)\n✔ request should be defined in onSend Hook on options request with content type application/x-www-form-urlencoded (6.135174ms)\n✔ request should respond with an error if an unserialized payload is sent inside an async handler (6.846252ms)\n✔ should expose 84 errors (2.002214ms)\n✔ ensure name and codes of Errors are identical (0.903981ms)\n✔ FST_ERR_NOT_FOUND (0.164024ms)\n✔ FST_ERR_OPTIONS_NOT_OBJ (0.115061ms)\n✔ FST_ERR_QSP_NOT_FN (0.123775ms)\n✔ FST_ERR_SCHEMA_CONTROLLER_BUCKET_OPT_NOT_FN (0.106851ms)\n✔ FST_ERR_SCHEMA_ERROR_FORMATTER_NOT_FN (0.10163ms)\n✔ FST_ERR_AJV_CUSTOM_OPTIONS_OPT_NOT_OBJ (0.104998ms)\n✔ FST_ERR_AJV_CUSTOM_OPTIONS_OPT_NOT_ARR (0.474262ms)\n✔ FST_ERR_CTP_ALREADY_PRESENT (0.463484ms)\n✔ FST_ERR_CTP_INVALID_TYPE (0.192104ms)\n✔ FST_ERR_CTP_EMPTY_TYPE (0.105715ms)\n✔ FST_ERR_CTP_INVALID_HANDLER (0.588144ms)\n✔ FST_ERR_CTP_INVALID_PARSE_TYPE (0.102388ms)\n✔ FST_ERR_CTP_BODY_TOO_LARGE (0.095021ms)\n✔ FST_ERR_CTP_INVALID_MEDIA_TYPE (0.118429ms)\n✔ FST_ERR_CTP_INVALID_CONTENT_LENGTH (0.091821ms)\n✔ FST_ERR_CTP_EMPTY_JSON_BODY (0.09161ms)\n✔ FST_ERR_CTP_INSTANCE_ALREADY_STARTED (0.095274ms)\n✔ FST_ERR_DEC_ALREADY_PRESENT (0.089463ms)\n✔ FST_ERR_DEC_DEPENDENCY_INVALID_TYPE (0.091484ms)\n✔ FST_ERR_DEC_MISSING_DEPENDENCY (0.090432ms)\n✔ FST_ERR_DEC_AFTER_START (0.089253ms)\n✔ FST_ERR_DEC_REFERENCE_TYPE (0.09161ms)\n✔ FST_ERR_HOOK_INVALID_TYPE (0.090432ms)\n✔ FST_ERR_HOOK_INVALID_HANDLER (0.096537ms)\n✔ FST_ERR_HOOK_INVALID_ASYNC_HANDLER (0.089505ms)\n✔ FST_ERR_HOOK_NOT_SUPPORTED (0.095905ms)\n✔ FST_ERR_MISSING_MIDDLEWARE (0.090684ms)\n✔ FST_ERR_HOOK_TIMEOUT (0.089674ms)\n✔ FST_ERR_LOG_INVALID_DESTINATION (0.089632ms)\n✔ FST_ERR_LOG_INVALID_LOGGER (0.092495ms)\n✔ FST_ERR_LOG_INVALID_LOGGER_INSTANCE (0.089421ms)\n✔ FST_ERR_LOG_INVALID_LOGGER_CONFIG (0.323373ms)\n✔ FST_ERR_LOG_LOGGER_AND_LOGGER_INSTANCE_PROVIDED (0.198546ms)\n✔ FST_ERR_REP_INVALID_PAYLOAD_TYPE (0.116534ms)\n✔ FST_ERR_REP_RESPONSE_BODY_CONSUMED (0.091653ms)\n✔ FST_ERR_REP_READABLE_STREAM_LOCKED (0.270916ms)\n✔ FST_ERR_REP_ALREADY_SENT (0.20023ms)\n✔ FST_ERR_REP_SENT_VALUE (0.091358ms)\n✔ FST_ERR_SEND_INSIDE_ONERR (0.094769ms)\n✔ FST_ERR_SEND_UNDEFINED_ERR (0.090305ms)\n✔ FST_ERR_BAD_STATUS_CODE (0.089506ms)\n✔ FST_ERR_BAD_TRAILER_NAME (0.098009ms)\n✔ FST_ERR_BAD_TRAILER_VALUE (0.09641ms)\n✔ FST_ERR_FAILED_ERROR_SERIALIZATION (0.120071ms)\n✔ FST_ERR_MISSING_SERIALIZATION_FN (0.095316ms)\n✔ FST_ERR_MISSING_CONTENTTYPE_SERIALIZATION_FN (0.097463ms)\n✔ FST_ERR_REQ_INVALID_VALIDATION_INVOCATION (0.103651ms)\n✔ FST_ERR_SCH_MISSING_ID (0.094516ms)\n✔ FST_ERR_SCH_ALREADY_PRESENT (0.101883ms)\n✔ FST_ERR_SCH_CONTENT_MISSING_SCHEMA (0.116197ms)\n✔ FST_ERR_SCH_DUPLICATE (0.097379ms)\n✔ FST_ERR_SCH_VALIDATION_BUILD (0.220733ms)\n✔ FST_ERR_SCH_SERIALIZATION_BUILD (0.130385ms)\n✔ FST_ERR_SCH_RESPONSE_SCHEMA_NOT_NESTED_2XX (0.106977ms)\n✔ FST_ERR_HTTP2_INVALID_VERSION (0.101714ms)\n✔ FST_ERR_INIT_OPTS_INVALID (0.098305ms)\n✔ FST_ERR_FORCE_CLOSE_CONNECTIONS_IDLE_NOT_AVAILABLE (0.100578ms)\n✔ FST_ERR_DUPLICATED_ROUTE (0.097421ms)\n✔ FST_ERR_BAD_URL (0.204355ms)\n✔ FST_ERR_ASYNC_CONSTRAINT (0.119776ms)\n✔ FST_ERR_INVALID_URL (0.115397ms)\n✔ FST_ERR_ROUTE_OPTIONS_NOT_OBJ (0.102599ms)\n✔ FST_ERR_ROUTE_DUPLICATED_HANDLER (0.104282ms)\n✔ FST_ERR_ROUTE_HANDLER_NOT_FN (0.108408ms)\n✔ FST_ERR_ROUTE_MISSING_HANDLER (0.114513ms)\n✔ FST_ERR_ROUTE_METHOD_INVALID (0.102093ms)\n✔ FST_ERR_ROUTE_METHOD_NOT_SUPPORTED (0.102641ms)\n✔ FST_ERR_ROUTE_BODY_VALIDATION_SCHEMA_NOT_SUPPORTED (0.10803ms)\n✔ FST_ERR_ROUTE_BODY_LIMIT_OPTION_NOT_INT (0.109124ms)\n✔ FST_ERR_ROUTE_BODY_LIMIT_OPTION_NOT_INT (0.10003ms)\n✔ FST_ERR_ROUTE_REWRITE_NOT_STR (0.100326ms)\n✔ FST_ERR_REOPENED_CLOSE_SERVER (0.09662ms)\n✔ FST_ERR_REOPENED_SERVER (0.111988ms)\n✔ FST_ERR_INSTANCE_ALREADY_LISTENING (0.096705ms)\n✔ FST_ERR_PLUGIN_VERSION_MISMATCH (0.101083ms)\n✔ FST_ERR_PLUGIN_NOT_PRESENT_IN_INSTANCE (0.168275ms)\n✔ FST_ERR_PLUGIN_INVALID_ASYNC_HANDLER (0.120365ms)\n✔ FST_ERR_PLUGIN_CALLBACK_NOT_FN (0.098726ms)\n✔ FST_ERR_PLUGIN_NOT_VALID (0.095021ms)\n✔ FST_ERR_ROOT_PLG_BOOTED (0.095863ms)\n✔ FST_ERR_PARENT_PLUGIN_BOOTED (0.109924ms)\n✔ FST_ERR_PLUGIN_TIMEOUT (0.094852ms)\n✔ FST_ERR_VALIDATION (0.853713ms)\n✔ FST_ERR_LISTEN_OPTIONS_INVALID (0.141036ms)\n✔ FST_ERR_ERROR_HANDLER_NOT_FN (0.099947ms)\n✔ Ensure that all errors are in Errors.md TOC (0.563262ms)\n✔ Ensure that non-existing errors are not in Errors.md TOC (1.494904ms)\n✔ Ensure that all errors are in Errors.md documented (0.388125ms)\n✔ Ensure that non-existing errors are not in Errors.md documented (0.316722ms)\n✔ decorate should add the given method to its instance (1.5658ms)\n✔ decorate is chainable (0.183853ms)\n✔ checkExistence should check if a property is part of the given instance (0.149162ms)\n✔ checkExistence should find the instance if not given (0.142131ms)\n✔ checkExistence should check the prototype as well (0.126343ms)\n✔ checkDependencies should throw if a dependency is not present (0.395282ms)\n✔ decorate should internally call checkDependencies (0.242541ms)\n✔ decorate should recognize getter/setter objects (0.171686ms)\n▶ context\n  ✔ Should not contain undefined as key prop (22.119458ms)\n✔ context (23.029375ms)\n✔ rawBody function (4.837765ms)\n✔ Should support Webpack and faux modules (13.797291ms)\n✔ fastify.all should add all the methods to the same url (23.786426ms)\n✔ named exports support (13.498883ms)\n✔ diagnostics channel sync events fire in expected order (33.938757ms)\n✔ diagnostics channel sync events fire in expected order (31.194188ms)\n✔ diagnostics channel sync events fire in expected order (29.818685ms)\n✔ diagnostics_channel when present and subscribers (126.810399ms)\n✔ diagnostics_channel when present and no subscribers (2.120692ms)\n✔ Error.status property support (21.372598ms)\n✔ diagnostics channel events report on errors (28.394482ms)\n✔ diagnostics channel handles an error before calling context handler (1.402076ms)\n✔ diagnostics channel async events fire in expected order (29.245699ms)\n✔ diagnostics channel async events fire in expected order (30.58753ms)\n✔ diagnostics channel sync events fire in expected order (28.868837ms)\n✔ should be the same as package.json (1.737701ms)\n✔ check generated code syntax (1672.990793ms)\n﹣ ensure the current error serializer is latest (0.253695ms) # SKIP\n✔ esm support (10.820878ms)\n✔ errorCodes in ESM (0.8405ms)\nℹ tests 5553\nℹ suites 1030\nℹ pass 5543\nℹ fail 0\nℹ cancelled 0\nℹ skipped 10\nℹ todo 0\nℹ duration_ms 91192.429229\nPASS: reply suite, zero failures\n",
+          "seconds": 91.081
+        }
+      },
+      {
+        "id": "preserve-typescript-import",
+        "title": "Existing TypeScript import check (tsc test/types/import.ts) passes unchanged",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "prepare complete\nPASS: tsc import check OK\n",
+          "seconds": 4.593
+        }
+      },
+      {
+        "id": "preserve-typescript-reply-tsd",
+        "title": "Existing reply type assertions (tsd scoped to test/types/reply.test-d.ts) pass unchanged",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "prepare complete\nPASS: reply tsd type checks clean\n",
+          "seconds": 6.18
+        }
+      },
+      {
+        "id": "require-removeheaders-behavior",
+        "title": "removeHeaders removes a batch case-insensitively, returns the same reply, no-op on empty, harmless dupes/missing, validates entire input before mutation, throws TypeError on non-array or non-string element",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "prepare complete\n✔ removeHeaders removes multiple headers case-insensitively and returns same reply (21.834064ms)\n✔ removeHeaders empty array is a no-op and returns same reply (4.918317ms)\n✔ removeHeaders duplicate and missing names are harmless (3.992785ms)\n✔ removeHeaders non-array input throws TypeError and leaves headers unchanged (3.683905ms)\n✔ removeHeaders non-string element throws TypeError and leaves headers unchanged (validate-before-mutate) (3.139564ms)\n✔ removeHeaders chains fluently with removeHeader and returns same reply (3.416961ms)\nℹ tests 6\nℹ suites 0\nℹ pass 6\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 222.067246\nPASS: removeHeaders behavior\n",
+          "seconds": 0.57
+        }
+      },
+      {
+        "id": "require-removeheaders-typed",
+        "title": "TypeScript: removeHeaders(names: HttpHeader[]) signature present on FastifyReply and returns FastifyReply",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "prepare complete\nPASS: removeHeaders typed\n",
+          "seconds": 4.247
+        }
+      },
+      {
+        "id": "require-removeheaders-docs",
+        "title": "docs/Reference/Reply.md documents removeHeaders: TOC entry, summary bullet, and section heading present",
+        "category": "behavior",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "code": 0,
+          "output": "prepare complete\nPASS: removeHeaders documented\n",
+          "seconds": 0.402
+        }
+      },
+      {
+        "id": "reported_limitations",
+        "title": "Reported incomplete work has independent resolution",
+        "category": "scope",
+        "status": "pass",
+        "mandatory": true,
+        "actual": {
+          "issues": [],
+          "summary": "Accepted. All three deliverables verified by independent inspection and host execution.\n\nlib/reply.js (lines 244-262): removeHeaders(names) validates Array.isArray (TypeError), validates every element is a string before any mutation (validate-before-mutate), then deletes each header case-insensitively via toLowerCase() reusing removeHeader's lowercasing-delete semantics. Empty array is a no-op; duplicates/missing harmless; returns the same reply instance (fluent). removeHeader (237-241) untouched.\n\ntypes/reply.d.ts (line 59): removeHeaders(names: HttpHeader[]): FastifyReply[...] signature mirrors removeHeader's return type.\n\ndocs/Reference/Reply.md: TOC entry (line 15), summary bullet (line 61), section heading (line 231), and anchor (line 232) all present with the exact literals the frozen check requires.\n\nThe implementer's only reported unfinished item — not re-running the borp suite, tsc import check, and tsd locally — is fully resolved by the host, which ran all six checks at code 0: preserve-reply-suite (5543 pass/0 fail), preserve-typescript-import, preserve-typescript-reply-tsd, require-removeheaders-behavior (6/6), require-removeheaders-typed, require-removeheaders-docs. A new test-new/removeHeaders.test.js was added (allowed; protected test/ untouched).\n\nNo omitted requirements, no weakened existing tests, no false-positive controls. Zero unresolved issues.",
+          "accepted": true
+        }
+      },
+      {
+        "id": "unchanged_candidate",
+        "title": "Delivered source is the source that was verified",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "actual": "e69a5dea2e112374608cc07fbdabd47b982b635ca3ac899a0034d63bb34eac52"
+      },
+      {
+        "id": "unchanged_evidence",
+        "title": "Acceptance evidence remains unchanged after execution",
+        "category": "integrity",
+        "status": "pass",
+        "mandatory": true,
+        "actual": true
+      }
+    ],
+    "failed": [],
+    "by_category": {
+      "integrity": {
+        "total": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0
+      },
+      "delivery": {
+        "total": 3,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0
+      },
+      "build": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0
+      },
+      "behavior": {
+        "total": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0
+      },
+      "scope": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    "implementation_notes": [
+      "The full borp suite, tsc import check, and tsd scoped to test/types/reply.test-d.ts were NOT re-run locally in this repair attempt: this is a single-line documentation change and the source/type deliverables (lib/reply.js, types/reply.d.ts) are unchanged from the prior attempt that already implemented the feature. The host reruns the complete frozen acceptance suite. No local test infrastructure was installed in this minimal environment."
+    ],
+    "not_tested": [
+      "The full borp suite (184 test files) is not run in every check because many spawn live HTTP servers with timeouts (70 test files use fastify.listen + simple-get) and the http2 tests require h2url; running all would exceed per-check limits and several reference external hostnames in their request fixtures (e.g. constrained-routes.test.js uses 'example.com'/'google.com' as constrained-route Host values, which is fine offline, but the http2 h2url tests need an h2 client). test/internals/reply.test.js (asserting at line 1268 that removeHeader returns the reply instance, so the negative-control mutation makes it fail) is run as a preservation check covering the header/removeHeader surface; the tsc import check and a tsd run scoped to test/types/reply.test-d.ts cover the TypeScript surface.",
+      "The default tsd run (tsd.directory = test/types) includes register.test-d.ts, which has a pre-existing failure: the installed pino's BaseLogger requires msgPrefix that the test's custom logger type lacks (a version-drift issue from package-lock=false, unrelated to this change). The preserve-typescript-reply-tsd check scopes tsd to test/types/reply.test-d.ts via --files to avoid that pre-existing failure; the full tsd is deliberately not run as a gate because it fails on original source independent of this change.",
+      "No package-lock ships with the repo (.npmrc sets package-lock=false), so dependency versions resolve from the registry at install time. To keep the suite reproducible and avoid the ERR_REQUIRE_ESM regression seen when the latest light-my-request 6.x hoists cookie@2.x (ESM-only, type:module), setup pins light-my-request to 6.0.0 (whose cookie dep is the CJS 0.6.x line, require()-able) via --no-save so package.json is left untouched.",
+      "No production deployment is requested; behavior is verified through app.inject (the real Fastify request lifecycle via light-my-request) rather than a live network server.",
+      "tsd reads its test directory from package.json (test/types), which is a protected path and therefore read-only at check time, so the typed requirement check uses tsc --noEmit on a temp file in /workspace instead of writing a new .test-d.ts into test/types.",
+      "protected_paths intentionally covers only test/ and .github/ (original tests and CI). The deliverables lib/reply.js, types/reply.d.ts and docs/Reference/Reply.md must be modified to deliver the feature and therefore are NOT protected; source/documentation that must change cannot be immutable.",
+      "The documentation requirement check (require-removeheaders-docs) inspects docs/Reference/Reply.md (a deliverable, not protected) for the TOC entry, summary bullet, section heading, and anchor. It fails on original source where these are absent."
+    ]
+  },
+  "delivery": {
+    "sha256": "44663cd6beb54aa487796497142aa42999c94a1c76d87099730b9620e39a7fce",
+    "bytes": 768711
+  },
+  "claims": {
+    "synthetic_customer": true,
+    "production_deployment": false,
+    "paid_real_customer": false,
+    "agent_work": "Live Naive sessions and their actual roles are listed above, including independent acceptance review when used.",
+    "tool_work": "Source execution, stable baseline recording, independent comparisons, isolation, packaging and durable orchestration.",
+    "acceptance": "Synthetic fixture approvals, not real customer acceptance.",
+    "limitations": [
+      "The full borp suite (184 test files) is not run in every check because many spawn live HTTP servers with timeouts (70 test files use fastify.listen + simple-get) and the http2 tests require h2url; running all would exceed per-check limits and several reference external hostnames in their request fixtures (e.g. constrained-routes.test.js uses 'example.com'/'google.com' as constrained-route Host values, which is fine offline, but the http2 h2url tests need an h2 client). test/internals/reply.test.js (asserting at line 1268 that removeHeader returns the reply instance, so the negative-control mutation makes it fail) is run as a preservation check covering the header/removeHeader surface; the tsc import check and a tsd run scoped to test/types/reply.test-d.ts cover the TypeScript surface.",
+      "The default tsd run (tsd.directory = test/types) includes register.test-d.ts, which has a pre-existing failure: the installed pino's BaseLogger requires msgPrefix that the test's custom logger type lacks (a version-drift issue from package-lock=false, unrelated to this change). The preserve-typescript-reply-tsd check scopes tsd to test/types/reply.test-d.ts via --files to avoid that pre-existing failure; the full tsd is deliberately not run as a gate because it fails on original source independent of this change.",
+      "No package-lock ships with the repo (.npmrc sets package-lock=false), so dependency versions resolve from the registry at install time. To keep the suite reproducible and avoid the ERR_REQUIRE_ESM regression seen when the latest light-my-request 6.x hoists cookie@2.x (ESM-only, type:module), setup pins light-my-request to 6.0.0 (whose cookie dep is the CJS 0.6.x line, require()-able) via --no-save so package.json is left untouched.",
+      "No production deployment is requested; behavior is verified through app.inject (the real Fastify request lifecycle via light-my-request) rather than a live network server.",
+      "tsd reads its test directory from package.json (test/types), which is a protected path and therefore read-only at check time, so the typed requirement check uses tsc --noEmit on a temp file in /workspace instead of writing a new .test-d.ts into test/types.",
+      "protected_paths intentionally covers only test/ and .github/ (original tests and CI). The deliverables lib/reply.js, types/reply.d.ts and docs/Reference/Reply.md must be modified to deliver the feature and therefore are NOT protected; source/documentation that must change cannot be immutable.",
+      "The documentation requirement check (require-removeheaders-docs) inspects docs/Reference/Reply.md (a deliverable, not protected) for the TOC entry, summary bullet, section heading, and anchor. It fails on original source where these are absent."
+    ]
+  }
+}
