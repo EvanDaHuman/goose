@@ -87,8 +87,10 @@ html:has(.site), html:has(.site) body { background: #0B0B0A; color-scheme: dark;
 .site .fact + .fact { padding-left: 24px; border-left: 1px solid var(--line); }
 .site .fact b { font-family: var(--font-display); font-weight: 400; font-size: 1.5rem; line-height: 1.15; color: var(--champagne); }
 .site .fact span { color: var(--muted); font-size: 0.9375rem; }
-.site .pipeline { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 40px 0 0; counter-reset: s; }
-.site .pipeline li { counter-increment: s; font: 400 0.8125rem/1 var(--font-mono); color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 9px 13px 9px 11px; }
+/* the stage pills always fill their row: each grows from its own width in proportion to its label (flex-grow set inline),
+   so spare space widens them sideways while the height stays the same; when they wrap, every line fills too */
+.site .pipeline { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; list-style: none; padding: 0; margin: 40px 0 0; counter-reset: s; }
+.site .pipeline li { counter-increment: s; flex: 1 1 auto; display: flex; align-items: center; justify-content: center; white-space: nowrap; font: 400 0.8125rem/1 var(--font-mono); color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 9px 13px 9px 11px; }
 .site .pipeline li::before { content: counter(s); color: var(--gold); margin-right: 8px; }
 
 .site .ex-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 36px; }
@@ -104,7 +106,11 @@ html:has(.site), html:has(.site) body { background: #0B0B0A; color-scheme: dark;
 .site .ex p { color: var(--muted); font-size: 0.9375rem; }
 .site .ex .use { justify-self: start; padding: 6px 0; color: var(--gold); font: 500 0.875rem/1 var(--font-body); }
 .site .ex .use:hover { color: var(--champagne); }
-.site .ex-note { margin-top: 22px; color: var(--muted); max-width: 70ch; }
+/* a full-width strip under the cards, the same width as the grid: the note on the left, a call to action on the right */
+.site .ex-note { margin-top: 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 32px; padding: 22px 24px; border: 1px dashed rgba(210,160,105,0.45); border-radius: 12px; background: rgba(210,160,105,0.04); }
+.site .ex-note p { flex: 1 1 360px; max-width: 74ch; color: var(--muted); }
+.site .ex-note p b { color: var(--text); font-weight: 500; }
+.site .ex-note .s-btn { flex: none; }
 
 /* ---------- Start page ---------- */
 .site .page-top { padding-block: 120px 40px; }
