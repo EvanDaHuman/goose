@@ -8,6 +8,7 @@ import { createClient } from "@usenaive-sdk/vetta";
 import { config } from "../lib/config";
 import { naiveStatus } from "../lib/naive/client";
 import { availablePrograms, COMMAND_TOOLS } from "../lib/workspaceContract";
+import { agentMailInboundStatus } from "../lib/integrations/agentmail";
 import { emailStatus } from "../lib/integrations/email";
 import { paymentStatus, publicBaseUrl } from "../lib/integrations/stripe";
 
@@ -63,6 +64,8 @@ else {
   checks.push({name:"Naive live engineering",state:status.state==="ready"?"ready":"pending",detail:status.state==="ready"?`Read-only account/model checks passed. Runtime mode: ${config.mode}.`:`Naive readiness: ${status.state}. Run npm run naive:status for activation guidance.`});
 }
 const email=emailStatus(),payments=paymentStatus();
+const inbound=agentMailInboundStatus();
+checks.push({name:"Native AgentMail intake",state:inbound.ready?"ready":"pending",detail:inbound.ready?`Signature/inbox configuration present; ${inbound.mode} inquiries. Register /api/webhooks/agentmail with AgentMail.`:inbound.issues.length?inbound.issues.join(". "):"Pending AgentMail webhook secret/inbox. Website inquiries remain available; no custom gateway is needed for AgentMail.",missing:inbound.missing});
 checks.push({name:"External email",state:email.ready?"ready":"pending",detail:email.ready?`${email.provider} configuration is present. Credentials are not tested; transactional sends still require policy authorization.`:"Pending provider activation. Local test receipts are fully available.",missing:email.missing as string[]});
 checks.push({name:"Stripe payments",state:payments.ready?"ready":"pending",detail:payments.ready?`${payments.mode} key configuration is present. Invoice mode must match; no provider request was made.`:payments.issues.length ? payments.issues.join(". ") : "Pending provider activation. TEST invoices support local settlement; real invoices remain unpaid.",missing:payments.missing as string[]});
 checks.push({name:"Inbound inquiry gateway",state:process.env.GOOSE_INQUIRY_WEBHOOK_SECRET?"ready":"pending",detail:process.env.GOOSE_INQUIRY_WEBHOOK_SECRET?"Signing secret present; configure your gateway to use the documented schema.":"Optional signed gateway is unconfigured. Website inquiry intake remains available.",missing:process.env.GOOSE_INQUIRY_WEBHOOK_SECRET?[]:["GOOSE_INQUIRY_WEBHOOK_SECRET"]});

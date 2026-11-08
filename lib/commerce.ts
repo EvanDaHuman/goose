@@ -5,6 +5,7 @@ import { one, q, tx } from "./db";
 import { config, jobDir } from "./config";
 import { createJob, getSetting, jobById } from "./jobs";
 import { addIntervention, logEvent } from "./records";
+import { agentMailInboundStatus } from "./integrations/agentmail";
 import { deliverEmail, emailStatus } from "./integrations/email";
 import { createStripeCheckout, paymentStatus, publicBaseUrl } from "./integrations/stripe";
 import { digest } from "./integrations/webhooks";
@@ -385,14 +386,15 @@ export async function customerCommerce(jobId: string) {
 }
 
 export async function commerceDashboard() {
-  const [inquiries, outbox, invoices, payments, tickets, maintenance, checks, changeRequests, revenue] = await Promise.all([
+  const [inquiries, outbox, invoices, payments, tickets, maintenance, checks, changeRequests, revenue, inboundMessages] = await Promise.all([
     q<any>("SELECT * FROM commerce_inquiries ORDER BY id DESC LIMIT 100"), q<any>("SELECT * FROM commerce_outbox ORDER BY id DESC LIMIT 100"),
     q<any>("SELECT * FROM invoices ORDER BY id DESC LIMIT 100"), q<any>("SELECT * FROM payments ORDER BY id DESC LIMIT 100"),
     q<any>("SELECT * FROM commerce_tickets ORDER BY id DESC LIMIT 100"), q<any>("SELECT * FROM commerce_maintenance ORDER BY id DESC LIMIT 100"),
     q<any>("SELECT c.*,m.job_id FROM commerce_checks c JOIN commerce_maintenance m ON m.id=c.plan_id ORDER BY c.id DESC LIMIT 100"),
     q<any>("SELECT * FROM commerce_change_requests ORDER BY id DESC LIMIT 100"),
-    one<any>("SELECT COALESCE(sum(amount_cents) FILTER(WHERE NOT is_test),0)::bigint AS real,COALESCE(sum(amount_cents) FILTER(WHERE is_test),0)::bigint AS test FROM payments")]);
-  return { integrations: { email: emailStatus(), payments: paymentStatus() }, transactionalPolicy: await transactionalPolicy(), inquiries, outbox, invoices, payments, tickets, maintenance, checks, changeRequests,
+    one<any>("SELECT COALESCE(sum(amount_cents) FILTER(WHERE NOT is_test),0)::bigint AS real,COALESCE(sum(amount_cents) FILTER(WHERE is_test),0)::bigint AS test FROM payments"),
+    q<any>("SELECT id,event_type,sender,subject,is_test,outcome,reason,inquiry_id,received_at FROM commerce_inbound_messages ORDER BY id DESC LIMIT 100")]);
+  return { integrations: { email: emailStatus(), payments: paymentStatus(), agentMailInbound:agentMailInboundStatus() }, transactionalPolicy: await transactionalPolicy(), inquiries, outbox, invoices, payments, tickets, maintenance, checks, changeRequests, inboundMessages,
     summary: { realRevenueCents: revenue?.real ?? 0, testRevenueCents: revenue?.test ?? 0, openInquiries: inquiries.filter(i => i.status === "new").length,
       pendingMessages: outbox.filter(o => o.status === "draft").length, openTickets: tickets.filter(t => t.status !== "resolved").length, activePlans: maintenance.filter(p => p.status === "active").length } };
 }

@@ -63,3 +63,21 @@ Run `npm run doctor` for read-only checks of PostgreSQL, the current schema, ope
 Run `npm run commerce:demo -- GS-1001` against an existing verified synthetic delivery to exercise inquiry association, test-only transactional dispatch, test settlement, support and maintenance. The command preserves engineering artifacts, records no real revenue, and does not start a follow-up engineering job. Its trace explicitly separates the earlier live Naïve engineering work from the local commercial demonstration. See [recorded commerce evidence](evidence/commerce-live.md).
 
 Support per-call model allowances are capped to the recorded remaining job budget, up to $0.50. There is not yet an atomic reservation across concurrent engineering and support sessions. Production operators should account for that concurrency boundary when configuring budgets.
+
+## Native AgentMail incoming mail
+
+AgentMail needs no custom gateway. Goose exposes `POST /api/webhooks/agentmail` for the documented `message.received` event and verifies the raw request with the official Svix library. Its `svix-id`, `svix-timestamp` and `svix-signature` headers are required; the library enforces the five-minute timestamp window. Goose deduplicates on the payload's `event_id`, which is stable across retries and subscriptions. See [AgentMail verification](https://docs.agentmail.to/webhook-verification), [received-message schema](https://docs.agentmail.to/api-reference/webhooks/events/message-received), and [Svix verification](https://docs.svix.com/receiving/verifying-payloads/how).
+
+To activate:
+
+1. Configure `AGENTMAIL_API_KEY` and `AGENTMAIL_INBOX_ID` for the Goose mailbox. Set `GOOSE_EMAIL_PROVIDER=agentmail` when outbound email is ready.
+2. Expose Goose at an HTTPS `GOOSE_PUBLIC_URL`. In the AgentMail console create a webhook scoped to that inbox, using `https://your-goose-host/api/webhooks/agentmail` and event type `message.received`. The [inbox webhook API](https://docs.agentmail.to/api-reference/inboxes/webhooks/create) also supports registration.
+3. Copy that endpoint's Svix signing secret into `AGENTMAIL_WEBHOOK_SECRET`. Do not use the API key as the signing secret.
+4. Keep `AGENTMAIL_INBOUND_MODE=test` for synthetic inquiries. Select `live` explicitly for real incoming mail. Prefer separate inboxes and signing secrets for test and production. The sender cannot choose the mode through the payload.
+5. Run `npm run db:migrate` and `npm run doctor`, restart the app and worker, then use AgentMail's console test delivery. Confirm the incoming receipt in the business console. Actual inbound email and outbound sending are independent; transactional outbound policy remains off for real sends until authorized.
+
+Goose stores the sender, subject, plain body and HTML body exactly as received in a private receipt. The inquiry contains a plain-text preview. HTML is never rendered; long previews are marked as truncated. Only the configured inbox is accepted. Spam, blocked and unauthenticated variants are ignored, and ambiguous senders or missing inline bodies are held for operator review. AgentMail may omit bodies larger than 64 KiB and provide a temporary `body_url`; this receiver does not fetch those URLs or attachments. Review such messages in AgentMail before creating an intake.
+
+A signed incoming message creates a new inquiry, never a customer-token session and never an automatic link to an existing private job. It starts no engineering work, sends no reply and makes no charge. The operator-only receipt API is `GET /api/commerce/inbound/[id]`, with private/no-store caching. Inquiries can then follow the normal source-upload and proposal workflow.
+
+Seven native inbound tests use the documented payload shape and official Svix signing vector, covering concurrent duplicate events across distinct delivery IDs, content tampering, stale/future signatures, inbox and sender ambiguity, server-selected test/live mode, existing-customer isolation, private receipt access, HTML previews and omitted bodies. No real AgentMail delivery has been claimed before credentials are configured. The installed official Svix package requires Node 22 or later.

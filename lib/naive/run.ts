@@ -21,6 +21,7 @@ const FLOOR_MICRO_USD = 50_000;      // do not start a session that the first pr
 export async function runAgentTask(client: VettaClient, opts: {
   jobId: string | null; stage: string; attempt: number; role: TeamRole; purpose: string; title: string; message: string;
   outputSchema: Record<string, unknown>; budgetMicroUsd: number; timeoutMs?: number; pollMs?: number;
+  continuationMessage?: string;
 }): Promise<TaskResult> {
   const key = crypto.createHash("sha256").update([opts.jobId ?? "company", opts.stage, opts.attempt, opts.role, opts.purpose, opts.message].join("\u0000"))
     .digest("hex").slice(0, 48);
@@ -69,7 +70,7 @@ export async function runAgentTask(client: VettaClient, opts: {
       if (settled && s.stop_reason === "max_iterations" && continues < 3) {
         const stopSeq = s.last_seq;
         try {
-          await client.sessions.send(sessionId, { message: "Continue, then submit the result." } as any, { idempotencyKey: `${key}:continue:seq-${stopSeq}` });
+          await client.sessions.send(sessionId, { message: opts.continuationMessage ?? "Continue, then submit the result." } as any, { idempotencyKey: `${key}:continue:seq-${stopSeq}` });
         } catch (e) {
           if (!(e instanceof ApiError) || e.status !== 409 || e.code !== "session_running") throw e;
           const current = await client.sessions.get(sessionId);
@@ -109,17 +110,30 @@ export async function runAgentTask(client: VettaClient, opts: {
       message: `The session ended (${s.status}/${s.stop_reason ?? "-"}) without a structured result.${await lastError(client, sessionId, s)}`, sessionId };
   } catch (e) {
     const d = describeError(e);
+    if(sessionId) {
+      // A failed continuation/request does not prove the provider stopped working.
+      // Settle orphaned work and reconcile its meter before returning control to the job.
+      try {
+        let latest:any=await client.sessions.get(sessionId);
+        if(!["completed","failed","cancelled","idle"].includes(latest.status)) {
+          await client.sessions.cancel(sessionId);
+          latest=await client.sessions.get(sessionId);
+        }
+        await recordSession(opts.jobId,opts.stage,opts.attempt,opts.role,latest);
+      }catch{/* Keep the original error; the provider may be unreachable. */}
+      await saveTranscript(client,opts.jobId,sessionId).catch(()=>undefined);
+    }
     await logEvent(opts.jobId, "system", "error", `Naive call failed during "${opts.title}": ${d.message}`, d, { important: true });
     return { ok: false, reason: "failed", message: String(d.message), sessionId };
   }
 }
 
 async function recordSession(jobId: string | null, stage: string, attempt: number, role: string, s: any) {
-  await q(`UPDATE naive_sessions SET status = $2, stop_reason = $3, consumed_micro_usd = $4, model = COALESCE($5, model), token_usage = $6,
+  await q(`UPDATE naive_sessions SET status = $2, stop_reason = $3, consumed_micro_usd = GREATEST(consumed_micro_usd,$4), model = COALESCE($5, model), token_usage = $6,
            updated_at = now() WHERE session_id = $1`,
     [s.id, s.status, s.stop_reason ?? null, Number(s.consumed_micro_usd ?? 0), s.model ?? null, s.token_usage ? JSON.stringify(s.token_usage) : null]);
   // consumed_micro_usd is the session's running total (model and computer); keep one cost row per session at the latest value
-  const n = await q("UPDATE cost_entries SET micro_usd = $2::bigint, quantity = $2::numeric, at = now() WHERE naive_session_id = $1 RETURNING id",
+  const n = await q("UPDATE cost_entries SET micro_usd = GREATEST(micro_usd,$2::bigint), quantity = GREATEST(quantity,$2::numeric), at = now() WHERE naive_session_id = $1 RETURNING id",
     [s.id, Number(s.consumed_micro_usd ?? 0)]);
   if (!n.length) {
     await q(`INSERT INTO cost_entries (job_id, actor, stage, attempt, kind, quantity, unit, micro_usd, basis, naive_session_id, note)

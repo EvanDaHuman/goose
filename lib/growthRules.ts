@@ -134,8 +134,18 @@ export function guardDraft(raw: any, p: { name: string; url: string; evidence?: 
 }
 
 /** Local mode: the fixed template, filled from the evidence and the qualification. */
-export function draftByTemplate(p: { name: string; evidence?: Evidence[] | null; blockers?: string[] | null }, q: Qualification | null, priceUsd: number): Draft {
+export function draftByTemplate(p: { name: string; evidence?: Evidence[] | null; blockers?: string[] | null; found_by?: string | null }, q: Qualification | null, priceUsd: number): Draft {
   const ev = (p.evidence ?? [])[0];
+  if(p.found_by === "Naive assessment of host-fetched evidence"){
+    return {subject:`Engineering assessment for ${p.name}`.slice(0,120),body:[
+      "Hello,", "",
+      `I found ${p.name} through public repository research.`+(ev?` One source declares: ${ev.text} (${ev.url}).`:""),
+      "The current deployed version is unknown. A dependency declaration alone does not establish the running software or an upgrade requirement.", "",
+      `Goose is a new company run mostly by AI agents, with a founder reviewing exceptions. ${q?.scope_fit ?? "We assess engineering changes against a reproducible build and executable checks."}`,
+      "We would begin with a written assessment, confirm the runtime and dependencies, agree the scope, and freeze the checks before implementation. Any proposal would depend on that assessment; no purchasing intent or project access is assumed.", "",
+      "We have no past customers to point to yet. Would an assessment of the public code be useful?", "", "[Founder name], Goose",
+    ].join("\n")};
+  }
   const blockers = q?.blockers?.length ? q.blockers : p.blockers ?? [];
   const what = q && q.recipe !== "none" ? RECIPES[q.recipe] : "verified changes to existing software, including runtime upgrades, language migrations and behavior-preserving engineering";
   const body = [
