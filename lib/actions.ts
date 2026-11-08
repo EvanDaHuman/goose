@@ -121,6 +121,9 @@ export async function remainingSupportBudget(jobId: string, capMicroUsd: number)
 
 export async function customerMessage(jobId: string, body: string) {
   const job = must(await jobById(jobId));
+  if (job.stage === "intake" && job.status === "waiting_founder") {
+    throw new Error("Your request is awaiting operator approval. Assessment will begin after review.");
+  }
   const msg = await one<{ id: number }>("INSERT INTO messages (job_id, sender, body) VALUES ($1,'customer',$2) RETURNING id", [jobId, body]);
   const run = await one<any>("SELECT total, passed, failed FROM check_runs WHERE job_id = $1 ORDER BY attempt DESC LIMIT 1", [jobId]);
   const facts = {

@@ -173,7 +173,7 @@ export async function answerCustomer(ctx: Ctx, question: string, facts: Record<s
       "The report lists exactly what was and was not tested." : "The checks are frozen before any code changes and run once the work is built.";
   }
   const local = { answer: answer ?? "Thanks for your question. I've passed it to our founder, who will reply here.", needs_founder: answer === null };
-  if (config.mode !== "naive") return { ...local, by: "local rule", origin: "tool" as const };
+  if (config.mode !== "naive" || !config.naive.apiKey) return { ...local, by: "local rule", origin: "tool" as const };
   const out = await runAgentTask(naiveClient(), { jobId: ctx.jobId, stage: ctx.stage, attempt: ctx.attempt, role: "coordinator", purpose: "support",
     title: "Answer a customer question", outputSchema: obj({ answer: S, needs_founder: { type: "boolean" } }), budgetMicroUsd: ctx.budgetMicroUsd,
     timeoutMs: 6 * 60_000, message: `Answer this customer question using only these facts. If the facts do not answer it, set needs_founder to true.\n` +

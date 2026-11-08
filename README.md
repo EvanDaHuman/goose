@@ -60,6 +60,10 @@ npm start
 
 Open [localhost:3100](http://localhost:3100). `/ops/login` accepts `GOOSE_OPERATOR_TOKEN` from local `.env`. Customer workspaces use separate unguessable tokens. Local mode runs deterministic service fixtures and test commerce; general engineering requires live Naïve.
 
+Set `GOOSE_PUBLIC_JOBS_REQUIRE_APPROVAL=1` on a hosted instance to accept public submissions into private customer workspaces while holding new requests for operator review. The operator can use the existing retry action to start assessment. Customer messages wait for that review, and authenticated operator submissions start immediately.
+
+On Linux, trusted Python intake tools run in rootless Docker with explicit read/write mounts and networking disabled. Pre-pull `ubuntu:24.04`, configure `DOCKER_HOST` for the worker, and set `GOOSE_MODERN_PYTHON` and `GOOSE_WORKSPACE_PYTHON` to the installed Python path. Autonomous repository jobs use the existing Docker backend. Set `GOOSE_REPOSITORY_JOBS_ONLY=1` on Linux to offer the container-backed workflow and direct other requests to inquiry. Legacy native service adapters still require macOS.
+
 Add AgentMail and Stripe keys when ready. Their absence does not prevent test engagements, local test checkout or recorded test notifications. Real sends and settlement require providers and the relevant authorization. See [commerce setup](docs/commerce.md).
 
 `npm run test:e2e` builds an isolated production app on port 3101, creates a disposable database and job directory, and runs the browser workflow with live agents and external providers disabled. It removes its test data and stops its services afterward. It does not add fixtures to the company's history. Set `GOOSE_E2E_PORT` if port 3101 is occupied.
