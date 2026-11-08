@@ -2,7 +2,8 @@ import { CustomerBusiness } from "@/components/CustomerBusiness";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionButton, AnswerForm, AutoRefresh, MessageForm, SignForm, UploadForm } from "@/components/client";
-import { dollars, JobStatus, KindTag, ROLE_NAMES, Steps, when } from "@/components/ui";
+import { JobRun } from "@/components/job/JobRun";
+import { dollars, JobStatus, KindTag, ROLE_NAMES, runScene, runStages, Steps, when } from "@/components/ui";
 import { Workspace } from "@/components/Workspace";
 import { customerView, workspaceView } from "@/lib/views";
 
@@ -25,10 +26,10 @@ export default async function CustomerJob({ params, searchParams }: { params: Pr
   return (
     <main className="wrap">
       <AutoRefresh active={job.status === "running"} />
-      <div className="row between">
+      <div className="job-head">
         <div>
           <div className="kicker">{v.job.account_name} · {job.id}</div>
-          <h1 style={{ marginBottom: 6 }}>{job.title}</h1>
+          <h1>{job.title}</h1>
           <div className="row"><JobStatus status={job.status} stage={job.stage} /><KindTag kind={job.kind} />
             {job.mode === "local" && <span className="tag mode" title="Deterministic local workers; no AI model calls">Local mode</span>}</div>
         </div>
@@ -45,8 +46,14 @@ export default async function CustomerJob({ params, searchParams }: { params: Pr
         </p>
       </div>
 
+      <div className="job-run">
+        <JobRun src={v.runSig ? `/api/jobs/${id}/live?t=${encodeURIComponent(token)}` : null} sig={v.runSig?.sig ?? null} scene={runScene(job.stage, job.status, open.length)}
+          attempt={v.runSig?.attempt ?? null} now={v.stageLabel} checks={runs.length ? { passed: runs.at(-1).passed, total: runs.at(-1).total } : null}
+          stages={runStages(job.stage, job.status, job.pipeline, { failedAttempts: failedRuns, checks: runs.length ? { passed: runs.at(-1).passed, total: runs.at(-1).total } : null })} />
+      </div>
+
       {open.length > 0 && (
-        <section className="section card" style={{ borderColor: "var(--accent)" }}>
+        <section className="section card needs-answer">
           <h2>Needs your answer</h2>
           {open.map((x: any) => (
             <div key={x.id} className="stack-sm" style={{ marginTop: 10 }}>

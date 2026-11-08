@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionButton, AutoRefresh, FaultPicker, OpsNumberAction } from "@/components/client";
-import { Back, clock, dollars, JobStatus, KindTag, ModeBanner, Origin, ROLE_NAMES, Steps, usd, when } from "@/components/ui";
+import { JobRun } from "@/components/job/JobRun";
+import { Back, clock, dollars, JobStatus, KindTag, ModeBanner, Origin, ROLE_NAMES, runScene, runStages, Steps, usd, when } from "@/components/ui";
+import { liveSig } from "@/lib/liveCode";
 import { config } from "@/lib/config";
 import { opsStageLabel } from "@/lib/jobs";
 import { opsJobView } from "@/lib/views";
@@ -17,6 +19,7 @@ export default async function OpsJob({ params }: { params: Promise<{ id: string 
   const { id } = await params;
   const v = await opsJobView(id);
   if (!v) notFound();
+  const runSig = await liveSig(id).catch(() => null);
   const { job, events, stageRuns, costs, approvals, interventions, repairs, runs, artifacts, sessions, questions, showroom, plans, origins } = v;
   const important = events.filter((e: any) => e.important);
   // a role is only called an agent when a Naive session did the work; deterministic steps are "steps"
@@ -50,6 +53,13 @@ export default async function OpsJob({ params }: { params: Promise<{ id: string 
       <div className="card section">
         <Steps stage={job.stage} status={job.status} failedAttempts={runs.filter((r: any) => r.verdict === "fail").length} pipeline={job.pipeline} />
         <p style={{ margin: "10px 0 0" }}><b>Now:</b> {opsStageLabel(job.stage)}{job.waiting_reason ? ` - ${job.waiting_reason}` : ""}</p>
+      </div>
+      <div className="job-run">
+        <JobRun src={runSig ? `/api/jobs/${id}/live?ops=1` : null} sig={runSig?.sig ?? null} attempt={runSig?.attempt ?? null} now={opsStageLabel(job.stage)}
+          scene={runScene(job.stage, job.status, questions.filter((x: any) => x.audience === "customer" && x.status === "open").length)}
+          checks={runs.length ? { passed: runs.at(-1).passed, total: runs.at(-1).total } : null}
+          stages={runStages(job.stage, job.status, job.pipeline, { failedAttempts: runs.filter((r: any) => r.verdict === "fail").length,
+            checks: runs.length ? { passed: runs.at(-1).passed, total: runs.at(-1).total } : null })} />
       </div>
       {job.status === "waiting_founder" && (
         <div className="banner warn section"><b>Needs you</b><span>{job.waiting_reason}</span></div>
