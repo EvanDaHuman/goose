@@ -324,7 +324,7 @@ export async function serviceOutreach(now = Date.now()) {
       if (!recent && (await sentToday()) < cap) {
         const next = await one<any>(`SELECT p.id FROM prospects p WHERE p.status='draft_ready' AND p.contact_email IS NOT NULL
           AND p.fit_score = ANY($1) AND NOT EXISTS(SELECT 1 FROM outreach_suppressions s WHERE s.email=lower(p.contact_email))
-          AND NOT EXISTS(SELECT 1 FROM outreach_messages m WHERE m.prospect_id=p.id AND NOT m.is_test AND m.status<>'cancelled')
+          AND NOT EXISTS(SELECT 1 FROM outreach_messages m WHERE m.prospect_id=p.id AND NOT m.is_test AND m.status NOT IN ('cancelled','draft'))
           AND NOT EXISTS(SELECT 1 FROM prospects o WHERE o.id<>p.id AND lower(o.contact_email)=lower(p.contact_email) AND o.contacted_at > now()-interval '90 days')
           ORDER BY CASE p.fit_score WHEN 'High' THEN 0 ELSE 1 END, p.id LIMIT 1`, [policy.minFit === "High" ? ["High"] : ["High", "Medium"]]);
         if (next) {
