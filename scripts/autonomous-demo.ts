@@ -4,6 +4,7 @@ import path from "node:path";
 import os from "node:os";
 import { config } from "../lib/config";
 import { one,pool,q } from "../lib/db";
+import { sourceSnapshot } from "../lib/sourceSnapshot";
 import { fetchGitHubSource } from "../lib/githubSource";
 import { createJob,jobById,releaseDeadLeases,releaseLease,runCurrentStage } from "../lib/jobs";
 import { IMPL_ALL } from "../lib/pipeline";
@@ -12,8 +13,11 @@ import { jobSpend } from "../lib/records";
 try {
  if(config.mode!=="naive")throw new Error("Live Naive is required");
  await releaseDeadLeases();let id=process.argv.find(x=>/^GS-\d+$/.test(x));
- if(!id){const file=process.argv[2];if(!file)throw new Error("Pass a JSON file with repository, revision, title and goal, or GS-id to resume");const input=JSON.parse(fs.readFileSync(file,"utf8"));const source=await fetchGitHubSource(input.repository,input.revision??"");
-  try{const created=await createJob({accountName:"Autonomous repository validation",contactName:"Synthetic harness",contactEmail:"autonomy@example.invalid",kind:"demo",acquiredVia:"Live autonomous validation on public upstream source",title:input.title,slug:"autonomous-repository",timezone:"UTC",repoZip:source.file,goal:input.goal,workspaceRequest:true,adaptiveRequest:true,githubSource:source.provenance,costLimitUsd:25});id=created.id;console.log(`Created ${id} from ${source.provenance.url}@${source.provenance.commit}; $25 cap; TEST approvals only.`);}finally{fs.rmSync(path.dirname(source.file),{recursive:true,force:true});}}
+ if(!id){const file=process.argv[2];if(!file)throw new Error("Pass a JSON file with repository, revision, title and goal, or GS-id to resume");const input=JSON.parse(fs.readFileSync(file,"utf8"));const reuse=process.argv.find(x=>x.startsWith("--reuse-source="))?.split("=")[1];
+ const previous=reuse?await jobById(reuse):null;if(reuse&&(!previous||previous.kind!=="demo"||previous.app_slug!=="autonomous-repository"))throw new Error("Source reuse requires a prior synthetic autonomous validation job");
+ const source=reuse?{file:await sourceSnapshot(previous!),provenance:JSON.parse(fs.readFileSync(path.join(config.jobsDir,reuse,"inputs/github-source.json"),"utf8"))}:await fetchGitHubSource(input.repository,input.revision??"");
+ if(source.provenance.url!==input.repository)throw new Error("Source provenance does not match requested repository");
+  try{const created=await createJob({accountName:"Autonomous repository validation",contactName:"Synthetic harness",contactEmail:"autonomy@example.invalid",kind:"demo",acquiredVia:"Live autonomous validation on public upstream source",title:input.title,slug:"autonomous-repository",timezone:"UTC",repoZip:source.file,goal:input.goal,workspaceRequest:true,adaptiveRequest:true,githubSource:source.provenance,costLimitUsd:25});id=created.id;console.log(`Created ${id} from ${source.provenance.url}@${source.provenance.commit}; $25 cap; TEST approvals only.`);}finally{if(!reuse)fs.rmSync(path.dirname(source.file),{recursive:true,force:true});}}
  for(let step=0;step<40;step++){const job=(await jobById(id!))!;if(!job||job.kind!=="demo"||job.app_slug!=="autonomous-repository")throw new Error("Only this synthetic validation harness may auto-approve");console.log(`${new Date().toISOString()} ${job.id}: ${job.stage}/${job.status}, attempt ${job.attempt}`);
   if(job.stage==="awaiting_acceptance"){const p=await one<{version:number}>("SELECT version FROM proposals WHERE job_id=$1 AND status='sent' ORDER BY version DESC LIMIT 1",[id]);await acceptProposal(id!,p!.version,"Synthetic validation harness",null,"TEST approval after autonomous environment reproduction and independent acceptance review. No real customer agreement.");continue;}
   if(job.stage==="delivered"){await acceptDelivery(id!,"Synthetic validation harness",null,"TEST acceptance of verified upstream repository changes. No real customer or revenue.");continue;}

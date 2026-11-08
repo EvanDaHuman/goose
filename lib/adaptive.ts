@@ -31,6 +31,7 @@ export function adaptiveProblems(p:any):string[]{
  if(!Array.isArray(p.missing_requirements)||p.missing_requirements.some((s:any)=>typeof s!=="string"))errors.push("State missing requirements");
  return [...new Set(errors)];
 }
+export function acceptanceReviewApproved(review:any):boolean{return review?.accepted===true && Array.isArray(review.issues) && review.issues.length===0;}
 function protectedHashes(source:string,paths:string[]){const values:Record<string,string>=Object.create(null);for(const f of paths){if(!safe(f))throw new Error("Unsafe protected path");const full=path.join(source,f);if(!fs.existsSync(full))throw new Error("Missing protected path: "+f);values[f]=fs.statSync(full).isDirectory()?digest(full):sha256(full);}return values;}
 function intact(job:Job){try{const m=readJson(J(job,"vault","MANIFEST.json"));return sha256(J(job,"vault","MANIFEST.json"))===job.checks_manifest_sha&&Object.entries(m).every(([f,h])=>safe(f)&&sha256(J(job,"vault",f))===h);}catch{return false;}}
 async function execute(job:Job,source:string,planFile:string,out:string,phase:"baseline"|"verify"){
@@ -38,7 +39,11 @@ async function execute(job:Job,source:string,planFile:string,out:string,phase:"b
  if(data&&(!fs.realpathSync(data.path).startsWith(fs.realpathSync(J(job,"snapshot"))+path.sep)||sha256(data.path)!==data.sha256))throw new Error("Original database snapshot integrity failed");
  const frozenInputs=J(job,"vault","adaptive-inputs.json");
  if(fs.existsSync(frozenInputs)&&readJson(frozenInputs).database_sha256!==(data?.sha256??null))throw new Error("Database input changed after scope acceptance");
- mkdir(out);const r=await run({cmd:config.python.engine,args:[path.join(config.root,"autonomy/run.py"),"--source",source,"--plan",planFile,"--out",out,"--phase",phase,...(data?["--data",data.path]:[])],cwd:config.root,env:cleanEnv({PATH:"/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",...(process.env.DOCKER_HOST?{DOCKER_HOST:process.env.DOCKER_HOST}:{})},config.home),timeoutMs:55*60_000,logFile:path.join(out,"runner.log")});
+ const binding={source:digest(source),plan:sha256(planFile),runner:sha256(path.join(config.root,"autonomy/run.py")),egress:sha256(path.join(config.root,"autonomy/egress.py")),database:data?.sha256??null,phase};
+ const bound=path.join(out,"binding.json"),existingReport=path.join(out,"report.json");
+ if(fs.existsSync(bound)&&fs.existsSync(existingReport)&&JSON.stringify(readJson(bound))===JSON.stringify(binding)){const previous=readJson(existingReport);if(previous.ok&&previous.finished_at)return previous;}
+ if(fs.existsSync(out)&&fs.readdirSync(out).length)fs.renameSync(out,`${out}-prior-${Date.now()}`);
+ mkdir(out);write(bound,binding);const r=await run({cmd:config.python.engine,args:[path.join(config.root,"autonomy/run.py"),"--source",source,"--plan",planFile,"--out",out,"--phase",phase,...(data?["--data",data.path]:[])],cwd:config.root,env:cleanEnv({PATH:"/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",...(process.env.DOCKER_HOST?{DOCKER_HOST:process.env.DOCKER_HOST}:{})},config.home),timeoutMs:55*60_000,logFile:path.join(out,"runner.log")});
  await recordCompute(job.id,"verification",job.stage,job.attempt,r.ms,"Generic isolated environment and acceptance execution");
  if(!fs.existsSync(path.join(out,"report.json")))throw new Error("Environment runner failed: "+r.stderr.slice(-3000));
  const report=readJson(path.join(out,"report.json"));if(r.timedOut)report.ok=false;return report;
@@ -81,9 +86,12 @@ This is the feedback from prior actual execution (if any). Fix the plan based on
   // A separate role critiques the oracle, coverage and mutation evidence before scope is offered.
   const review=await runAgentTask(client,{...(await ctxFor(job,a*10+trial,"plan")),role:"verification",purpose:"review-discovered-tests",title:"Independently review the acceptance tests",timeoutMs:12*60_000,
    outputSchema:{type:"object",properties:{accepted:{type:"boolean"},issues:{type:"array",items:{type:"string"}},summary:{type:"string"}},required:["accepted","issues","summary"],additionalProperties:false},
-   message:`Inspect original repository ${source.id} using fetch_file. Review this proposed contract for customer goal: ${job.goal}. Plan: ${JSON.stringify(p)}. Actual baseline and negative-control evidence: ${JSON.stringify(concise(first)).slice(-25000)}. Accept only if tests exercise actual behavior, cover all requested changes, retain a substantive existing suite, and the mutation is a meaningful semantic fault. A missing new API is an expected original failure; import/setup failure unrelated to the requested change is not. Reject fabricated metrics, constant-success scripts, deleted/skipped tests, setup/prepare modifying project source or tests, or omitted requirements. Identify specific improvements. Do not edit files or claim tests you did not run.`});
+   message:`Inspect original repository ${source.id} using fetch_file. Review this proposed contract for customer goal: ${job.goal}. Plan: ${JSON.stringify(p)}. Actual baseline and negative-control evidence: ${JSON.stringify(concise(first)).slice(-25000)}. Accept only if tests exercise actual behavior, cover all requested changes, retain a substantive existing suite, and the mutation is a meaningful semantic fault. A missing new API is an expected original failure; import/setup failure unrelated to the requested change is not. Reject fabricated metrics, constant-success scripts, deleted/skipped tests, setup/prepare modifying project source or tests, or omitted requirements. Set accepted=false whenever issues is non-empty. List blocking gaps only; all explicit customer requirements and existing invariants must be covered. Identify specific improvements. Do not edit files or claim tests you did not run.`});
   if(!review.ok)return {next:"plan",status:"waiting_founder",waiting:`Independent test review stopped: ${review.message}`};
-  write(path.join(td,"review.json"),review.output);if(!review.output.accepted){feedback={plan:p,review:review.output};continue;}
+  write(path.join(td,"review.json"),review.output);
+  await artifact(job,"acceptance_review",`Independent test review, discovery attempt ${trial}`,path.join(td,"review.json"),{by:"verification",visible:true,origin:"agent",originDetail:{session_id:review.sessionId}});
+  await logEvent(job.id,"verification","decision",review.output.summary,{accepted:review.output.accepted,issues:review.output.issues,session_id:review.sessionId},{origin:"agent",important:true});
+  if(!acceptanceReviewApproved(review.output)){feedback={plan:p,review:review.output};continue;}
   p.base_image_digest=first.base_image;write(path.join(td,"plan.json"),p);
   const second=await execute(job,J(job,"source"),path.join(td,"plan.json"),path.join(td,"reproduction"),"baseline");
   if(!second.ok){feedback={plan:p,fresh_reproduction:concise(second)};continue;}

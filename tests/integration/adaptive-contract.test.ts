@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { adaptiveProblems } from "../../lib/adaptive";
+import { adaptiveProblems, acceptanceReviewApproved } from "../../lib/adaptive";
 const plan=()=>({version:1,title:"Add subtraction",image:"python:3.12-slim",dependency_hosts:["pypi.org","files.pythonhosted.org"],setup:"pip install pytest==8.3.5",prepare:"",checks:[{id:"existing",title:"Existing suite",kind:"preserve",script:"python -m pytest tests"},{id:"new_behavior",title:"Requested behavior",kind:"requirement",script:"python /acceptance/feature.py"}],protected_paths:["tests"],deliverables:["src/calc.py"],mutations:[{path:"src/calc.py",find:"return a+b",replace:"return a-b",check_id:"existing"}],limitations:["No production deployment"],missing_requirements:[]});
 test("autonomous contracts require preserved behavior, requested behavior and a semantic negative control",()=>{
  assert.deepEqual(adaptiveProblems(plan()),[]);
@@ -13,4 +13,11 @@ test("autonomous plans reject escaping paths, injected images, private hosts and
  for(const h of ['127.0.0.1','metadata.google.internal','*.example.org','localhost','pypi.org:443']){const p=plan();p.dependency_hosts=[h];assert.ok(adaptiveProblems(p).length,h);}
  for(const f of ['../vault/plan.json','/etc/passwd','a/../../secret']){const p=plan();p.protected_paths=[f];assert.ok(adaptiveProblems(p).length);}
  const p:any=plan();p.checks[0].timeout_seconds=100000;assert.match(adaptiveProblems(p).join(),/timeout/);
+});
+
+test("a reviewer cannot approve unresolved findings with a contradictory accepted flag",()=>{
+ assert.equal(acceptanceReviewApproved({accepted:true,issues:["Missing read-only subclass coverage"]}),false);
+ assert.equal(acceptanceReviewApproved({accepted:true}),false);
+ assert.equal(acceptanceReviewApproved({accepted:false,issues:[]}),false);
+ assert.equal(acceptanceReviewApproved({accepted:true,issues:[]}),true);
 });

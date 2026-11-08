@@ -230,7 +230,7 @@ test("a public inquiry links to a repository engineering assessment without chan
   await page.getByLabel("Type of engineering work").selectOption("workspace");
   await expect(page.getByLabel("Target runtime (optional)")).toBeDisabled();
   await expect(page.getByLabel("Requested data changes (optional)")).toBeDisabled();
-  await expect(page.getByText(/goose-workspace.json/)).toBeVisible();
+  await expect(page.getByText(/No Goose-specific configuration is required/)).toBeVisible();
   await page.getByLabel(/Your goal/).fill("Upgrade the dispatch routing CLI while preserving its existing JSON command interface and add bounded route constraints.");
   const source = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "e2e-workspace-")), "routing.zip");
   execFileSync("/usr/bin/zip", ["-r", "-q", source, "."], { cwd: path.resolve("demo/workspace-routing/repo") });
@@ -257,6 +257,7 @@ test("a Rust request keeps its explicit target and requests live execution in lo
   await page.getByLabel("Your name").fill("Playwright Tester");
   await page.getByLabel("Email").fill("tester@example.test");
   await page.getByLabel(/Your goal/).fill("Migrate this application to Rust and keep its customer history.");
+  await page.getByLabel("Type of engineering work").selectOption("service");
   await page.getByLabel("Target runtime (optional)").selectOption("rust");
   await page.getByLabel("Requested data changes (optional)").fill("Add a customer tier with a standard default.");
   await page.getByRole("button", { name: "Upload a .zip instead" }).click();   // the sample isn't on GitHub
