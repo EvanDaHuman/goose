@@ -4,7 +4,7 @@
   "checks": [
     {
       "command": "GOOSE_TEST_DOCKER=1 npm test",
-      "passed": 97,
+      "passed": 98,
       "failed": 0,
       "skipped": 0,
       "includes": "Real Docker baseline, frozen acceptance, candidate verification, delivery integrity, GitHub intake, Naive retries and commerce/outreach integration contracts."

@@ -86,6 +86,20 @@ async function execute(job:Job,source:string,planFile:string,out:string,phase:"b
 }
 export const executionExcerpt=(text:string,limit:number)=>text.length<=limit?text:text.slice(0,Math.floor(limit/2))+"\n[Middle omitted; full output remains in the execution artifact.]\n"+text.slice(-Math.floor(limit/2));
 const concise=(r:any)=>({ok:r.ok,error:r.error,setup:r.setup?{code:r.setup.code,output:executionExcerpt(r.setup.output,11000)}:null,checks:r.checks?.map((c:any)=>({id:c.id,code:c.code,expected:c.expected,accepted:c.accepted,output:executionExcerpt(c.output,9000)})),mutations:r.mutations?.map((m:any)=>({path:m.path,check_id:m.check_id,detected:m.detected,output:executionExcerpt(m.output,5000)}))});
+export function priorDiscoveryFeedback(root:string,round:number,sourceHash:string):any{
+ // A new bounded round learns from completed evidence for exactly the same source.
+ // This is planning feedback only. It never skips execution or independent review.
+ for(let previous=round-1;previous>=1;previous--)for(let trial=8;trial>=1;trial--){
+  const dir=path.join(root,`round-${previous}`,`trial-${trial}`),file=path.join(dir,"plan.json");
+  const bindingFile=path.join(dir,"execution","binding.json"),reportFile=path.join(dir,"execution","report.json");
+  if(![file,bindingFile,reportFile].every(f=>fs.existsSync(f)))continue;
+  const binding=readJson(bindingFile),report=readJson(reportFile);
+  if(binding.source!==sourceHash||binding.plan!==sha256(file)||!report.finished_at)continue;
+  const reviewFile=path.join(dir,"review.json");
+  return {historical_round:previous,trial,plan:readJson(file),execution:concise(report),...(fs.existsSync(reviewFile)?{review:readJson(reviewFile)}:{})};
+ }
+ return null;
+}
 const SHAPE=`{version:1,title:string,image:"official-runtime:tag",dependency_hosts:[exactPublicHostname],setup:"POSIX shell installs dependencies as root in /workspace; may use approved dependency proxy",prepare:"POSIX shell runs OFFLINE as uid1000 before EACH independent check, starts temporary services if needed",checks:[{id:"unique_id",title:string,kind:"preserve"|"requirement",script:"POSIX shell; substantive assertions; nonzero on failure",timeout_seconds:300}],protected_paths:["original tests directory or file", "CI directory if present"],mutations:[{path:"source file",find:"exact unique original substring",replace:"valid but behaviorally wrong code",check_id:"preservation check which must fail"}],deliverables:["required source file"],limitations:[string],missing_requirements:[string],rationale:string}`;
 async function plan(job:Job,a:number):Promise<StageResult>{
  if(config.mode!=="naive")return {next:"plan",status:"waiting_founder",waiting:"Autonomous discovery requires live Naive"};
@@ -94,7 +108,7 @@ async function plan(job:Job,a:number):Promise<StageResult>{
  const client=naiveClient(),source=await uploadFile(client,job.id,await sourceSnapshot(job),`${job.id}-unfamiliar-source.zip`,["source"]);
  const context=await customerContext(job);
  const database=await one("SELECT filename,validation FROM job_inputs WHERE job_id=$1 AND kind='database' AND validation IS NOT NULL ORDER BY id DESC LIMIT 1",[job.id]);
- let feedback:any=null;
+ let feedback:any=priorDiscoveryFeedback(J(job,"discovery"),a,digest(J(job,"source")));
  // Durable per-round files and SDK idempotency preserve actual failed attempts on retry.
  const base=J(job,"discovery",`round-${a}`);mkdir(base);
  for(let trial=1;trial<=8;trial++){
@@ -108,7 +122,7 @@ Customer requirements and supporting documents: ${JSON.stringify(context)}. Fetc
 Inspect actual manifests, lockfiles, CI workflows, source interfaces, and tests. Do not spend the planning session installing dependencies or running full suites in your own computer: the host executes your proposed environment and returns observed failures for repair. Infer dependencies and commands. Return plan_json with this exact shape: ${SHAPE}.
 Host executes your scripts in disposable Linux Docker containers; you do NOT need Docker in your Naive computer. Supported official base repositories: ubuntu, debian, python, node, golang, rust, eclipse-temurin, ruby, php, mcr.microsoft.com/dotnet/sdk. Choose an appropriate pinned version. Setup has network ONLY through HTTP_PROXY/HTTPS_PROXY to exact dependency_hosts. Include package registries AND their artifact CDN hosts, no private addresses. APT/pip/npm work via the proxy. Setup should install build/test dependencies using actual project metadata; package installation scripts are untrusted and sandboxed. It may build/install the project. Never change original source or existing tests in setup/prepare. Every check starts from an independent copy of the same prepared image, OFFLINE, as UID1000 with writable /workspace and /home/goose. prepare can start local service processes; install services during setup. No Docker socket, no credentials, no host filesystem. Checks run from /workspace with scripts stored read-only at /acceptance. Project imports and test discovery must work from there (set PYTHONPATH if needed). Native tests that spawn other executables cannot invoke docker.
 Run the repository's full default test suite as preservation checks when executable within the limits. Split it into independent checks if necessary. A focused subset alone is insufficient when the default suite can run. State every exclusion and its observed reason in limitations; do not replace the default suite with just tests around the requested change. Protect all original test directories and CI configuration in protected_paths, including suites not executed. If existing failures block it, diagnose them; never quietly skip relevant tests. Additional focused preservation assertions should cover changed behavior. Requirement checks must PASS on correct new implementation and FAIL on original source with a clear assertion or missing-feature error. They must verify the actual requested behavior, not merely inspect source text. Do not implement the change yet. A negative control must make an exact unique replacement in ORIGINAL code, preserve syntax/imports and make a preservation check fail with an assertion. Never mutate tests or commands for the negative control. Use timeout_seconds up to 900. Normalize nondeterministic fields in assertions. Include no hardcoded output pretending to be a test. For data changes, build isolated copies, assert row relationships/value transformations/new writes/retry behavior. Missing private services, credentials, hardware or ambiguous requirements belong in missing_requirements; do not fabricate them. Explain all coverage limitations.
-This is the feedback from prior actual execution (if any). Fix the plan based on it: ${JSON.stringify(agentExecutionEvidence(job,feedback)).slice(-55000)}`});
+This is the feedback from prior actual execution (if any). Fix the plan based on it. Historical feedback is not approval and never overrides the current customer requirements. Correct every independent review finding, including documentation or other non-runtime deliverables: ${JSON.stringify(agentExecutionEvidence(job,feedback)).slice(-55000)}`});
   if(!r.ok)return {next:"plan",status:"waiting_founder",waiting:`Discovery agent stopped: ${r.message}`};
   let p:any;try{p=JSON.parse(r.output.plan_json);}catch{feedback={error:"Invalid plan JSON"};continue;}
   write(path.join(td,"plan.json"),p);const problems=adaptiveProblems(p);

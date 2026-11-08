@@ -8,7 +8,7 @@ The company workflow still scopes work, requests customer approval, implements, 
 
 1. Naïve reads the upstream manifests, lockfiles, CI, source and tests.
 2. It proposes a tagged official Linux runtime image, dependency hosts, setup script, optional service startup script, substantive existing tests and new requirement checks.
-3. A generic runner attempts that environment. Failures return to Naïve for up to eight bounded discovery attempts, within the job spending cap, with every attempt retained.
+3. A generic runner attempts that environment. Failures return to Naïve for up to eight bounded discovery attempts, within the job spending cap, with every attempt retained. An explicitly requested new planning round carries forward completed execution and review findings only when the source and plan hashes still match; it must still pass fresh execution and review.
 4. Existing behavior must pass. New-feature checks must fail on the original implementation. A deliberately introduced semantic fault must be detected by a preservation check.
 5. A separate Naïve verification agent reviews the test coverage and actual execution evidence. Accepted environments are rebuilt on a fresh instance before a proposal is offered.
 6. After approval the original baseline runs again. The environment, acceptance scripts, protected original tests, input hashes and runner version are frozen before implementation.
