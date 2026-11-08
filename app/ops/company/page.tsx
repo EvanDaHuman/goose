@@ -6,11 +6,14 @@ import { config } from "@/lib/config";
 import { growthSettings, growthSpentToday } from "@/lib/growth";
 import { getSetting, pilotOffer } from "@/lib/jobs";
 import { companyView } from "@/lib/views";
+import { outreachDashboard, POLICY_PHRASE } from "@/lib/outreach";
 
 export const dynamic = "force-dynamic";
 
 export default async function Company() {
   const v = await companyView();
+  const outreach = await outreachDashboard();
+  const latest = (pid: number, test: boolean) => outreach.messages.find((m: any) => m.prospect_id === pid && m.is_test === test);
   const offer = await pilotOffer();
   const growth = await growthSettings();
   const spentToday = await growthSpentToday();
@@ -85,7 +88,7 @@ export default async function Company() {
           <ActionButton url="/api/ops/growth" body={{}} label="Run a growth cycle now" /></div>
         <p className="small muted">The research agent finds organisations with outdated software from public sources, the qualification agent scores
           each one against what Goose can carry out today, and the outreach agent writes a draft. Every result passes a guard first; drafts are stored
-          here and nothing is sent. {config.mode === "naive" ? "Live agents on Naive." : "Local mode: research needs the live agents; qualification and drafts use local rules."}</p>
+          here and are sent over AgentMail only as described under Outreach below. {config.mode === "naive" ? "Live agents on Naive." : "Local mode: research needs the live agents; qualification and drafts use local rules."}</p>
         <div className="grid g4" style={{ marginTop: 8 }}>
           <div className="card tight"><div className="stat-label">Schedule</div><div className="stat">{growth.enabled ? `every ${growth.every_hours} h` : "off"}</div>
             <div className="small muted">up to {growth.research_per_cycle} new prospects per cycle</div></div>
@@ -111,11 +114,45 @@ export default async function Company() {
               <td className="small">{p.notes && <div style={{ marginBottom: 6 }}><span className="pill bad">{p.notes}</span></div>}
                 {p.qualification?.recipe && p.qualification.recipe !== "none" && <div><code>{p.qualification.recipe}</code></div>}
                 {p.scope_fit}{(p.blockers ?? []).length > 0 && <div className="muted">Blockers: {(p.blockers ?? []).slice(0, 3).join("; ")}</div>}</td>
-              <td className="small">{p.status === "draft_ready" ? <details><summary>Draft ready - not sent</summary><pre style={{ whiteSpace: "pre-wrap" }}>{p.outreach_draft}</pre></details>
-                : <ActionButton url={`/api/ops/prospects/${p.id}/draft`} body={{}} label="Draft outreach" />}</td>
+              <td className="small" style={{ minWidth: 220 }}>{!p.outreach_draft ? <ActionButton url={`/api/ops/prospects/${p.id}/draft`} body={{}} label="Draft outreach" /> : (() => {
+                const real = latest(p.id, false), test = latest(p.id, true), api = `/api/ops/prospects/${p.id}/outreach`;
+                return <div>
+                  <span className={`pill ${["contacted", "replied", "won"].includes(p.status) ? "ok" : p.status === "lost" ? "bad" : "neutral"}`}>{p.status.replace("_", " ")}</span>
+                  <details style={{ marginTop: 4 }}><summary>{real ? `Email ${real.status}` : "Draft"}</summary><pre style={{ whiteSpace: "pre-wrap" }}>{real ? `To: ${real.delivered_to}\nSubject: ${real.subject}\n\n${real.body}` : p.outreach_draft}</pre></details>
+                  <div style={{ marginTop: 4 }}>{p.contact_email ? <>To: <b>{p.contact_email}</b> <span className="muted">({p.contact_kind}{p.contact_source ? <>, <a href={p.contact_source} target="_blank">source</a></> : null})</span></>
+                    : p.contact_checked_at ? <span className="muted" title={p.contact_note ?? ""}>No published contact email</span> : null}
+                    {" "}<ActionButton url={api} body={{ action: "contact" }} label={p.contact_checked_at ? "Re-check contact" : "Find contact"} /></div>
+                  {real?.error && <div style={{ color: "var(--bad)" }}>{real.error}</div>}
+                  <div style={{ marginTop: 4, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {outreach.status.canSendTest && <ActionButton url={api} body={{ action: "test" }} label={test ? "Send another test copy" : "Send test copy to me"} />}
+                    {!real && p.contact_email && outreach.status.canSendReal && <ActionButton url={api} body={{ action: "queue" }} label="Prepare email" />}
+                    {real?.status === "draft" && <ActionButton url={api} body={{ action: "send", messageId: real.id, authorization: "Send this exact message" }} tone="primary"
+                      label={`Send to ${real.delivered_to}`} confirm={`Send this exact email to ${real.delivered_to}?`} />}
+                    {real && ["draft", "failed"].includes(real.status) && <ActionButton url={api} body={{ action: "cancel", messageId: real.id }} label="Cancel" />}
+                  </div>
+                </div>; })()}</td>
             </tr>))}</tbody>
         </table></div>
         <p className="small muted" style={{ marginTop: 8 }}>Review and authorize customer communication from <Link href="/ops/business">Customer operations</Link>. Research and drafts do not imply that a customer has been contacted.</p>
+      </section>
+
+      <section className="section card">
+        <div className="card-head"><h2>Outreach</h2><span className="small muted">AgentMail inbox {outreach.status.inbox ?? "not configured"} · {outreach.sentToday} real email(s) in the last 24 h (hard limit {outreach.status.dailyMax})</span></div>
+        {!outreach.status.canSendReal && <div className="banner warn"><b>Real sends are blocked</b><span>Configure: {outreach.status.realBlockers.join("; ")}.</span></div>}
+        <p className="small">{outreach.policy.enabled ? <>Automatic: the outreach agent sends up to <b>{outreach.policy.dailyCap}</b> a day to {outreach.policy.minFit === "High" ? "High" : "High and Medium"} fit prospects with a published contact, one at a time, never to opted-out or bounced addresses.</>
+          : <>Manual: every prospect email is sent only when you authorize that exact message above.</>}{" "}
+          {outreach.policy.enabled ? <ActionButton url="/api/ops/outreach" body={{ policy: { enabled: false } }} label="Turn automatic outreach off" />
+            : <ActionButton url="/api/ops/outreach" body={{ policy: { enabled: true, dailyCap: 5, minFit: "High", authorization: POLICY_PHRASE } }} label="Let the agent send (5/day, High fit)"
+                confirm="The outreach agent will email up to 5 High-fit prospects a day without asking. Continue?" />}
+          {" "}<ActionButton url="/api/ops/outreach" body={{ pollReplies: true }} label="Check replies now" /></p>
+        <div className="table-wrap"><table>
+          <thead><tr><th>#</th><th>Prospect</th><th>To</th><th>Status</th><th>Sent</th><th>Reply</th></tr></thead>
+          <tbody>{outreach.messages.map((m: any) => <tr key={m.id}><td className="small">{m.id}</td><td className="small">{m.prospect_name}</td>
+            <td className="small">{m.delivered_to}{m.is_test && <span className="pill neutral" style={{ marginLeft: 4 }}>TEST</span>}</td>
+            <td className="small">{m.status}{m.error ? ` · ${m.error}` : ""}</td><td className="small">{m.sent_at ? when(m.sent_at) : ""}</td><td className="small">{m.replied_at ? when(m.replied_at) : ""}</td></tr>)}
+            {outreach.messages.length === 0 && <tr><td colSpan={6} className="small muted">No outreach sent yet.</td></tr>}</tbody>
+        </table></div>
+        {outreach.suppressions.length > 0 && <p className="small muted">Never emailed again: {outreach.suppressions.map((s: any) => `${s.email} (${s.reason})`).join(", ")}</p>}
       </section>
 
       <section className="section card">
