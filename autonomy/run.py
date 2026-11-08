@@ -59,9 +59,9 @@ def execute(source,plan,out,phase='baseline',data=None):
     work=pathlib.Path(tempfile.mkdtemp(prefix='goose-run-'))
     limits=['--cpus','2','--memory','3g','--pids-limit','384','--security-opt','no-new-privileges','--cap-drop','ALL','--ulimit','nofile=4096:4096']
     def save(): (out/'report.json').write_text(json.dumps(report,indent=2))
-    def check(c,src_image=image):
+    def check(c,src_image=image,manifest="source.sha256"):
         name=key+'-'+uuid.uuid4().hex[:8];containers.append(name)
-        script=f"set -eu\ncd /workspace\n/bin/sh /acceptance/prepare.sh\n/bin/sh /acceptance/{c['id']}.sh\n"
+        script=f"set -eu\ncd /workspace\n/bin/sh /acceptance/prepare.sh\nsha256sum --status --check /acceptance/{manifest} || {{ echo 'prepare changed original source or tests'; exit 1; }}\n/bin/sh /acceptance/{c['id']}.sh\n"
         r=docker('run','--name',name,*limits,'--network','none','--user','1000:1000','--mount',f'type=volume,src={volume},dst=/acceptance,readonly','--tmpfs','/tmp:rw,nosuid,size=512m','--env','HOME=/home/goose','--env','CI=true','--env','PYTHONDONTWRITEBYTECODE=1','--workdir','/workspace',src_image,'/bin/sh','-c',script,timeout=min(int(c.get('timeout_seconds',300)),900)+30,required=False)
         if r['timed_out']:docker('kill',name,required=False)
         (out/f"{c['id']}-{len(report['checks'])}-{len(report['mutations'])}.log").write_text(r['output'])
@@ -87,6 +87,7 @@ def execute(source,plan,out,phase='baseline',data=None):
         if r['code']:return report
         # Dependency setup must not rewrite the customer's original source or tests.
         original_files=sorted(p for p in pathlib.Path(source).rglob('*') if p.is_file())
+        file_hashes={str(p.relative_to(source)):hashlib.sha256(p.read_bytes()).hexdigest() for p in original_files}
         for begin in range(0,len(original_files),100):
             group=original_files[begin:begin+100]
             names=['/workspace/'+str(p.relative_to(source)) for p in group]
@@ -100,6 +101,14 @@ def execute(source,plan,out,phase='baseline',data=None):
         # A separate root-owned volume supplies acceptance scripts read-only to each independent check.
         scripts=work/'checks';scripts.mkdir();(scripts/'prepare.sh').write_text('set -eu\n'+plan['prepare'])
         for c in plan['checks']:(scripts/(c['id']+'.sh')).write_text('set -eu\n'+c['script'])
+        def source_manifest(hashes):return ''.join(h+'  /workspace/'+p+'\n' for p,h in sorted(hashes.items()))
+        (scripts/'source.sha256').write_text(source_manifest(file_hashes))
+        # Deliberate source mutations have their own expected manifest; prepare may not undo them.
+        for i,m in enumerate(plan['mutations'] if phase=='baseline' else []):
+            text=(pathlib.Path(source)/m['path']).read_text()
+            if text.count(m['find'])!=1:raise RuntimeError('Negative control must match exactly once: '+m['path'])
+            hashes=dict(file_hashes);hashes[m['path']]=hashlib.sha256(text.replace(m['find'],m['replace'],1).encode()).hexdigest()
+            (scripts/f'mutation-{i}.sha256').write_text(source_manifest(hashes))
         seed=key+'-seed';containers.append(seed)
         docker('create','--name',seed,'--network','none','--mount',f'type=volume,src={volume},dst=/acceptance',base,'true');docker('cp',str(scripts)+'/.',seed+':/acceptance');docker('rm',seed)
         for c in plan['checks']:
@@ -114,7 +123,7 @@ def execute(source,plan,out,phase='baseline',data=None):
                 name=key+f'-mut-{i}';containers.append(name);mutimage=key+f':mutation-{i}'
                 docker('create','--name',name,'--network','none',image,'true');docker('cp',str(changed),name+':/workspace/'+m['path']);docker('commit',name,mutimage)
                 try:
-                    c=next(c for c in plan['checks'] if c['id']==m['check_id']);r=check(c,mutimage)
+                    c=next(c for c in plan['checks'] if c['id']==m['check_id']);r=check(c,mutimage,f'mutation-{i}.sha256')
                     # A failing build/import is not evidence that a behavior assertion noticed the mutation.
                     detected=r['code']>0 and not r['timed_out'] and bool(re.search(r'AssertionError|assert |expected|not ok',r['output'],re.I)) and not bool(re.search(r'SyntaxError|ModuleNotFoundError|command not found',r['output']))
                     report['mutations'].append({'path':m['path'],'check_id':m['check_id'],'detected':detected,**r});save()

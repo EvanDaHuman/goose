@@ -18,6 +18,7 @@ const write=(f:string,v:unknown)=>{mkdir(path.dirname(f));fs.writeFileSync(f,JSO
 export const isAdaptive=(job:Job)=>fs.existsSync(J(job,"inputs","workspace-request.json"))&&readJson(J(job,"inputs","workspace-request.json")).adaptive===true;
 const digest=(dir:string):string=>{const files:string[]=[];const visit=(d:string)=>{for(const e of fs.readdirSync(d,{withFileTypes:true}).sort((a,b)=>a.name.localeCompare(b.name))){const f=path.join(d,e.name);if(e.isSymbolicLink())throw new Error("Source tree contains a symlink");if(e.isDirectory())visit(f);else files.push(path.relative(dir,f)+":"+sha256(f));}};visit(dir);return crypto.createHash("sha256").update(files.join("\n")).digest("hex");};
 const safe=(p:unknown):p is string=>typeof p==="string"&&p.length>0&&!path.isAbsolute(p)&&!p.split("/").includes("..")&&!p.includes("\\")&&!p.includes("\0");
+const protectedPath=(file:string,root:string)=>{const f=path.posix.normalize(file),r=path.posix.normalize(root).replace(/\/+$/,"");return r==="."||f===r||f.startsWith(r+"/");};
 export function adaptiveProblems(p:any):string[]{
  const errors:string[]=[];
  if(!p||p.version!==1||typeof p.title!=="string")return ["Missing version/title"];
@@ -25,7 +26,8 @@ export function adaptiveProblems(p:any):string[]{
  for(const key of ["setup","prepare"])if(typeof p[key]!=="string"||p[key].length>50000)errors.push("Invalid "+key);
  if(!Array.isArray(p.dependency_hosts)||p.dependency_hosts.length>40||p.dependency_hosts.some((h:any)=>typeof h!=="string"||!/^([a-z0-9][a-z0-9-]*\.)+[a-z][a-z0-9-]*$/.test(h)||/\.(local|internal|localhost)$/.test(h)))errors.push("Dependency hosts must be explicit public DNS names");
  if(!Array.isArray(p.checks)||p.checks.length<2||p.checks.length>30)errors.push("Need 2 to 30 checks");else{const ids=new Set();for(const c of p.checks){if(!c||!/^([a-z][a-z0-9_-]{0,59})$/.test(c.id)||ids.has(c.id)||!["preserve","requirement"].includes(c.kind)||typeof c.script!=="string"||!c.script.trim()||c.script.length>50000||typeof c.title!=="string")errors.push("Invalid check");ids.add(c?.id);if(c?.timeout_seconds!==undefined&&(!Number.isInteger(c.timeout_seconds)||c.timeout_seconds<1||c.timeout_seconds>900))errors.push("Check timeout must be 1 to 900 seconds");}if(!p.checks.some((c:any)=>c?.kind==="preserve")||!p.checks.some((c:any)=>c?.kind==="requirement"))errors.push("Need original behavior and new requirement checks");}
- if(Array.isArray(p.mutations)&&Array.isArray(p.protected_paths)&&p.mutations.some((m:any)=>typeof m?.path==="string"&&p.protected_paths.some((f:any)=>typeof f==="string"&&(m.path===f||m.path.startsWith(f+"/")))))errors.push("Negative controls must not mutate protected tests or CI");
+ if(Array.isArray(p.mutations)&&Array.isArray(p.protected_paths)&&p.mutations.some((m:any)=>typeof m?.path==="string"&&p.protected_paths.some((f:any)=>typeof f==="string"&&protectedPath(m.path,f))))errors.push("Negative controls must not mutate protected tests or CI");
+ if(Array.isArray(p.deliverables)&&Array.isArray(p.protected_paths)&&p.deliverables.some((d:any)=>typeof d==="string"&&p.protected_paths.some((f:any)=>typeof f==="string"&&protectedPath(d,f))))errors.push("Required deliverables overlap protected paths. Source or documentation that must change cannot be immutable; preserve original tests and CI instead.");
  for(const key of ["protected_paths","deliverables"])if(!Array.isArray(p[key])||!p[key].length||p[key].length>40||p[key].some((x:any)=>!safe(x)))errors.push("Invalid "+key);
  if(!Array.isArray(p.mutations)||!p.mutations.length||p.mutations.length>5)errors.push("Need 1 to 5 negative controls");else for(const m of p.mutations)if(!m||!safe(m.path)||typeof m.find!=="string"||!m.find||typeof m.replace!=="string"||m.find===m.replace||!(Array.isArray(p.checks)&&p.checks.some((c:any)=>c?.id===m.check_id&&c?.kind==="preserve")))errors.push("Negative control must alter original behavior and exercise a preservation check");
  if(!Array.isArray(p.limitations)||p.limitations.some((s:any)=>typeof s!=="string"))errors.push("State limitations");
@@ -70,6 +72,11 @@ async function execute(job:Job,source:string,planFile:string,out:string,phase:"b
  if(fs.existsSync(frozenInputs)&&readJson(frozenInputs).database_sha256!==(data?.sha256??null))throw new Error("Database input changed after scope acceptance");
  const binding={source:digest(source),plan:sha256(planFile),runner:sha256(path.join(config.root,"autonomy/run.py")),egress:sha256(path.join(config.root,"autonomy/egress.py")),database:data?.sha256??null,phase};
  const bound=path.join(out,"binding.json"),existingReport=path.join(out,"report.json");
+ // Failed historical trials remain useful feedback after runner upgrades, but can never approve a plan.
+ if(reuseFailed&&phase==="baseline"&&fs.existsSync(bound)&&fs.existsSync(existingReport)){
+  const previous=readJson(existingReport),old=readJson(bound);
+  if(previous.ok===false&&previous.finished_at&&old.source===binding.source&&old.plan===binding.plan&&old.database===binding.database&&old.phase===phase)return previous;
+ }
  if(fs.existsSync(bound)&&fs.existsSync(existingReport)&&JSON.stringify(readJson(bound))===JSON.stringify(binding)){const previous=readJson(existingReport);if((previous.ok||reuseFailed)&&previous.finished_at)return previous;}
  if(fs.existsSync(out)&&fs.readdirSync(out).length)fs.renameSync(out,`${out}-prior-${Date.now()}`);
  mkdir(out);write(bound,binding);const r=await run({cmd:config.python.engine,args:[path.join(config.root,"autonomy/run.py"),"--source",source,"--plan",planFile,"--out",out,"--phase",phase,...(data?["--data",data.path]:[])],cwd:config.root,env:cleanEnv({PATH:"/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",...(process.env.DOCKER_HOST?{DOCKER_HOST:process.env.DOCKER_HOST}:{})},config.home),timeoutMs:55*60_000,logFile:path.join(out,"runner.log")});
@@ -77,7 +84,8 @@ async function execute(job:Job,source:string,planFile:string,out:string,phase:"b
  if(!fs.existsSync(path.join(out,"report.json")))throw new Error("Environment runner failed: "+r.stderr.slice(-3000));
  const report=readJson(path.join(out,"report.json"));if(r.timedOut)report.ok=false;return report;
 }
-const concise=(r:any)=>({ok:r.ok,error:r.error,setup:r.setup?{code:r.setup.code,output:r.setup.output.slice(-11000)}:null,checks:r.checks?.map((c:any)=>({id:c.id,code:c.code,expected:c.expected,accepted:c.accepted,output:c.output.slice(-9000)})),mutations:r.mutations?.map((m:any)=>({path:m.path,check_id:m.check_id,detected:m.detected,output:m.output.slice(-5000)}))});
+export const executionExcerpt=(text:string,limit:number)=>text.length<=limit?text:text.slice(0,Math.floor(limit/2))+"\n[Middle omitted; full output remains in the execution artifact.]\n"+text.slice(-Math.floor(limit/2));
+const concise=(r:any)=>({ok:r.ok,error:r.error,setup:r.setup?{code:r.setup.code,output:executionExcerpt(r.setup.output,11000)}:null,checks:r.checks?.map((c:any)=>({id:c.id,code:c.code,expected:c.expected,accepted:c.accepted,output:executionExcerpt(c.output,9000)})),mutations:r.mutations?.map((m:any)=>({path:m.path,check_id:m.check_id,detected:m.detected,output:executionExcerpt(m.output,5000)}))});
 const SHAPE=`{version:1,title:string,image:"official-runtime:tag",dependency_hosts:[exactPublicHostname],setup:"POSIX shell installs dependencies as root in /workspace; may use approved dependency proxy",prepare:"POSIX shell runs OFFLINE as uid1000 before EACH independent check, starts temporary services if needed",checks:[{id:"unique_id",title:string,kind:"preserve"|"requirement",script:"POSIX shell; substantive assertions; nonzero on failure",timeout_seconds:300}],protected_paths:["original tests directory or file", "CI directory if present"],mutations:[{path:"source file",find:"exact unique original substring",replace:"valid but behaviorally wrong code",check_id:"preservation check which must fail"}],deliverables:["required source file"],limitations:[string],missing_requirements:[string],rationale:string}`;
 async function plan(job:Job,a:number):Promise<StageResult>{
  if(config.mode!=="naive")return {next:"plan",status:"waiting_founder",waiting:"Autonomous discovery requires live Naive"};
@@ -184,7 +192,7 @@ async function verify(job:Job,a:number):Promise<StageResult>{
   if(!preserved)throw new Error("Candidate modified protected original tests or CI");
   execution=await execute(job,candidate,J(job,"vault","adaptive-plan.json"),path.join(dir,"execution"),"verify");
   add("fresh_environment","Candidate builds in a fresh environment",execution.setup?.code===0&&!execution.error,{code:execution.setup?.code,error:execution.error,output:execution.setup?.output?.slice(-7000)},"build");
-  for(const c of p.checks){const r=execution.checks.find((x:any)=>x.id===c.id);add(c.id,c.title,!!r?.accepted,r?{code:r.code,output:r.output.slice(-14000),seconds:r.seconds}:"Check did not execute");}
+  for(const c of p.checks){const r=execution.checks.find((x:any)=>x.id===c.id);add(c.id,c.title,!!r?.accepted,r?{code:r.code,output:executionExcerpt(r.output,14000),seconds:r.seconds}:"Check did not execute");}
   add("unchanged_candidate","Delivered source is the source that was verified",hash===digest(candidate),hash,"integrity");
   integrity=integrity&&intact(job)&&runnerIntact(job);add("unchanged_evidence","Acceptance evidence remains unchanged after execution",integrity,integrity,"integrity");
  }catch(e){add("execution","Complete independent execution",false,String(e),"execution");}
