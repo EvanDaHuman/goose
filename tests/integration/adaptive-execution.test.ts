@@ -32,6 +32,12 @@ test('autonomous dispatch freezes checks, verifies in Docker and refuses changed
  fs.writeFileSync(path.join(candidate,'calc.py'),original+'def subtract(a,b):\n    return a-b\n');fs.mkdirSync(path.join(candidate,'tests'));fs.writeFileSync(path.join(candidate,'tests/test_calc.py'),originalTest);fs.writeFileSync(path.join(candidate,'tests/test_new.py'),'# A new test file may be added without modifying original tests.\n');
  fs.writeFileSync(jobDir(job.id,'build','attempt-1','change.diff'),'Synthetic fixture implementation\n');
  await q("UPDATE jobs SET stage='verify' WHERE id=$1",[job.id]);job=(await jobById(job.id))!;
+ const implementationReport=jobDir(job.id,'build','attempt-1','implementation-report.json');
+ fs.writeFileSync(implementationReport,JSON.stringify({not_done:['A requested behavior remains unfinished']}));
+ const held=await ADAPTIVE_STAGES.verify(job,1);assert.equal(held.status,'waiting_founder');
+ const heldReport=JSON.parse(fs.readFileSync(jobDir(job.id,'verify','attempt-1','report.json'),'utf8'));
+ assert.ok(heldReport.failed.some((c:any)=>c.id==='reported_limitations'));assert.deepEqual(heldReport.implementation_notes,['A requested behavior remains unfinished']);
+ fs.unlinkSync(implementationReport);
  await runCurrentStage(job,IMPL_ALL);job=(await jobById(job.id))!;assert.equal(job.stage,'package');
  await runCurrentStage(job,IMPL_ALL);job=(await jobById(job.id))!;assert.equal(job.stage,'delivered');assert.equal(job.status,'waiting_customer');
  const delivered=jobDir(job.id,'delivery','delivery.zip');assert.ok(fs.statSync(delivered).size>0);
