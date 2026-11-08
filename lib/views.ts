@@ -4,6 +4,7 @@ import path from "node:path";
 import { config, jobDir } from "./config";
 import { one, q } from "./db";
 import { STAGES, type Job } from "./jobs";
+import { liveSig } from "./liveCode";
 import { jobSpend } from "./records";
 
 const readJson = (p: string) => { try { return JSON.parse(fs.readFileSync(p, "utf8")); } catch { return null; } };
@@ -28,7 +29,9 @@ export async function customerView(id: string) {
   const approvals = await q<any>("SELECT * FROM approvals WHERE job_id = $1 ORDER BY id", [id]);
   const runs = await q<any>("SELECT attempt, total, passed, failed, verdict, created_at FROM check_runs WHERE job_id = $1 ORDER BY attempt", [id]);
   const invoice = await one<any>("SELECT * FROM invoices WHERE job_id = $1", [id]);
-  return { ...base, proposal, questions, messages, artifacts, approvals, runs, invoice };
+  // what the live run on the job page shows (the real diff, or the source while the agent works)
+  const runSig = await liveSig(id).catch(() => null);
+  return { ...base, proposal, questions, messages, artifacts, approvals, runs, invoice, runSig };
 }
 
 export async function opsJobView(id: string) {

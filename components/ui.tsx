@@ -80,6 +80,50 @@ export function Steps({ stage, status, failedAttempts = 0, pipeline = 1 }: { sta
   );
 }
 
+export type RunScene = "inspect" | "plan" | "agree" | "answer" | "founder" | "record" | "freeze" | "build" | "verify" | "package" | "deliver" | "complete" | "nofit";
+
+/** Which scene the live run shows for where the job is. */
+export function runScene(stage: string, status: string, openQuestions = 0): RunScene {
+  if (status === "rejected" || status === "declined" || stage === "rejected" || stage === "declined") return "nofit";
+  if (status === "waiting_founder") return "founder";
+  if (stage === "awaiting_acceptance") return "agree";
+  if (stage === "awaiting_info" || (status === "waiting_customer" && openQuestions > 0)) return "answer";
+  if (status === "done") return "complete";
+  const map: Record<string, RunScene> = { intake: "inspect", inspect: "inspect", assess: "plan", plan: "plan", propose: "plan", baseline: "record", freeze: "freeze",
+    implement: "build", modernize: "build", migrate: "build", repair: "build", verify: "verify", package: "package", delivered: "deliver",
+    invoice: "complete", follow_up: "complete", closed: "complete" };
+  return map[stage] ?? "plan";
+}
+
+export type RunStage = { key: string; label: string; state: "done" | "active" | "todo" | "stuck" | "failed"; detail?: string };
+
+/** The same progress as <Steps>, as a list for the live run's report panel. */
+export function runStages(stage: string, status: string, pipeline = 2, opts: { failedAttempts?: number; checks?: { passed: number; total: number } | null } = {}): RunStage[] {
+  const order = pipeline >= 2 ? DELIVERY_STEPS_V2 : DELIVERY_STEPS;
+  const pos = (s: string) => {
+    if (s === "intake") return 0;
+    if (s === "awaiting_info") return pipeline >= 2 ? order.indexOf("plan") : 0;
+    if (s === "awaiting_acceptance") return order.indexOf("propose");
+    if (s === "migrate") return order.indexOf(pipeline >= 2 ? "implement" : "modernize");
+    if (s === "repair") return order.indexOf("verify");
+    if (s === "follow_up" || s === "closed") return order.length;
+    return order.indexOf(s);
+  };
+  const labels: Record<string, string> = { assess: "Assess", inspect: "Inspect", plan: "Plan", propose: "Agree", baseline: "Record",
+    freeze: "Freeze checks", modernize: "Build", implement: "Build", verify: "Verify", package: "Package", delivered: "Deliver", invoice: "Invoice" };
+  const cur = pos(stage);
+  return order.map((s, i) => {
+    let state: RunStage["state"] = i < cur ? "done" : i === cur ? "active" : "todo";
+    if (i === cur && status === "waiting_founder") state = "stuck";
+    if (i === cur && stage === "repair") state = "failed";
+    let detail: string | undefined;
+    if (s === "verify" && opts.checks && i <= cur) detail = `${opts.checks.passed} of ${opts.checks.total} checks passed`;
+    if (s === "verify" && (opts.failedAttempts ?? 0) > 0 && i === cur) detail = `${detail ? detail + " · " : ""}repairing after ${opts.failedAttempts} failed attempt${opts.failedAttempts === 1 ? "" : "s"}`;
+    if (i === cur && status === "waiting_customer") detail = "waiting for you";
+    return { key: s, label: labels[s] ?? STAGES[s]?.label ?? s, state, detail };
+  });
+}
+
 export function ModeBanner({ mode }: { mode: string }) {
   return mode === "naive"
     ? <div className="banner info"><b>Live agents (Naive)</b><span>The assessment, implementation and verification agents and the coordinator run as Naive sessions with budgets; each decision below says whether an agent, a deterministic tool or a person made it. Costs marked "metered" come from Naive.</span></div>

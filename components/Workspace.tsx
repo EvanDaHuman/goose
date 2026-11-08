@@ -4,7 +4,8 @@ import { CustomerBusiness } from "@/components/CustomerBusiness";
 import { AppMap, SourceLink } from "@/components/AppMap";
 import { MigrationPreview } from "@/components/MigrationPreview";
 import { ActionButton, AnswerForm, AutoRefresh, MessageForm, SignForm, UploadForm } from "@/components/client";
-import { dollars, JobStatus, KindTag, ModeBanner, Origin, ROLE_NAMES, Steps, usd, when } from "@/components/ui";
+import { JobRun } from "@/components/job/JobRun";
+import { dollars, JobStatus, KindTag, ModeBanner, Origin, ROLE_NAMES, runScene, runStages, usd, when } from "@/components/ui";
 
 const CONSTRAINT_TEXT: Record<string, string> = {
   keep_framework: "Keep the current web framework", keep_database: "Keep the current database", keep_api: "Pages and API responses must not change",
@@ -42,10 +43,49 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
   return (
     <main className="wrap">
       <AutoRefresh active={job.status === "running" || v.preview?.status === "requested"} />
-      <div className="kicker">{job.account_name} · {job.id}</div>
-      <h1 style={{ marginBottom: 6 }}>{job.title}</h1>
-      <div className="row"><JobStatus status={job.status} stage={job.stage} /><KindTag kind={job.kind} />
-        <span className="tag mode">{job.mode === "naive" ? "Live agents" : "Local mode - no AI"}</span></div>
+      <header className="job-head">
+        <div>
+          <div className="kicker">{job.account_name} · {job.id}</div>
+          <h1>{job.title}</h1>
+          <div className="row"><JobStatus status={job.status} stage={job.stage} /><KindTag kind={job.kind} />
+            <span className="tag mode">{job.mode === "naive" ? "Live agents" : "Local mode - no AI"}</span></div>
+        </div>
+      </header>
+
+      {open.length > 0 && (
+        <section className="section card needs-answer">
+          <h2>Needs your answer</h2>
+          {open.map((x: any) => (
+            <div key={x.id} className="stack-sm" style={{ marginTop: 10 }}>
+              <p style={{ marginBottom: 6 }}>{x.prompt}</p>
+              {x.fields?.[0]?.type === "choice" && <AnswerForm jobId={id} token={token} qkey={x.key} options={x.fields[0].options} help={x.options_help} recommended={x.recommended} />}
+              {x.fields?.[0]?.type === "upload" && <UploadForm jobId={id} token={token} kind={x.fields[0].key === "repository" ? "repository" : "database"} />}
+            </div>))}
+        </section>
+      )}
+
+      {proposal && proposal.status === "sent" && job.stage === "awaiting_acceptance" && !ops && (
+        <div className="section job-callout"><div><b>Your proposal is ready.</b><p>A fixed price, the plan and the acceptance checks. Nothing changes in your code until you accept.</p></div>
+          <a className="btn primary" href="#proposal">Review and accept</a></div>
+      )}
+
+      <div className="job-run">
+        <JobRun src={v.runSig ? `/api/jobs/${id}/live?${ops ? "ops=1" : `t=${encodeURIComponent(token)}`}` : null} sig={v.runSig?.sig ?? null}
+          scene={runScene(job.stage, job.status, open.length)} attempt={v.runSig?.attempt ?? null} now={v.stageLabel}
+          stages={runStages(job.stage, job.status, 2, { failedAttempts: runs.filter((r: any) => r.verdict === "fail").length, checks: runs.length ? { passed: runs.at(-1).passed, total: runs.at(-1).total } : null })}
+          checks={runs.length ? { passed: runs.at(-1).passed, total: runs.at(-1).total } : null}
+          checksCount={engineeringContract?.checks?.length ?? p?.adaptive_plan?.checks?.length ?? p?.acceptance_checks?.length ?? null} />
+        {diff && <details className="full-diff"><summary className="small">The full diff (+{diff.split("\n").filter((l: string) => /^\+(?!\+\+)/.test(l)).length} −{diff.split("\n").filter((l: string) => /^-(?!--)/.test(l)).length} lines)</summary><pre className="diff">{diff.slice(0, 40000)}</pre></details>}
+      </div>
+
+      <div className="card section">
+        <p style={{ margin: 0 }}><b>Now:</b> {v.stageLabel}.{" "}
+          {job.status === "running" && <span className="muted">{job.mode === "naive" ? `The ${ROLE_NAMES[job.responsible]?.toLowerCase()} is on it.`
+            : `The ${who(job.responsible, null).toLowerCase()} is running (deterministic tools, no AI).`}</span>}
+          {job.status === "waiting_customer" && <span className="muted">{job.waiting_reason}.</span>}
+          {job.status === "waiting_founder" && <span className="muted">Our founder is looking at something before work continues: {job.waiting_reason}</span>}
+          {job.status === "rejected" && <span className="muted">This goal is outside what we can carry out and verify today. See the plan and the message below.</span>}</p>
+      </div>
       <div className="section"><ModeBanner mode={job.mode} /></div>
 
       <section className="section grid g2" style={{ alignItems: "start" }}>
@@ -71,33 +111,11 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
         </div>
       </section>
 
-      <div className="card section">
-        <Steps stage={job.stage} status={job.status} failedAttempts={runs.filter((r: any) => r.verdict === "fail").length} pipeline={2} />
-        <p style={{ margin: "12px 0 0" }}><b>Now:</b> {v.stageLabel}.{" "}
-          {job.status === "running" && <span className="muted">{job.mode === "naive" ? `The ${ROLE_NAMES[job.responsible]?.toLowerCase()} is on it.`
-            : `The ${who(job.responsible, null).toLowerCase()} is running (deterministic tools, no AI).`}</span>}
-          {job.status === "waiting_customer" && <span className="muted">{job.waiting_reason}.</span>}
-          {job.status === "waiting_founder" && <span className="muted">Our founder is looking at something before work continues: {job.waiting_reason}</span>}
-          {job.status === "rejected" && <span className="muted">This goal is outside what we can carry out and verify today. See the plan and the message below.</span>}</p>
-      </div>
-
       {mission&&<section className="card section"><div className="card-head"><h2>Recorded simulation</h2><span className="small muted">Actual Gazebo, SLAM and odometry telemetry</span></div>
         <img src={`/api/jobs/${id}/artifacts/${mission.id}?${ops?"ops=1":`t=${encodeURIComponent(token)}`}&inline=1`} alt="Observed robot occupancy map and measured trajectory with independent acceptance results" style={{width:"100%",height:"auto",borderRadius:12}} />
         <p className="small muted">One simulated robot. Physical hardware has not been validated. The source report and map are available with the verification artifacts.</p>
         {missionQuality&&<p className="notice warn" style={{marginTop:12}}>{missionQuality.label}</p>}
       </section>}
-
-      {open.length > 0 && (
-        <section className="section card" style={{ borderColor: "var(--accent)" }}>
-          <h2>Needs your answer</h2>
-          {open.map((x: any) => (
-            <div key={x.id} className="stack-sm" style={{ marginTop: 10 }}>
-              <p style={{ marginBottom: 6 }}>{x.prompt}</p>
-              {x.fields?.[0]?.type === "choice" && <AnswerForm jobId={id} token={token} qkey={x.key} options={x.fields[0].options} help={x.options_help} recommended={x.recommended} />}
-              {x.fields?.[0]?.type === "upload" && <UploadForm jobId={id} token={token} kind={x.fields[0].key === "repository" ? "repository" : "database"} />}
-            </div>))}
-        </section>
-      )}
 
       {insp && (
         <section className="section card">
@@ -184,7 +202,7 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
       )}
 
       {proposal && quote && (
-        <section className="section card">
+        <section className="section card" id="proposal" style={{ scrollMarginTop: 84 }}>
           <div className="card-head"><h2>Proposal v{proposal.version}</h2>
             <span className={`pill ${proposal.status === "accepted" ? "ok" : proposal.status === "sent" ? "info" : "neutral"}`}>{proposal.status === "sent" ? "Waiting for you" : proposal.status}</span></div>
           <p><b>{proposal.summary.headline}</b></p>
@@ -242,7 +260,6 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
               <table className="small"><thead><tr><th>Request</th><th>Before</th><th>After</th></tr></thead><tbody>{pairs.slice(0, 60).map((x: any) => (
                 <tr key={x.step}><td className="mono">{x.method} {x.path}</td><td><b>{x.before.status}</b> <span className="muted mono">{x.before.body.slice(0, 90)}</span></td>
                   <td><b>{x.after?.status ?? "-"}</b> <span className="muted mono">{x.after?.body?.slice(0, 90)}</span></td></tr>))}</tbody></table></details></>)}
-          {diff && (<details className="section"><summary className="small">The code change ({diff.split("\n").filter((l: string) => /^[+-][^+-]/.test(l)).length} lines)</summary><pre className="diff">{diff.slice(0, 20000)}</pre></details>)}
           {reportArt && <p className="small" style={{ marginTop: 10 }}><a href={`/api/jobs/${id}/artifacts/${reportArt.id}?${ops ? "ops=1" : `t=${token}`}&inline=1`}>Read the full verification report</a></p>}
         </section>
       )}
