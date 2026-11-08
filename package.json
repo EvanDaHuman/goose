@@ -19,6 +19,7 @@
     "reset": "bash scripts/reset.sh",
     "founder": "tsx --env-file=.env scripts/founder.ts",
     "growth": "tsx --env-file=.env scripts/growth.ts",
+    "outreach": "tsx --env-file=.env scripts/outreach.ts",
     "naive:status": "tsx --env-file=.env scripts/naive-status.ts",
     "naive:provision": "tsx --env-file=.env scripts/naive-provision.ts",
     "naive:smoke": "tsx --env-file=.env scripts/naive-smoke.ts",

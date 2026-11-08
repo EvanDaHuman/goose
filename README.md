@@ -12,7 +12,7 @@ Built for the [Naïve Autonomous Companies Hackathon](https://events.ycombinator
 
 | Capability | Implementation |
 | --- | --- |
-| Acquisition | Scheduled Naïve research, qualification and outreach drafts with public evidence and spending limits |
+| Acquisition | Scheduled Naïve research, qualification and outreach drafts with public evidence and spending limits; AgentMail outreach to published business contacts with per-message or capped-policy authorization, opt-outs and reply intake ([outreach](docs/outreach.md)) |
 | Intake and scoping | Inquiry form, source uploads, live assessment, executable contract, fixed-price proposal and customer approval |
 | General engineering | Naïve discovers and reproduces environments and tests for unfamiliar repositories, then implements and verifies changes |
 | Code and data migration | Service adapters for Python, Node and Rust; data continuity, new writes, restart and migration idempotency checks |
