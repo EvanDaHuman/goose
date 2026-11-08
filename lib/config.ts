@@ -29,6 +29,15 @@ export const config = {
     baseUrl: process.env.VETTA_API_BASE_URL || "https://api.vetta.sh",
     model: process.env.NAIVE_MODEL || "zai-org/GLM-5.2-FP8",
   },
+  // GitHub App for reading customers' private repositories (read-only). See README: "Connecting GitHub".
+  github: {
+    appId: process.env.GITHUB_APP_ID ?? "",
+    slug: process.env.GITHUB_APP_SLUG ?? "",
+    clientId: process.env.GITHUB_APP_CLIENT_ID ?? "",
+    clientSecret: process.env.GITHUB_APP_CLIENT_SECRET ?? "",
+    privateKey: process.env.GITHUB_APP_PRIVATE_KEY ?? "",
+    privateKeyPath: process.env.GITHUB_APP_PRIVATE_KEY_PATH ?? "",
+  },
   pilot: {
     priceUsd: num(process.env.PILOT_PRICE_USD, 1500),
     costLimitUsd: num(process.env.JOB_COST_LIMIT_USD, 25),

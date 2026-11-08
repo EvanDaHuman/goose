@@ -1,19 +1,43 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { StartForm } from "@/components/StartForm";
+import { BeginForm } from "@/components/site/BeginForm";
+import { SiteShell } from "@/components/site/SiteShell";
+import { EXAMPLES } from "@/components/site/samples";
+import "../site.css";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "Begin a migration" };
 
-export default async function Start({ searchParams }: { searchParams: Promise<{ inquiry?: string }> }) {
-  const { inquiry } = await searchParams;
-  return <main className="wrap">
-    <div className="page-intro"><div className="kicker">Your next technical change</div><h1>Start a job</h1><p className="lead">Tell us the outcome you need and share the source. Goose assesses the system, asks the questions that matter, and proposes a fixed scope and price for your approval.</p></div>
-    <div className="intake-layout section">
-      <StartForm inquiryId={inquiry} />
-      <aside className="stack intake-aside">
-        <div className="card"><span className="kicker">What happens next</span><ol className="intake-steps"><li><b>Assessment</b><span>The agents inspect the source and your requirements.</span></li><li><b>Your proposal</b><span>Review the changes, acceptance criteria, and fixed price.</span></li><li><b>Engineering & verification</b><span>Work begins after acceptance. Failed checks block delivery.</span></li><li><b>Delivery & support</b><span>Receive the result, review the evidence, and manage follow-up work.</span></li></ol></div>
-        <div className="card"><h3>Working with your source</h3><p className="small muted">Goose works on copies. The execution environment separates implementation from the independent verification evidence. With live mode enabled, Naïve agents receive the source needed for the job.</p><p className="small muted">Share only files and data you are authorized to provide. Production access and cutover are outside the intake authorization.</p></div>
-        <div className="card"><h3>Still defining the change?</h3><p className="small muted">Start with your objective and constraints. You can discuss the system before uploading source.</p><Link href="/contact" className="btn small">Send an inquiry ↗</Link></div>
-      </aside>
-    </div>
-  </main>;
+export default async function Start({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const sp = await searchParams;
+  const str = (v: string | string[] | undefined) => (typeof v === "string" ? v : undefined);
+  const ex = EXAMPLES.find((e) => e.sample === str(sp.example));
+  return (
+    <SiteShell>
+      <div className="gutter page-top">
+        <div className="container">
+          <Link className="back" href="/">← Back to home</Link>
+          <div style={{ display: "grid", gap: 16 }}>
+            <div className="eyebrow">Begin migration</div>
+            <h1 className="h2">Tell us where your software <em>needs to go</em>.</h1>
+          </div>
+          <div className="begin-grid">
+            <BeginForm prefill={ex ? { from: ex.from, to: ex.to, goal: ex.goal } : undefined} githubStatus={str(sp.github)} inquiryId={str(sp.inquiry)} />
+            <aside className="next" aria-label="What happens next">
+              <h3>What happens next</h3>
+              <ol>
+                <li><span><b>We inspect your code</b> with read-only access and send a plan with a fixed price, or tell you plainly that we can&apos;t do it yet.</span></li>
+                <li><span><b>You accept</b>, and we record how your app behaves today and freeze the checks.</span></li>
+                <li><span><b>Goose does the work</b> on copies, and a separate verifier compares old and new.</span></li>
+                <li><span><b>You get</b> the changed code, the evidence, a switch-over plan and a rollback guide. Then the invoice.</span></li>
+              </ol>
+              <p className="fine">Your code is stored unchanged and opened read-only. Every test runs on a separate copy, in an isolated environment with
+                no internet access. If we cannot finish and prove a job, the plan says so before you pay anything.</p>
+              <p className="fine">Still defining the change? <Link href="/contact">Send an inquiry</Link> and discuss the system before sharing code.</p>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </SiteShell>
+  );
 }

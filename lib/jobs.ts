@@ -90,6 +90,8 @@ export async function createJob(opts: {
   adaptiveRequest?: boolean;
   githubSource?: import("./githubSource").GitHubSource;
   inquiryPublicId?: string;
+  /** Set when the repository was read from GitHub: where it came from, and the name to record for the .zip. */
+  repoSource?: Record<string, unknown> | null; repoFileName?: string;
 }) {
   const offer = await pilotOffer();
   return await tx(async (c) => {
@@ -122,8 +124,8 @@ export async function createJob(opts: {
       fs.writeFileSync(requestFile, JSON.stringify({ version: 1, goal: opts.goal, adaptive: opts.adaptiveRequest === true }), { mode: 0o444, flag: "wx" });
       await c.query("UPDATE jobs SET recipe='workspace-change',work_type='code' WHERE id=$1", [id]);
     }
-    if (opts.githubSource) {
-      fs.writeFileSync(path.join(inputs,"github-source.json"), JSON.stringify(opts.githubSource,null,2), {mode:0o444,flag:"wx"});
+    if (opts.githubSource || opts.repoSource) {
+      fs.writeFileSync(path.join(inputs,"github-source.json"), JSON.stringify(opts.githubSource ?? opts.repoSource,null,2), {mode:0o444,flag:"wx"});
     }
     if (opts.migrationRequest?.target) {
       const requestFile = path.join(inputs, "migration-request.json");
@@ -141,8 +143,13 @@ export async function createJob(opts: {
       fs.copyFileSync(file, dest);
       fs.chmodSync(dest, 0o444);
       const sha = crypto.createHash("sha256").update(fs.readFileSync(dest)).digest("hex");
-      await c.query("INSERT INTO job_inputs (job_id, kind, filename, size_bytes, sha256, stored_path) VALUES ($1,$2,$3,$4,$5,$6)",
-        [id, kind, docName ? docName.replace(/^doc-\d+-/, "") : path.basename(file), fs.statSync(dest).size, sha, dest]);
+      const source = kind === "repository" && opts.repoSource ? JSON.stringify(opts.repoSource) : null;
+      const name = docName ? docName.replace(/^doc-\d+-/, "") : kind === "repository" && opts.repoFileName ? opts.repoFileName : path.basename(file);
+      // the source column comes from migration 007; uploads leave it out, so they work before it is applied
+      if (source) await c.query("INSERT INTO job_inputs (job_id, kind, filename, size_bytes, sha256, stored_path, source) VALUES ($1,$2,$3,$4,$5,$6,$7)",
+        [id, kind, name, fs.statSync(dest).size, sha, dest, source]);
+      else await c.query("INSERT INTO job_inputs (job_id, kind, filename, size_bytes, sha256, stored_path) VALUES ($1,$2,$3,$4,$5,$6)",
+        [id, kind, name, fs.statSync(dest).size, sha, dest]);
     }
     if (opts.inquiryPublicId) {
       await c.query("UPDATE commerce_inquiries SET job_id=$2,status='linked' WHERE public_id=$1", [opts.inquiryPublicId,id]);
