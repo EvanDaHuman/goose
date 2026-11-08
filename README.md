@@ -26,9 +26,11 @@ See [execution scope](docs/scope.md), [commerce setup](docs/commerce.md) and [de
 
 ## Recorded proof
 
-The live routing-engine engagement `GS-1001` migrated Python to Node.js, added blocked-link support and completed proposal, implementation, verification, delivery, acceptance, invoice and follow-up. Naïve performed assessment and coding; tools executed original and candidate separately. The [exported record](docs/evidence/workspace-routing-live.json) contains actual sessions, costs, checks, stage history and a development intervention.
+The live routing-engine engagement `GS-1001` migrated Python to Node.js, added blocked-link support and completed proposal, implementation, verification, delivery, acceptance, invoice and follow-up. Naïve performed assessment and coding; tools executed original and candidate separately. The [exported record](docs/evidence/workspace-routing-live.json) contains actual sessions, costs, checks, stage history and a development intervention. Its [unchanged delivery archive](docs/evidence/deliveries/GS-1001.zip) includes the generated source, frozen contract and verification evidence.
 
 All current customers, approvals and payments in the demonstrations are synthetic and labelled accordingly. There is no claimed real revenue. Earlier migration and growth records under `docs/evidence/` belong to the predecessor build and are historical evidence, not new customer outcomes. ROS evidence lives under `robotics/evidence/` and must be checked for its actual verdict.
+
+The [validation record](docs/evidence/build-validation.json) covers 66 integration tests, 35 engine tests, six browser workflows, seven robotics harness tests, production build and readiness checks. Integration and browser suites use disposable databases. Provider calls are mocked; live email and payment activation remains separate.
 
 ## Run locally
 

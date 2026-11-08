@@ -12,8 +12,8 @@ def render(report_path, output):
     capture=report.get("mapArtifact")
     if not capture:raise ValueError("Mission report has no bound map artifact")
     # Evidence remains portable when the report and map are copied together.
-    map_path=report_path.parent/"observed-map.json"
-    if not map_path.exists():map_path=Path(capture["path"])
+    companions=[report_path.parent/"observed-map.json",report_path.parent/"robotics-map.json"]
+    map_path=next((p for p in companions if p.exists()),Path(capture["path"]))
     raw=map_path.read_bytes()
     if hashlib.sha256(raw).hexdigest()!=capture["sha256"]:raise ValueError("Map artifact hash mismatch")
     grid=json.loads(raw);points=report.get("trajectory",[])

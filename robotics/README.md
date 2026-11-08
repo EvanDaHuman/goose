@@ -124,9 +124,11 @@ preliminary runs remain separately identified.
 
 ## Harness checks
 
+After `npm run setup` provisions the Python engine environment:
+
 ```sh
-python3 -m pytest -q tests/robotics
-GOOSE_TEST_DOCKER=1 python3 -m pytest -q tests/robotics
+var/venvs/engine/bin/python -m pytest -q tests/robotics
+GOOSE_TEST_DOCKER=1 var/venvs/engine/bin/python -m pytest -q tests/robotics
 ```
 
 The Docker-enabled test executes a deliberately malicious candidate that tries
