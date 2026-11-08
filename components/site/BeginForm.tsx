@@ -30,7 +30,7 @@ type Repo = { repo: string; private: boolean; defaultBranch: string };
 type GhState = { loaded: boolean; configured: boolean; connected: boolean; login?: string; repos: Repo[]; error?: string };
 type Branches = { state: "idle" | "loading" | "ok" | "error"; list: string[]; defaultBranch?: string; isPrivate?: boolean; message?: string };
 
-export function BeginForm({ prefill, githubStatus, inquiryId }: { prefill?: { from: string; to: string; goal: string }; githubStatus?: string; inquiryId?: string }) {
+export function BeginForm({ prefill, githubStatus, inquiryId, repositoryOnly }: { prefill?: { from: string; to: string; goal: string }; githubStatus?: string; inquiryId?: string; repositoryOnly?: boolean }) {
   const router = useRouter();
   const form = useRef<HTMLFormElement>(null);
   const [from, setFrom] = useState(prefill?.from ?? "");
@@ -160,7 +160,7 @@ export function BeginForm({ prefill, githubStatus, inquiryId }: { prefill?: { fr
         </div>
         <div className="s-field"><label htmlFor="f-job-type">Type of engineering work</label>
           <select id="f-job-type" name="job_type" value={jobType} onChange={(e) => setJobType(e.target.value)}>
-            <option value="service">Service, framework, or data migration</option>
+            {!repositoryOnly && <option value="service">Service, framework, or data migration</option>}
             <option value="workspace">Autonomous repository engineering</option>
           </select>
           <span className="hint">{jobType === "workspace"

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BeginForm } from "@/components/site/BeginForm";
 import { SiteShell } from "@/components/site/SiteShell";
 import { EXAMPLES } from "@/components/site/samples";
+import { config } from "@/lib/config";
 import "../site.css";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,10 @@ export default async function Start({ searchParams }: { searchParams: Promise<Re
             <h1 className="h2">Tell us where your software <em>needs to go</em>.</h1>
           </div>
           <div className="begin-grid">
-            <BeginForm prefill={ex ? { from: ex.from, to: ex.to, goal: ex.goal } : undefined} githubStatus={str(sp.github)} inquiryId={str(sp.inquiry)} />
+            <div>
+              {config.publicJobsRequireApproval && <p className="fine">Submit your source and objective to create a private workspace. An operator reviews each request before paid assessment begins.</p>}
+              <BeginForm prefill={ex ? { from: ex.from, to: ex.to, goal: ex.goal } : undefined} githubStatus={str(sp.github)} inquiryId={str(sp.inquiry)} repositoryOnly={config.repositoryJobsOnly} />
+            </div>
             <aside className="next" aria-label="What happens next">
               <h3>What happens next</h3>
               <ol>
