@@ -1,15 +1,15 @@
 /* The job page's stage scenes: the same six geese as the code walk (components/site/goose/live.ts), on a different
    ground for each stage of the job. Everything is drawn on one canvas that covers the paper page.
-     plan     a lawn of grass at night: walk a little, stop and eat, look up, walk on
+     plan     a lawn of grass at night: walk a little, stop and eat, look up, walk on; every so often they huddle to talk it over
      agree    meadow at dusk: rest and preen, one sentinel faces the banner above the run
-     answer   meadow: everyone looks up at the question above the run
+     answer   meadow: lined up looking at the question above the run, heads tilting; now and then one paces aside and back
      founder  meadow: rest and preen, one keeps watch
      record   wet mud: walk in single file leaving deep prints that stay
      freeze   ice: careful steps and the odd slip; wherever a goose stands, the ice cracks under it (one crack per check)
-     package  meadow with reeds: sheets of paper lie around; each goose fetches one in its bill and weaves it into the nest
+     package  meadow with reeds: sheets of paper flutter down; each goose fetches one in its bill and drops it into the nest
      deliver  the finished nest with a big egg in it (the package), guarded; one sentinel faces the banner
-     complete night water like the homepage: they land and float, with ripples
-     nofit    night water: the flock flies off the top of the page
+     complete blue night water: they land and float, with ripples
+     nofit    blue night water: the flock flies off the top of the page
    On each new scene the flock flies in from the top and lands, then goes about its business.
    Birds on the ground never overlap: they pick spots away from each other, steer round each other while walking,
    and are pushed apart if they ever get too close. */
@@ -25,11 +25,14 @@ type Bird = GoosePose & {
   mode: "enter" | "walk" | "graze" | "stand" | "sit" | "fly" | "swim" | "slip" | "gone";
   t: number; dur: number; tx: number; ty: number; face: number; carry: boolean; job: number;
   fx: number; fy: number; sx: number; sy: number; ft: number; fdur: number; landSwim: boolean;
+  hx: number; hy: number; // answer: its place in the line
 };
 type Print = { x: number; y: number; h: number; a: number; deep?: boolean };
 type Ring = { x: number; y: number; r: number; age: number; kind: "ripple" };
 type Crack = { x: number; y: number; age: number; arms: { pts: [number, number][]; at: number }[] };
-type Paper = { x: number; y: number; rot: number; claimed: Bird | null };
+type Paper = { x: number; y: number; rot: number; claimed: Bird | null; age: number };
+type Drop = { x0: number; y0: number; x1: number; y1: number; rot: number; t: number };
+type Strand = { x0: number; y0: number; x1: number; y1: number; paper: boolean; c: string; w: number; age: number };
 
 let seed = 1;
 const srnd = (a = 0, b = 1) => { seed = (seed * 16807) % 2147483647; return a + (b - a) * ((seed - 1) / 2147483646); };
@@ -41,8 +44,9 @@ export function createScenes(canvas: HTMLCanvasElement, reduceMotion: boolean) {
   const S = {
     kind: null as SceneKind | null, w: 1, h: 1, dpr: 1, sc: 0.6, t: 0, visible: false,
     birds: [] as Bird[], prints: [] as Print[], rings: [] as Ring[], grazed: [] as { x: number; y: number; r: number }[],
-    nest: { x: 0, y: 0, r: 60, strands: [] as { x0: number; y0: number; x1: number; y1: number; paper: boolean; c: string; w: number }[] },
-    cracks: [] as Crack[], papers: [] as Paper[], paperT: 0,
+    nest: { x: 0, y: 0, r: 60, strands: [] as Strand[] },
+    cracks: [] as Crack[], papers: [] as Paper[], paperT: 0, drops: [] as Drop[],
+    huddle: false, huddleT: 0, // plan: the flock gathers in a ring now and then
     sentinel: 0, track: 0,
   };
 
@@ -113,9 +117,15 @@ export function createScenes(canvas: HTMLCanvasElement, reduceMotion: boolean) {
     }
   }
   function paintWater(w: number, h: number) {
-    const g = gctx.createRadialGradient(w * 0.5, h * 0.35, 20, w * 0.5, h * 0.5, Math.max(w, h) * 0.7);
-    g.addColorStop(0, "#1D1912"); g.addColorStop(1, "#0C0D0C");
+    const g = gctx.createRadialGradient(w * 0.5, h * 0.35, 20, w * 0.5, h * 0.5, Math.max(w, h) * 0.75);
+    g.addColorStop(0, "#1F4766"); g.addColorStop(0.5, "#123049"); g.addColorStop(1, "#08182A");
     gctx.fillStyle = g; gctx.fillRect(0, 0, w, h);
+    gctx.lineCap = "round";
+    for (let i = 0; i < (w * h) / 3500; i++) { // faint swells catching the light
+      const x = srnd(0, w), y = srnd(0, h), ww = srnd(18, 70);
+      gctx.strokeStyle = `rgba(170,210,235,${srnd(0.04, 0.12)})`; gctx.lineWidth = srnd(0.8, 1.6);
+      gctx.beginPath(); gctx.moveTo(x, y); gctx.quadraticCurveTo(x + ww / 2, y - srnd(1, 4), x + ww, y); gctx.stroke();
+    }
   }
 
   // ------------------------------------------------------------------ birds
@@ -125,7 +135,7 @@ export function createScenes(canvas: HTMLCanvasElement, reduceMotion: boolean) {
     S.birds = sizes.map((size, id) => ({
       id, size, x: 0, y: -100, heading: DOWN, scale: S.sc * size, speed: 0, hz: rnd(2.6, 3.3) / Math.sqrt(size), seed: rnd(0, 100),
       alt: 0, sigma: 0, flapT: rnd(0, TAU), flapAmp: 0.7, gait: rnd(0, 1), walking: 0, neckYaw: 0, reach: 0, swim: false,
-      mode: "stand", t: 0, dur: 1, tx: 0, ty: 0, face: DOWN, carry: false, job: 0, fx: 0, fy: 0, sx: 0, sy: 0, ft: 0, fdur: 1, landSwim: false,
+      mode: "stand", t: 0, dur: 1, tx: 0, ty: 0, face: DOWN, carry: false, job: 0, fx: 0, fy: 0, sx: 0, sy: 0, ft: 0, fdur: 1, landSwim: false, hx: 0, hy: 0,
     }));
   }
   /** Fly in from above the page and land at (x, y). */
@@ -204,8 +214,8 @@ export function createScenes(canvas: HTMLCanvasElement, reduceMotion: boolean) {
   /** Where each bird lands when the scene starts, and what it does then. */
   function startScene() {
     S.prints = []; S.rings = []; S.cracks = []; S.track = 0; S.t = 0; S.paperT = 0;
-    S.papers = [];
-    if (S.kind === "package") for (let i = 0; i < 12; i++) dropPaper();
+    S.papers = []; S.drops = []; S.huddle = false; S.huddleT = rnd(14, 20);
+    if (S.kind === "package") for (let i = 0; i < 10; i++) dropPaper(99);
     const k = S.kind!;
     const n = S.birds.length;
     S.sentinel = 4;
@@ -213,7 +223,7 @@ export function createScenes(canvas: HTMLCanvasElement, reduceMotion: boolean) {
       let x = S.w * (0.2 + 0.6 * (i / (n - 1))), y = S.h * (0.35 + 0.3 * ((i % 2) ? 1 : 0)), swim = false;
       if (k === "plan" || k === "package") { const c = [[0.22, 0.3], [0.5, 0.25], [0.78, 0.32], [0.3, 0.68], [0.62, 0.72], [0.85, 0.62]][i]; x = S.w * c[0] + rnd(-25, 25); y = S.h * c[1] + rnd(-20, 20); }
       if (k === "agree" || k === "founder" || k === "deliver") { const s = k === "deliver" ? guardSpot(i) : restSpots()[i]; x = s[0]; y = s[1]; }
-      if (k === "answer") { x = S.w * (0.18 + 0.64 * (i / (n - 1))); y = S.h * (0.55 + (i % 2) * 0.12); }
+      if (k === "answer") { x = S.w * (0.16 + 0.68 * (i / (n - 1))); y = S.h * 0.34 + (i % 2) * 10; b.hx = x; b.hy = y; b.job = 0; }
       if (k === "record") { x = S.w * 0.08 + i * 40 * (S.sc / 0.6); y = trackY(0) + (i % 2) * 3; b.job = 0; }
       if (k === "complete" || k === "nofit") { x = S.w * (0.2 + 0.6 * ((i * 0.37) % 1)); y = S.h * (0.32 + 0.45 * ((i * 0.61) % 1)); swim = true; }
       if (k === "nofit") { b.x = x; b.y = y; b.swim = true; b.mode = "swim"; b.alt = 0; b.sigma = 0; b.t = -1.2 - i * 0.25; return; }
@@ -230,9 +240,9 @@ export function createScenes(canvas: HTMLCanvasElement, reduceMotion: boolean) {
   /** A bird has landed (or finished a task): decide what it does next for this scene. */
   function arrive(b: Bird) {
     const k = S.kind!;
-    if (k === "plan") return setMode(b, Math.random() < 0.75 ? "graze" : "stand", rnd(3, 7));
+    if (k === "plan") return S.huddle ? setMode(b, "stand", 99) : setMode(b, Math.random() < 0.75 ? "graze" : "stand", rnd(3, 7));
     if (k === "agree" || k === "founder") return setMode(b, b.id === S.sentinel ? "stand" : "sit", 99);
-    if (k === "answer") return setMode(b, "stand", 99);
+    if (k === "answer") return setMode(b, "stand", b.job === 1 ? rnd(1.5, 2.5) : rnd(5, 12)); // job 1: stepped aside, about to go back
     if (k === "deliver") return setMode(b, "stand", 99);
     if (k === "record") { goTo(b, S.w - 30 - b.id * 6, b.y); return; }
     if (k === "freeze") return setMode(b, "stand", rnd(1.2, 2.4));
@@ -270,13 +280,18 @@ export function createScenes(canvas: HTMLCanvasElement, reduceMotion: boolean) {
       if (k === "freeze" && Math.random() < dt * 0.25) { setMode(b, "slip", 0.7); return; }
       if (k === "record" && b.x > S.w - 60) { hopBack(b); return; }
       if (done) {
-        if (k === "package" && b.job === 1) { b.carry = false; addStrands(5, true); b.job = 2; return setMode(b, "graze", rnd(1, 2)); }
+        if (k === "package" && b.job === 1) { // at the rim: let the sheet fall into the nest
+          const c = Math.cos(b.heading), s = Math.sin(b.heading), bx = b.x + c * 46 * b.scale, by = b.y + s * 46 * b.scale;
+          const a = Math.atan2((by - S.nest.y) / 0.78, bx - S.nest.x), rr = S.nest.r * 0.72;
+          S.drops.push({ x0: bx, y0: by, x1: S.nest.x + Math.cos(a) * rr, y1: S.nest.y + Math.sin(a) * rr * 0.78, rot: b.heading + 1.2, t: 0 });
+          b.carry = false; b.job = 2; return setMode(b, "stand", rnd(0.8, 1.4));
+        }
         if (k === "package" && b.job === 0) { // at the sheet: pick it up and take it to the nest
           const paper = S.papers.find((pp) => pp.claimed === b);
           if (paper) S.papers.splice(S.papers.indexOf(paper), 1);
           b.carry = true; b.job = 1;
           const a = Math.atan2(b.y - S.nest.y, b.x - S.nest.x) + rnd(-0.4, 0.4);
-          goTo(b, S.nest.x + Math.cos(a) * S.nest.r * 1.15, S.nest.y + Math.sin(a) * S.nest.r * 0.95);
+          goTo(b, S.nest.x + Math.cos(a) * (S.nest.r + 34 * b.scale), S.nest.y + Math.sin(a) * (S.nest.r * 0.78 + 34 * b.scale));
           return;
         }
         if (k === "package" && b.job === 3) return setMode(b, "graze", rnd(1.5, 3));
@@ -309,7 +324,25 @@ export function createScenes(canvas: HTMLCanvasElement, reduceMotion: boolean) {
       return;
     }
     // stand
-    if (k === "answer" || ((k === "agree" || k === "deliver" || k === "founder") && b.id === S.sentinel)) { turnTo(b, UP + Math.sin(S.t * 0.3 + b.seed) * 0.1, dt); idle(b, dt, 0.25); return; }
+    if (k === "answer") { // looking up at the question, heads tilting as if puzzling it out
+      turnTo(b, UP + Math.sin(S.t * 0.3 + b.seed) * 0.08, dt); idle(b, dt, 0);
+      const tilt = Math.sin(S.t * 0.9 + b.seed * 3) > 0.55 ? Math.sign(Math.sin(b.seed * 7)) * 0.7 : 0;
+      b.neckYaw = (b.neckYaw ?? 0) + (tilt - (b.neckYaw ?? 0)) * Math.min(1, dt * 4);
+      if (b.t > b.dur) {
+        if (b.job === 1) { b.job = 0; goTo(b, b.hx, b.hy); }
+        else if (!S.birds.some((o) => o !== b && o.job === 1)) { b.job = 1; goTo(b, b.hx + (Math.random() < 0.5 ? -1 : 1) * rnd(40, 70), b.hy + rnd(50, 90)); }
+        else b.t = 0;
+      }
+      return;
+    }
+    if (k === "plan" && S.huddle) { // in the huddle: face the middle, heads bobbing as they talk
+      const c = huddleCentre(); turnTo(b, Math.atan2(c[1] - b.y, c[0] - b.x), dt); idle(b, dt, 0);
+      const talk = Math.sin(S.t * 2.2 + b.seed * 5);
+      b.reach = talk > 0.6 ? 0.25 * (talk - 0.6) / 0.4 : 0;
+      b.neckYaw = Math.sin(S.t * 0.7 + b.seed) * 0.25;
+      return;
+    }
+    if ((k === "agree" || k === "deliver" || k === "founder") && b.id === S.sentinel) { turnTo(b, UP + Math.sin(S.t * 0.3 + b.seed) * 0.1, dt); idle(b, dt, 0.25); return; }
     if (k === "deliver") { const a = Math.atan2(b.y - S.nest.y, b.x - S.nest.x); turnTo(b, a, dt); idle(b, dt, 0.5); return; }
     idle(b, dt, 0.6);
     if (k === "freeze" && b.t > 0.5) { // the ice cracks under its feet
@@ -357,6 +390,30 @@ export function createScenes(canvas: HTMLCanvasElement, reduceMotion: boolean) {
     }
   }
 
+  let hc: [number, number] = [0, 0];
+  const huddleCentre = () => hc;
+  /** Plan: every 18-28 s the flock gathers in a ring to talk it over for 6-9 s, then goes back to grazing. */
+  function planHuddle(dt: number) {
+    S.huddleT -= dt;
+    if (S.huddleT > 0) return;
+    const ground = S.birds.filter((b) => b.mode !== "enter" && b.mode !== "gone");
+    if (ground.length < S.birds.length) { S.huddleT = 1; return; }
+    if (!S.huddle) {
+      const R = room() * 1.18;
+      let cx = 0, cy = 0; for (const b of ground) { cx += b.x; cy += b.y; }
+      cx = clamp(cx / ground.length, R + 50, S.w - R - 50); cy = clamp(cy / ground.length, R + 50, S.h - R - 50);
+      hc = [cx, cy];
+      // keep their order round the ring so nobody has to cross through the middle
+      const sorted = [...ground].sort((a, c) => Math.atan2(a.y - cy, a.x - cx) - Math.atan2(c.y - cy, c.x - cx));
+      const a0 = Math.atan2(sorted[0].y - cy, sorted[0].x - cx);
+      sorted.forEach((b, i) => { const a = a0 + (i / sorted.length) * TAU; goTo(b, cx + Math.cos(a) * R, cy + Math.sin(a) * R * 0.9); });
+      S.huddle = true; S.huddleT = rnd(6, 9) + 5; // time to walk over plus the talk itself
+    } else {
+      S.huddle = false; S.huddleT = rnd(18, 28);
+      for (const b of ground) setMode(b, "stand", rnd(0.2, 1.4)); // they drift off one by one (next() sends each to a free spot)
+    }
+  }
+
   /** Pick the bird's next task in the scenes where they keep moving. */
   function next(b: Bird) {
     const k = S.kind!;
@@ -384,12 +441,13 @@ export function createScenes(canvas: HTMLCanvasElement, reduceMotion: boolean) {
     b.ft = -b.id * 0.15; b.fdur = 2.2; b.mode = "enter"; b.alt = 0.6; b.sigma = 1; b.landSwim = false;
   }
   /** A sheet of paper somewhere on the grass, away from the nest and the edges. */
-  function dropPaper() {
-    for (let t = 0; t < 30; t++) {
-      const x = rnd(50, S.w - 50), y = rnd(50, S.h - 70);
-      if (Math.hypot(x - S.nest.x, (y - S.nest.y) * 1.2) < S.nest.r + 70) continue;
-      if (S.papers.some((pp) => Math.hypot(pp.x - x, pp.y - y) < 50)) continue;
-      S.papers.push({ x, y, rot: rnd(-0.8, 0.8), claimed: null });
+  function dropPaper(age = 0) {
+    for (let t = 0; t < 40; t++) {
+      const x = rnd(60, S.w - 60), y = rnd(60, S.h - 70);
+      if (Math.hypot(x - S.nest.x, (y - S.nest.y) * 1.2) < S.nest.r + 80) continue;
+      if (S.papers.some((pp) => Math.hypot(pp.x - x, pp.y - y) < 70)) continue;
+      if (age < 1 && S.birds.some((b) => b.mode !== "gone" && Math.hypot(b.x - x, b.y - y) < room() * 1.3)) continue; // not under a goose
+      S.papers.push({ x, y, rot: rnd(-0.8, 0.8), claimed: null, age });
       return;
     }
   }
@@ -419,7 +477,18 @@ export function createScenes(canvas: HTMLCanvasElement, reduceMotion: boolean) {
       const a = rnd(0, TAU), rr = N.r * rnd(0.55, 1), len = rnd(14, 30), t = a + DOWN + rnd(-0.5, 0.5);
       const px = N.x + Math.cos(a) * rr, py = N.y + Math.sin(a) * rr * 0.78, paper = Math.random() < (paperMostly ? 0.45 : 0.2);
       N.strands.push({ x0: px - Math.cos(t) * len / 2, y0: py - Math.sin(t) * len / 2 * 0.78, x1: px + Math.cos(t) * len / 2, y1: py + Math.sin(t) * len / 2 * 0.78,
-        paper, c: `rgba(${110 + rnd(0, 50)},${84 + rnd(0, 40)},${50 + rnd(0, 25)},0.9)`, w: paper ? 3 : rnd(1, 2) });
+        paper, c: `rgba(${110 + rnd(0, 50)},${84 + rnd(0, 40)},${50 + rnd(0, 25)},0.9)`, w: paper ? 3 : rnd(1, 2), age: 99 });
+    }
+  }
+  /** A dropped sheet settles into the nest where it fell: a few paper and twig strands there, fading in. */
+  function addStrandsAt(x: number, y: number, n: number) {
+    const N = S.nest, a0 = Math.atan2((y - N.y) / 0.78, x - N.x);
+    for (let i = 0; i < n; i++) {
+      if (N.strands.length >= 320) N.strands.splice(0, 1);
+      const a = a0 + rnd(-0.35, 0.35), rr = N.r * rnd(0.6, 0.95), len = rnd(14, 26), t = a + DOWN + rnd(-0.5, 0.5);
+      const px = N.x + Math.cos(a) * rr, py = N.y + Math.sin(a) * rr * 0.78, paper = i < 2 || Math.random() < 0.3;
+      N.strands.push({ x0: px - Math.cos(t) * len / 2, y0: py - Math.sin(t) * len / 2 * 0.78, x1: px + Math.cos(t) * len / 2, y1: py + Math.sin(t) * len / 2 * 0.78,
+        paper, c: `rgba(${110 + rnd(0, 50)},${84 + rnd(0, 40)},${50 + rnd(0, 25)},0.9)`, w: paper ? 3 : rnd(1, 2), age: -i * 0.06 });
     }
   }
 
@@ -428,7 +497,7 @@ export function createScenes(canvas: HTMLCanvasElement, reduceMotion: boolean) {
   function drawRing(r: Ring) {
     const a = 0.28 * (1 - r.age / 3);
     if (a <= 0) return;
-    ctx.strokeStyle = `rgba(210,160,105,${a})`; ctx.lineWidth = 1;
+    ctx.strokeStyle = `rgba(190,220,240,${a * 1.4})`; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.ellipse(r.x, r.y, r.r, r.r * 0.62, 0, 0, TAU); ctx.stroke();
   }
   function drawCrack(c: Crack) {
@@ -447,11 +516,23 @@ export function createScenes(canvas: HTMLCanvasElement, reduceMotion: boolean) {
     ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.beginPath(); ctx.arc(c.x, c.y, 5 * (S.sc / 0.6), 0, TAU); ctx.fill();
   }
   function drawPaper(pp: Paper) {
-    const k = S.sc / 0.6;
-    ctx.save(); ctx.translate(pp.x, pp.y); ctx.rotate(pp.rot); ctx.scale(k, k);
-    ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(-9, -11, 20, 25);
+    const k = S.sc / 0.6, u = smooth(0, 1, clamp(pp.age / 0.9, 0, 1)); // flutters down and settles
+    const lift = (1 - u) * 26, sway = Math.sin(pp.age * 9) * (1 - u) * 0.5;
+    ctx.save(); ctx.globalAlpha = clamp(pp.age / 0.35, 0, 1);
+    ctx.fillStyle = "rgba(0,0,0,0.3)";
+    ctx.save(); ctx.translate(pp.x, pp.y); ctx.rotate(pp.rot); ctx.scale(k * (0.7 + 0.3 * u), k * (0.7 + 0.3 * u)); ctx.fillRect(-9, -11, 20, 25); ctx.restore();
+    ctx.translate(pp.x, pp.y - lift); ctx.rotate(pp.rot + sway); ctx.scale(k, k);
     ctx.fillStyle = "#F2ECE1"; ctx.fillRect(-10, -13, 20, 25);
     ctx.fillStyle = "rgba(42,36,29,0.4)"; for (let i = -9; i < 10; i += 3.5) ctx.fillRect(-7, i, i % 7 ? 11 : 14, 1.1);
+    ctx.restore();
+  }
+  /** A sheet falling from a goose's bill into the nest: it tips, shrinks a little and lands on the rim. */
+  function drawDrop(d: Drop) {
+    const u = smooth(0, 1, clamp(d.t / 0.5, 0, 1)), k = S.sc / 0.6;
+    const x = lerp(d.x0, d.x1, u), y = lerp(d.y0, d.y1, u) - Math.sin(Math.PI * u) * 10;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(d.rot + u * 0.9); ctx.scale(k * (1 - 0.25 * u), k * (1 - 0.25 * u));
+    ctx.fillStyle = "#F2ECE1"; ctx.fillRect(-11, -4 - 5 * u, 22, 8 + 10 * u); // opens out as it falls
+    ctx.fillStyle = "rgba(42,36,29,0.45)"; for (let i = -8; i < 9; i += 4) ctx.fillRect(i, -1, 2.4, 2);
     ctx.restore();
   }
   function drawEgg(x: number, y: number, r: number) {
@@ -467,7 +548,12 @@ export function createScenes(canvas: HTMLCanvasElement, reduceMotion: boolean) {
     const N = S.nest;
     ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.beginPath(); ctx.ellipse(N.x + 4, N.y + 6, N.r * 1.05, N.r * 0.8, 0, 0, TAU); ctx.fill();
     ctx.lineCap = "round";
-    for (const s of N.strands) { ctx.strokeStyle = s.paper ? "rgba(242,236,225,0.9)" : s.c; ctx.lineWidth = s.w; ctx.beginPath(); ctx.moveTo(s.x0, s.y0); ctx.lineTo(s.x1, s.y1); ctx.stroke(); }
+    for (const s of N.strands) {
+      if (s.age <= 0) continue;
+      ctx.globalAlpha = Math.min(1, s.age / 0.5);
+      ctx.strokeStyle = s.paper ? "rgba(242,236,225,0.9)" : s.c; ctx.lineWidth = s.w; ctx.beginPath(); ctx.moveTo(s.x0, s.y0); ctx.lineTo(s.x1, s.y1); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
     ctx.fillStyle = "#2A2014"; ctx.beginPath(); ctx.ellipse(N.x, N.y, N.r * 0.5, N.r * 0.38, 0, 0, TAU); ctx.fill();
     if (done) drawEgg(N.x, N.y, N.r); // the package: a big egg in the finished nest
   }
@@ -494,7 +580,8 @@ export function createScenes(canvas: HTMLCanvasElement, reduceMotion: boolean) {
     for (const c of S.cracks) drawCrack(c);
     for (const pp of S.papers) drawPaper(pp);
     if (k === "package" || k === "deliver") drawNest(k === "deliver");
-    const shade = light ? "rgba(60,90,104,0.22)" : k === "record" ? "rgba(20,14,8,0.4)" : "rgba(0,0,0,0.35)";
+    for (const d of S.drops) drawDrop(d);
+    const shade = light ? "rgba(60,90,104,0.22)" : k === "record" ? "rgba(20,14,8,0.4)" : k === "complete" || k === "nofit" ? "rgba(2,12,24,0.45)" : "rgba(0,0,0,0.35)";
     const vis = S.birds.filter((b) => b.mode !== "gone").sort((a, b) => (a.alt ?? 0) - (b.alt ?? 0));
     for (const b of vis) drawGooseShadow(ctx, b, shade);
     for (const b of vis) { drawGoose(ctx, b); if (b.carry) drawCarry(b); }
@@ -504,6 +591,7 @@ export function createScenes(canvas: HTMLCanvasElement, reduceMotion: boolean) {
   function update(dt: number) {
     S.t += dt;
     const k = S.kind;
+    if (k === "plan") planHuddle(dt);
     for (const b of S.birds) updateBird(b, dt);
     separate(dt);
     // prints fade on grass and ice; the mud keeps them
@@ -515,9 +603,13 @@ export function createScenes(canvas: HTMLCanvasElement, reduceMotion: boolean) {
     }
     S.rings = S.rings.filter((r) => r.age < 3);
     for (const c of S.cracks) c.age += dt;
-    if (k === "package") { // more sheets drift onto the grass as the old ones are taken
+    if (k === "package") { // more sheets flutter onto the grass as the old ones are taken
+      for (const pp of S.papers) pp.age += dt;
+      for (const st of S.nest.strands) if (st.age < 99) st.age += dt;
+      for (const d of S.drops) { d.t += dt; if (d.t >= 0.5) addStrandsAt(d.x1, d.y1, 5); }
+      S.drops = S.drops.filter((d) => d.t < 0.5);
       S.paperT += dt;
-      if (S.paperT > 2.5 && S.papers.filter((pp) => !pp.claimed).length < 6) { S.paperT = 0; dropPaper(); }
+      if (S.paperT > 1.8 && S.papers.filter((pp) => !pp.claimed).length < 7) { S.paperT = 0; dropPaper(); }
     }
   }
 
