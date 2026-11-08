@@ -56,4 +56,7 @@ test("opt-outs are read from the reply, not the quoted footer; bounces and auto-
   assert.equal(autoReplyKind("Mail Delivery Subsystem <mailer-daemon@googlemail.com>", "Delivery Status Notification (Failure)"), "bounce");
   assert.equal(autoReplyKind("Jane <jane@acme.io>", "Automatic reply: Upgrading Acme"), "auto");
   assert.equal(autoReplyKind("Jane <jane@acme.io>", "Re: Upgrading Acme"), null);
+  assert.equal(autoReplyKind("B12 Customer Success Team <hello@b12.io>", "We received your request!", "Thanks for reaching out. We've received your message, and a member of our Support team will get back to you within 1-2 days."), "auto");
+  assert.equal(autoReplyKind("Help <help@acme.io>", "Re: Upgrading Acme [Ticket #48213]"), "auto");
+  assert.equal(autoReplyKind("Jane <jane@acme.io>", "Re: Upgrading Acme", "Thanks, we have received your note and would like to talk next week."), null);
 });

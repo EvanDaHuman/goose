@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 import { after, before, test } from "node:test";
 import { Webhook } from "svix";
 import { one, pool, q } from "../../lib/db";
-import { cancelOutreach, pollReplies, queueOutreach, sendOutreach, setOutreachPolicy, serviceOutreach } from "../../lib/outreach";
+import { cancelOutreach, outreachPausedUntil, pollReplies, queueOutreach, sendOutreach, setOutreachPolicy, serviceOutreach } from "../../lib/outreach";
 import { POST as webhook } from "../../app/api/webhooks/agentmail/route";
 
 const env: Record<string, string> = {
@@ -19,13 +19,14 @@ const realFetch = globalThis.fetch;
 const sent: any[] = [];
 let threads: Record<string, any[]> = {};
 let failNext: number | null = null;
+let failBody = "nope";
 
 before(() => {
   Object.assign(process.env, env);
   globalThis.fetch = (async (input: any, init: any = {}) => {
     const url = String(input);
     if (url.endsWith("/messages/send")) {
-      if (failNext) { const s = failNext; failNext = null; return new Response("nope", { status: s }); }
+      if (failNext) { const s = failNext; failNext = null; return new Response(failBody, { status: s }); }
       const body = JSON.parse(init.body); const n = sent.push(body);
       return Response.json({ message_id: `<m${n}@agentmail>`, thread_id: `t${n}` });
     }
@@ -152,4 +153,22 @@ test("the automatic policy needs the exact phrase, then sends one High-fit prosp
   await serviceOutreach(Date.now() + 30 * 60_000);
   assert.equal((await one<any>("SELECT status FROM prospects WHERE id=$1", [manual.id]))!.status, "draft_ready", "only research-agent prospects are sent automatically");
   await setOutreachPolicy({ enabled: false });
+});
+
+test("a provider rate limit queues the exact message again and pauses all sending until the stated time", async () => {
+  await q("UPDATE outreach_messages SET authorized_at=now()-interval '2 days' WHERE NOT is_test");
+  const p = await prospect("Limited Co", "hello@limited.example");
+  const m = await queueOutreach(p.id);
+  const until = new Date(Date.now() + 3 * 3_600_000).toISOString();
+  failNext = 429; failBody = JSON.stringify({ name: "RateLimitError", message: `New account recipient limit exceeded. The limit rises to 25 at ${until} and lifts later.` });
+  await assert.rejects(sendOutreach(m.id, "Send this exact message"), /paused/);
+  const row = (await one<any>("SELECT status,authorized_at FROM outreach_messages WHERE id=$1", [m.id]))!;
+  assert.equal(row.status, "draft"); assert.equal(row.authorized_at, null);
+  assert.equal(await outreachPausedUntil(), until);
+  const before = sent.length;
+  await assert.rejects(sendOutreach(m.id, "Send this exact message"), /paused/);
+  assert.equal(sent.length, before, "nothing is attempted while paused");
+  await q("UPDATE settings SET value=to_jsonb($1::text) WHERE key='outreach.paused_until'", [new Date(Date.now() - 1000).toISOString()]);
+  await sendOutreach(m.id, "Send this exact message");
+  assert.deepEqual(sent.at(-1).to, ["hello@limited.example"]);
 });

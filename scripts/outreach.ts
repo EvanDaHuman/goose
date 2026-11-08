@@ -8,7 +8,7 @@
 //   npm run outreach -- replies            poll AgentMail for replies to sent outreach
 //   npm run outreach -- policy on <cap> [High|Medium] [spacing minutes] | policy off
 import { one, pool, q } from "../lib/db";
-import { outreachDashboard, outreachStatus, pollReplies, POLICY_PHRASE, queueOutreach, resolveContact, sendOutreach, setOutreachPolicy } from "../lib/outreach";
+import { OutreachPaused, outreachPausedUntil, outreachDashboard, outreachStatus, pollReplies, POLICY_PHRASE, queueOutreach, resolveContact, sendOutreach, setOutreachPolicy } from "../lib/outreach";
 
 const [cmd = "status", arg, ...rest] = process.argv.slice(2);
 const id = () => { const n = Number(arg); if (!Number.isInteger(n) || n < 1) throw new Error("Give a prospect id"); return n; };
@@ -37,9 +37,12 @@ try {
     else { const r = await sendOutreach(m.id, "Send this exact message"); console.log(`Sent via AgentMail: ${r.messageId} (thread ${r.threadId})`); }
   } else if (cmd === "batch") {
     const gap = Math.max(3, Number(arg) || 10), ids = rest.map(Number).filter((n) => Number.isInteger(n) && n > 0);
-    for (const pid of ids) {
+    for (let i = 0; i < ids.length; i++) {
+      const pid = ids[i];
       // wait until no real outreach (from this batch or the worker's policy) went out in the last <gap> minutes
       for (;;) {
+        const paused = await outreachPausedUntil();
+        if (paused) { console.log(`${new Date().toISOString()} paused by AgentMail rate limit until ${paused}; waiting`); await new Promise((r) => setTimeout(r, Math.min(Date.parse(paused) - Date.now() + 5_000, 30 * 60_000))); continue; }
         const busy = await one("SELECT 1 FROM outreach_messages WHERE NOT is_test AND authorized_at > now() - make_interval(mins => $1)", [gap]);
         if (!busy) break;
         await new Promise((r) => setTimeout(r, 30_000));
@@ -48,7 +51,10 @@ try {
         const m = await queueOutreach(pid);
         const r = await sendOutreach(m.id, "Send this exact message");
         console.log(`${new Date().toISOString()} sent prospect ${pid} to ${m.delivered_to} (${r.messageId})`);
-      } catch (e) { console.log(`${new Date().toISOString()} prospect ${pid} not sent: ${(e as Error).message}`); }
+      } catch (e) {
+        if (e instanceof OutreachPaused) { ids.splice(ids.indexOf(pid) + 1, 0, pid); }   // retry this prospect once the pause ends
+        console.log(`${new Date().toISOString()} prospect ${pid} not sent: ${(e as Error).message}`);
+      }
     }
   } else if (cmd === "replies") {
     console.log(await pollReplies());
