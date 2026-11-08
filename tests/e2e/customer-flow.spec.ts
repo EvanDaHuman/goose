@@ -79,6 +79,14 @@ test("a customer completes assessment, verified delivery, test payment, support,
   const artifactUrl = new URL((await delivery.getByRole("link", { name: "Download the package" }).getAttribute("href"))!, page.url());
   artifactUrl.search = "";
   expect((await page.request.get(artifactUrl.toString())).status()).toBe(404);
+  artifactUrl.search = "?ops=1";
+  expect((await page.request.get(artifactUrl.toString())).status()).toBe(401);
+  const privateJobId = new URL(page.url()).pathname.split("/").pop()!;
+  expect((await page.request.get(`/api/jobs/${privateJobId}/source?ops=1&path=clinic%2Fsettings.py`)).status()).toBe(401);
+  expect((await page.request.get(`/jobs/${privateJobId}/result?ops=1`)).status()).toBe(404);
+  const origin = new URL(page.url()).origin;
+  expect((await page.request.post(`/api/jobs/${privateJobId}/preview?ops=1`, { headers: { Origin: origin }, data: { action: "start" } })).status()).toBe(401);
+  expect((await page.request.post(`/api/try/${privateJobId}?ops=1`, { headers: { Origin: origin }, data: { method: "GET", path: "/" } })).status()).toBe(401);
   await page.getByLabel("Your name").fill("Playwright Tester");
   await page.getByRole("button", { name: "Accept the delivery" }).locator("..").locator("..").getByRole("checkbox").check();
   await page.getByRole("button", { name: "Accept the delivery" }).click();
@@ -167,10 +175,10 @@ test("the operator view shows the job, its responsible agent and its spend", asy
 });
 
 test("a public inquiry links to a repository engineering assessment without changing its requested scope", async ({ page, context }) => {
-  const organization = `Routing systems browser test ${Date.now()}`;
+  const nonce = Date.now(), organization = `Routing systems browser test ${nonce}`, email = `routing-${nonce}@example.test`;
   await page.goto("/contact");
   await page.getByLabel("Your name").fill("Playwright Tester");
-  await page.getByLabel("Work email").fill("routing@example.test");
+  await page.getByLabel("Work email").fill(email);
   await page.getByLabel("Organization", { exact: true }).fill(organization);
   await page.getByLabel("What outcome do you need?").fill("Upgrade our dispatch routing engine while preserving its command interface and adding bounded route constraints.");
   await page.getByRole("checkbox", { name: /demonstration inquiry/ }).check();
@@ -181,7 +189,7 @@ test("a public inquiry links to a repository engineering assessment without chan
   await page.getByLabel("Business name").fill(organization);
   await page.getByLabel("Application name").fill("Dispatch routing engine");
   await page.getByLabel("Your name").fill("Playwright Tester");
-  await page.getByLabel("Email", { exact: true }).fill("routing@example.test");
+  await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Type of engineering work").selectOption("workspace");
   await expect(page.getByLabel("Target runtime (optional)")).toBeDisabled();
   await expect(page.getByLabel("Requested data changes (optional)")).toBeDisabled();

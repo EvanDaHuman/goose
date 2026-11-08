@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
+import { isOperatorRequest } from "@/lib/operatorAuth";
 import { TryPanel } from "@/components/TryPanel";
 import { CodeDiff } from "@/components/CodeDiff";
 import { KindTag, when } from "@/components/ui";
@@ -13,6 +15,7 @@ const AREA_ORDER = ["records", "relationships", "same_name", "money", "stock", "
 export default async function Result({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ t?: string; ops?: string }> }) {
   const { id } = await params;
   const { t, ops } = await searchParams;
+  if(ops==="1"&&!isOperatorRequest(new Request("http://goose.internal",{headers:await headers()})))notFound();
   const v = await resultView(id);
   if (!v || (v.job.customer_token !== t && ops !== "1")) notFound();
   const { job, assessment: a, scope, report, runs, repairs, moved } = v;
@@ -177,7 +180,7 @@ export default async function Result({ params, searchParams }: { params: Promise
           <>
             <p className="small muted">A copy of the delivered app is running on its own migrated database (sandboxed, port {v.showroom.port}).
               Interactive API docs: <a href={`http://127.0.0.1:${v.showroom.port}/docs`} target="_blank">127.0.0.1:{v.showroom.port}/docs</a></p>
-            <TryPanel jobId={id} cfg={tryCfg} />
+            <TryPanel jobId={id} cfg={tryCfg} token={t} ops={ops==="1"} />
           </>
         ) : <p className="muted small" style={{ margin: 0 }}>Not running right now. {ops === "1" ? "Start it from the operator view." : "Ask us for a live walkthrough."}</p>}
       </div>

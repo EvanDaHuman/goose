@@ -8,8 +8,8 @@ type Cfg = {
   customerKey: string; listKey: string; productKey: string; qtyKey: string; stockKey: string; customerId: number;
 };
 
-async function call(jobId: string, method: string, path: string, body?: unknown, idempotencyKey?: string) {
-  const r = await fetch(`/api/try/${jobId}`, { method: "POST", headers: { "content-type": "application/json" },
+async function request(auth: string,jobId: string, method: string, path: string, body?: unknown, idempotencyKey?: string) {
+  const r = await fetch(`/api/try/${jobId}?${auth}`, { method: "POST", headers: { "content-type": "application/json" },
     body: JSON.stringify({ method, path, body, idempotencyKey }) });
   const j = await r.json();
   if (!r.ok) throw new Error(j.error ?? "request failed");
@@ -17,7 +17,8 @@ async function call(jobId: string, method: string, path: string, body?: unknown,
 }
 
 /** Complete a real business task in the running upgraded app: take stock with an order, cancel it twice. */
-export function TryPanel({ jobId, cfg }: { jobId: string; cfg: Cfg }) {
+export function TryPanel({ jobId, cfg,token,ops=false }: { jobId: string; cfg: Cfg;token?:string;ops?:boolean }) {
+  const call=(id:string,method:string,path:string,body?:unknown,key?:string)=>request(ops?"ops=1":`t=${encodeURIComponent(token??"")}`,id,method,path,body,key);
   const [log, setLog] = useState<{ label: string; line: string; ok: boolean }[]>([]);
   const [busy, setBusy] = useState(false);
   const [product, setProduct] = useState<any>(null);

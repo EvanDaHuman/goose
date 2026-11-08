@@ -87,9 +87,18 @@ export async function createJob(opts: {
   goal?: string; constraints?: string[]; constraintNotes?: string | null; documents?: { file: string; name: string }[];
   migrationRequest?: { target: string; dataChanges: string };
   workspaceRequest?: boolean;
+  inquiryPublicId?: string;
 }) {
   const offer = await pilotOffer();
   return await tx(async (c) => {
+    // Claim the inquiry before allocating a job. A rejected or concurrent linkage must
+    // not leave a running job whose private customer token was never returned.
+    if (opts.inquiryPublicId) {
+      const inquiry = (await c.query("SELECT email,is_test,job_id FROM commerce_inquiries WHERE public_id=$1 FOR UPDATE", [opts.inquiryPublicId])).rows[0];
+      if (!inquiry || inquiry.email !== String(opts.contactEmail ?? "").trim().toLowerCase() || inquiry.is_test !== (opts.kind === "demo"))
+        throw new Error("Inquiry and job customer identity do not match");
+      if (inquiry.job_id) throw new Error("This inquiry is already linked to a job");
+    }
     const acc = await c.query(
       "INSERT INTO accounts (name, contact_name, contact_email, kind, acquired_via) VALUES ($1,$2,$3,$4,$5) RETURNING id",
       [opts.accountName, opts.contactName ?? null, opts.contactEmail ?? null, opts.kind, opts.acquiredVia ?? null]);
@@ -129,6 +138,10 @@ export async function createJob(opts: {
       const sha = crypto.createHash("sha256").update(fs.readFileSync(dest)).digest("hex");
       await c.query("INSERT INTO job_inputs (job_id, kind, filename, size_bytes, sha256, stored_path) VALUES ($1,$2,$3,$4,$5,$6)",
         [id, kind, docName ? docName.replace(/^doc-\d+-/, "") : path.basename(file), fs.statSync(dest).size, sha, dest]);
+    }
+    if (opts.inquiryPublicId) {
+      await c.query("UPDATE commerce_inquiries SET job_id=$2,status='linked' WHERE public_id=$1", [opts.inquiryPublicId,id]);
+      await c.query("INSERT INTO events(job_id,actor,kind,summary,detail,source,origin) VALUES($1,'coordinator','status','Customer inquiry linked to an executable engineering job.',$2,'local','tool')", [id,JSON.stringify({inquiry_public_id:opts.inquiryPublicId})]);
     }
     return { id, token };
   });

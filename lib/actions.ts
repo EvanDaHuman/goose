@@ -47,45 +47,76 @@ export async function addUpload(jobId: string, kind: "repository" | "database", 
 }
 
 export async function acceptProposal(jobId: string, version: number, byName: string, byEmail: string | null, statement: string) {
-  const job = must(await jobById(jobId));
-  if (job.stage !== "awaiting_acceptance") throw new Error("no proposal is waiting for acceptance");
-  const p = await one<{ id: number; scope: any; scope_sha256: string; status: string; price_cents: number }>(
-    "SELECT id, scope, scope_sha256, status, price_cents FROM proposals WHERE job_id = $1 AND version = $2", [jobId, version]);
-  if (!p || p.status !== "sent") throw new Error("that proposal version is not open");
-  // what the customer accepted is frozen: the tool scope the verifier reads, and (plan-driven jobs) the plan itself
-  const scopeFile = jobDir(jobId, "work", "scope.json");
-  const planned = p.scope?.plan ? p.scope : null;
-  for (const [file, data] of [[scopeFile, planned ? planned.detail ?? {} : p.scope], ...(planned ? [[jobDir(jobId, "work", "accepted-plan.json"), planned.plan]] : [])]) {
-    if (fs.existsSync(file)) fs.chmodSync(file, 0o644);
-    fs.writeFileSync(file, JSON.stringify(data, null, 2));
-    fs.chmodSync(file, 0o444);
-  }
-  await tx(async (c) => {
-    await c.query("UPDATE proposals SET status = 'accepted', decided_at = now() WHERE id = $1", [p.id]);
-    await c.query("INSERT INTO approvals (job_id, kind, decision, by_name, by_email, statement, reference) VALUES ($1,'proposal','accepted',$2,$3,$4,$5)",
+  const accepted = await tx(async (c) => {
+    const job = must((await c.query<Job>("SELECT * FROM jobs WHERE id=$1 FOR UPDATE", [jobId])).rows[0] ?? null);
+    if (job.stage !== "awaiting_acceptance") throw new Error("no proposal is waiting for acceptance");
+    const p = (await c.query<{ id: number; version: number; scope: any; scope_sha256: string; status: string; price_cents: number }>(
+      "SELECT id,version,scope,scope_sha256,status,price_cents FROM proposals WHERE job_id=$1 ORDER BY version DESC LIMIT 1 FOR UPDATE", [jobId])).rows[0];
+    if (!p || p.version !== version || p.status !== "sent") throw new Error("that proposal version is not open");
+    const prior = await c.query("SELECT 1 FROM approvals WHERE job_id=$1 AND kind='proposal' AND decision='accepted'", [jobId]);
+    if (prior.rowCount) throw new Error("a proposal has already been accepted");
+    // The same row lock protects the decision and the exact selected proposal's frozen files.
+    // A failed transaction cannot start engineering; a later valid acceptance replaces these files.
+    const planned = p.scope?.plan ? p.scope : null;
+    const files: [string, unknown][] = [[jobDir(jobId, "work", "scope.json"), planned ? planned.detail ?? {} : p.scope]];
+    if (planned) files.push([jobDir(jobId, "work", "accepted-plan.json"), planned.plan]);
+    fs.mkdirSync(jobDir(jobId, "work"), { recursive: true });
+    for (const [file, data] of files) {
+      const temporary = `${file}.${crypto.randomUUID()}.tmp`;
+      try {
+        fs.writeFileSync(temporary, JSON.stringify(data, null, 2), { mode: 0o444 });
+        fs.renameSync(temporary, file);
+      } finally { fs.rmSync(temporary, { force: true }); }
+    }
+    if (!planned) fs.rmSync(jobDir(jobId, "work", "accepted-plan.json"), { force: true });
+    await c.query("UPDATE proposals SET status='accepted',decided_at=now() WHERE id=$1", [p.id]);
+    await c.query("INSERT INTO approvals (job_id,kind,decision,by_name,by_email,statement,reference) VALUES ($1,'proposal','accepted',$2,$3,$4,$5)",
       [jobId, byName, byEmail, statement, `proposal v${version} sha256 ${p.scope_sha256}`]);
-    await c.query("UPDATE jobs SET stage = 'baseline', status = 'running', waiting_reason = NULL, next_run_at = now(), updated_at = now() WHERE id = $1", [jobId]);
+    await c.query("UPDATE jobs SET stage='baseline',status='running',waiting_reason=NULL,next_run_at=now(),updated_at=now() WHERE id=$1", [jobId]);
+    return p;
   });
-  await logEvent(jobId, "customer", "approval", `${byName} accepted proposal v${version} ($${(p.price_cents / 100).toLocaleString("en-US")} fixed).`,
+  await logEvent(jobId, "customer", "approval", `${byName} accepted proposal v${version} ($${(accepted.price_cents / 100).toLocaleString("en-US")} fixed).`,
     { version, statement }, { important: true });
 }
 
 export async function declineProposal(jobId: string, version: number, byName: string, reason: string) {
-  await q("UPDATE proposals SET status = 'declined', decided_at = now() WHERE job_id = $1 AND version = $2", [jobId, version]);
-  await q("INSERT INTO approvals (job_id, kind, decision, by_name, statement, reference) VALUES ($1,'proposal','declined',$2,$3,$4)",
-    [jobId, byName, reason || "Declined", `proposal v${version}`]);
-  await q("UPDATE jobs SET stage = 'declined', status = 'declined', waiting_reason = NULL, updated_at = now() WHERE id = $1", [jobId]);
+  await tx(async (c) => {
+    const job = must((await c.query<Job>("SELECT * FROM jobs WHERE id=$1 FOR UPDATE", [jobId])).rows[0] ?? null);
+    if (job.stage !== "awaiting_acceptance") throw new Error("no proposal is waiting for acceptance");
+    const proposal = (await c.query<{ id:number; version:number; status:string }>(
+      "SELECT id,version,status FROM proposals WHERE job_id=$1 ORDER BY version DESC LIMIT 1 FOR UPDATE", [jobId])).rows[0];
+    if (!proposal || proposal.version !== version || proposal.status !== "sent") throw new Error("that proposal version is not open");
+    const accepted = await c.query("SELECT 1 FROM approvals WHERE job_id=$1 AND kind='proposal' AND decision='accepted'", [jobId]);
+    if (accepted.rowCount) throw new Error("a proposal has already been accepted");
+    await c.query("UPDATE proposals SET status='declined',decided_at=now() WHERE id=$1", [proposal.id]);
+    await c.query("INSERT INTO approvals (job_id,kind,decision,by_name,statement,reference) VALUES ($1,'proposal','declined',$2,$3,$4)",
+      [jobId, byName, reason || "Declined", `proposal v${version}`]);
+    await c.query("UPDATE jobs SET stage='declined',status='declined',waiting_reason=NULL,updated_at=now() WHERE id=$1", [jobId]);
+  });
   await logEvent(jobId, "customer", "approval", `${byName} declined proposal v${version}.`, { reason }, { important: true });
 }
 
 export async function acceptDelivery(jobId: string, byName: string, byEmail: string | null, statement: string) {
-  const job = must(await jobById(jobId));
-  if (job.stage !== "delivered") throw new Error("nothing is waiting for delivery acceptance");
-  const pkg = await one<{ sha256: string }>("SELECT sha256 FROM artifacts WHERE job_id = $1 AND kind = 'delivery_package'", [jobId]);
-  await q("INSERT INTO approvals (job_id, kind, decision, by_name, by_email, statement, reference) VALUES ($1,'delivery','accepted',$2,$3,$4,$5)",
-    [jobId, byName, byEmail, statement, `delivery package sha256 ${pkg?.sha256 ?? "?"}`]);
-  await q("UPDATE jobs SET stage = 'invoice', status = 'running', waiting_reason = NULL, next_run_at = now(), updated_at = now() WHERE id = $1", [jobId]);
+  await tx(async (c) => {
+    const job = must((await c.query<Job>("SELECT * FROM jobs WHERE id=$1 FOR UPDATE", [jobId])).rows[0] ?? null);
+    if (job.stage !== "delivered") throw new Error("nothing is waiting for delivery acceptance");
+    const pkg = (await c.query<{ sha256:string; path:string }>(
+      "SELECT sha256,path FROM artifacts WHERE job_id=$1 AND kind='delivery_package' ORDER BY created_at DESC,id DESC LIMIT 1 FOR UPDATE", [jobId])).rows[0];
+    if (!pkg?.sha256 || !fs.existsSync(pkg.path) || !fs.statSync(pkg.path).isFile()) throw new Error("delivery package is missing or has no recorded integrity hash");
+    const actual = crypto.createHash("sha256").update(fs.readFileSync(pkg.path)).digest("hex");
+    if (actual !== pkg.sha256) throw new Error("delivery package integrity check failed; acceptance was not recorded");
+    const accepted = await c.query("SELECT 1 FROM approvals WHERE job_id=$1 AND kind='delivery' AND decision='accepted'", [jobId]);
+    if (accepted.rowCount) throw new Error("delivery has already been accepted");
+    await c.query("INSERT INTO approvals (job_id,kind,decision,by_name,by_email,statement,reference) VALUES ($1,'delivery','accepted',$2,$3,$4,$5)",
+      [jobId, byName, byEmail, statement, `delivery package sha256 ${pkg.sha256}`]);
+    await c.query("UPDATE jobs SET stage='invoice',status='running',waiting_reason=NULL,next_run_at=now(),updated_at=now() WHERE id=$1", [jobId]);
+  });
   await logEvent(jobId, "customer", "approval", `${byName} accepted the delivery.`, { statement }, { important: true });
+}
+
+export async function remainingSupportBudget(jobId: string, capMicroUsd: number) {
+  const spent = await jobSpend(jobId);
+  return Math.max(0, Math.min(500_000, capMicroUsd - spent.total));
 }
 
 export async function customerMessage(jobId: string, body: string) {
@@ -101,7 +132,8 @@ export async function customerMessage(jobId: string, body: string) {
     checks: run,
   };
   const answerer = job.pipeline >= 2 ? "coordinator" : "commercial";
-  const reply = await agents.answerCustomer({ jobId, stage: "support", attempt: msg!.id, budgetMicroUsd: 500_000 }, body, facts);
+  const supportBudget = await remainingSupportBudget(jobId, job.cost_limit_micro_usd);
+  const reply = await agents.answerCustomer({ jobId, stage: "support", attempt: msg!.id, budgetMicroUsd: supportBudget }, body, facts);
   await q("INSERT INTO messages (job_id, sender, body, in_reply_to, handled_by, needs_founder) VALUES ($1,$2,$3,$4,$5,$6)",
     [jobId, answerer, reply.answer, msg!.id, reply.by, reply.needs_founder]);
   await logEvent(jobId, answerer, "message", reply.needs_founder ? "Customer question passed to the founder." : "Answered a customer question.",
@@ -154,13 +186,20 @@ export async function retryStage(jobId: string, reason: string, minutes = 2) {
 
 /** Founder: inspect and plan again from the start (only before the customer accepted a proposal). */
 export async function replan(jobId: string, reason: string, minutes = 3) {
-  const job = must(await jobById(jobId));
-  if (!["intake", "inspect", "plan", "propose", "awaiting_info", "awaiting_acceptance"].includes(job.stage) && job.status !== "waiting_founder") {
-    throw new Error("a job can be planned again only before its proposal is accepted");
-  }
-  await q("DELETE FROM stage_runs WHERE job_id = $1 AND stage IN ('inspect', 'plan', 'propose', 'baseline')", [jobId]);
-  await q("UPDATE proposals SET status = 'superseded' WHERE job_id = $1 AND status IN ('sent', 'accepted')", [jobId]);
-  await q("UPDATE jobs SET stage = 'inspect', status = 'running', waiting_reason = NULL, round = round + 1, next_run_at = now(), updated_at = now() WHERE id = $1", [jobId]);
+  await tx(async (c) => {
+    const job = must((await c.query<Job & {lease_owner:string|null}>("SELECT * FROM jobs WHERE id=$1 FOR UPDATE", [jobId])).rows[0] ?? null) as Job & {lease_owner:string|null};
+    if (!["intake", "inspect", "assess", "plan", "propose", "awaiting_info", "awaiting_acceptance"].includes(job.stage)) {
+      throw new Error("a job can be planned again only before its proposal is accepted");
+    }
+    const accepted = await c.query(`SELECT 1 FROM proposals WHERE job_id=$1 AND status='accepted'
+      UNION ALL SELECT 1 FROM approvals WHERE job_id=$1 AND kind='proposal' AND decision='accepted'`, [jobId]);
+    if (accepted.rowCount) throw new Error("a job can be planned again only before its proposal is accepted");
+    if (job.lease_owner) throw new Error("wait for the active worker step to finish before replanning");
+    await c.query("UPDATE proposals SET status='superseded' WHERE job_id=$1 AND status='sent'", [jobId]);
+    // A new round gets new durable stage keys. Keep all prior assessment and verification evidence.
+    // Revalidate uploads so missing, replaced or previously rejected source never bypasses intake.
+    await c.query("UPDATE jobs SET stage='intake',status='running',waiting_reason=NULL,round=round+1,next_run_at=now(),updated_at=now() WHERE id=$1", [jobId]);
+  });
   await addIntervention(jobId, "replan", `Founder asked for a new inspection and plan: ${reason}`, undefined, minutes);
 }
 

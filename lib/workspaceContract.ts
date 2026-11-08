@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { repairEvidence } from "./migrationContract";
 
 export type Command = { argv: string[]; stdin?: string; timeout_seconds?: number };
 export type WorkspaceCheck = {
@@ -38,6 +39,7 @@ export function workspaceProblems(value: any): string[] {
   else {
     const ids = new Set();
     for (const check of value.checks) {
+      if (!check || typeof check !== "object" || Array.isArray(check)) { errors.push("Every check must be an executable check object"); continue; }
       if (!/^[a-zA-Z0-9_-]{1,60}$/.test(check?.id ?? "") || ids.has(check.id)) errors.push("Check ids must be unique simple identifiers");
       ids.add(check?.id);
       if (typeof check?.title !== "string" || !check.title.trim()) errors.push("Every check needs a description");
@@ -48,14 +50,26 @@ export function workspaceProblems(value: any): string[] {
       if (check?.kind === "requirement" && check.compare !== "exit" && !Object.hasOwn(check,"expected")) errors.push("New requirements need an explicit expected result");
       if (check?.exit_code !== undefined && (!Number.isInteger(check.exit_code) || check.exit_code < 0 || check.exit_code > 255)) errors.push("Exit code must be an integer from 0 to 255");
     }
-    if (!value.checks.some((c:any)=>c.kind==="preserve")) errors.push("At least one original behavior must be recorded");
+    if (!value.checks.some((c:any)=>c?.kind==="preserve")) errors.push("At least one original behavior must be recorded");
   }
   if (!Array.isArray(value.deliverables) || !value.deliverables.length || value.deliverables.length > 30 || value.deliverables.some((p:any)=>!safeRelative(p))) errors.push("Deliverables must be relative file paths");
   if (!Array.isArray(value.limitations) || value.limitations.some((s:any)=>typeof s!=="string")) errors.push("State the verification limitations");
   return [...new Set(errors)];
 }
-export function observedOutput(result: {stdout:string;code:number|null}, compare: WorkspaceCheck["compare"]) {
+export function workspaceRepairFeedback(report: { summary: unknown; failed: any[] }) {
+  const failures = repairEvidence(report.failed);
+  return { summary: report.summary, failed: failures.map((failure, index) => {
+    const check = report.failed[index];
+    // Compiler/runtime errors originate in the candidate, not the withheld baseline.
+    const executionError = ["execution", "build"].includes(check.category) && typeof check.actual === "string" ? check.actual.slice(-3000) : undefined;
+    return { ...failure, ...(executionError ? { execution_error: executionError } : {}),
+      ...(typeof check.actual?.stderr==="string" ? {candidate_error:check.actual.stderr.slice(-3000)} : {}),
+      ...(Number.isInteger(check.actual?.exit) ? { actual_exit_code: check.actual.exit } : {}) };
+  }) };
+}
+export function observedOutput(result: {stdout:string;code:number|null;stdoutTruncated?:boolean}, compare: WorkspaceCheck["compare"]) {
   if (compare === "exit") return result.code;
+  if (result.stdoutTruncated) throw new Error("Command output exceeded the capture limit; comparing partial output is not valid evidence");
   if (compare === "json") return JSON.parse(result.stdout.trim());
   return result.stdout.replace(/\r\n/g,"\n");
 }

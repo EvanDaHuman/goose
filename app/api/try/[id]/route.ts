@@ -1,14 +1,15 @@
 import { one } from "@/lib/db";
 import { customerJob, fail, json, wrap } from "@/lib/http";
+import { requireOperator } from "@/lib/operatorAuth";
 
 // A live business task against the running copy of the delivered app ("showroom"). Requests are
 // proxied to 127.0.0.1 only; the app itself runs sandboxed, started by the worker.
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   return wrap(async () => {
     const { id } = await params;
-    const job = await one<{ recipe: string }>("SELECT recipe FROM jobs WHERE id=$1", [id]);
     const query = new URL(req.url).searchParams;
-    if (job?.recipe === "agent-replatform" && query.get("ops") !== "1" && !await customerJob(id, query.get("t"))) return fail("Job not found", 404);
+    if(query.get("ops")==="1"){const denied=await requireOperator(req);if(denied)return denied;}
+    else if(!await customerJob(id,query.get("t")))return fail("Job not found",404);
     const room = await one<{ status: string; port: number }>("SELECT status, port FROM showrooms WHERE job_id = $1", [id]);
     if (!room || room.status !== "running") return fail("The upgraded app is not running. Start it from the operator view.", 409);
     const b = await req.json();
