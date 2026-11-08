@@ -17,6 +17,7 @@ import path from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { config } from "./config";
+import {readPublicRefs,resolvePublicRef} from "./publicGitRefs";
 
 const API = "https://api.github.com";
 export const SESSION_COOKIE = "goose_gh";
@@ -189,10 +190,13 @@ async function tokenFor(ref: RepoRef, session: GithubSession | null): Promise<st
 
 type RepoInfo = { full_name: string; private: boolean; default_branch: string; html_url: string };
 
-async function repoInfo(ref: RepoRef, session: GithubSession | null) {
+async function repoInfo(ref: RepoRef, session: GithubSession | null, publicReader=readPublicRefs) {
   const token = await tokenFor(ref, session);
   const r = await gh<RepoInfo>(`/repos/${ref.owner}/${ref.repo}`, token);
   if (r.status === 200 && r.data) return { info: r.data, token };
+  if(r.rateLimited&&!token){
+    try{const git=await publicReader(ref);return {info:{full_name:`${ref.owner}/${ref.repo}`,private:false,default_branch:git.defaultBranch,html_url:`https://github.com/${ref.owner}/${ref.repo}`},token:null,git};}catch{/* Preserve an actionable provider error if public Git is unavailable. */}
+  }
   if (r.rateLimited) throw new GithubError("GitHub is rate-limiting requests right now. Connect GitHub, or try again in a few minutes.", 429);
   throw new GithubError(
     githubAppConfigured()
@@ -201,8 +205,9 @@ async function repoInfo(ref: RepoRef, session: GithubSession | null) {
     404);
 }
 
-export async function listBranches(ref: RepoRef, session: GithubSession | null) {
-  const { info, token } = await repoInfo(ref, session);
+export async function listBranches(ref: RepoRef, session: GithubSession | null, publicReader=readPublicRefs) {
+  const { info, token, git } = await repoInfo(ref, session,publicReader);
+  if(git)return {repo:info.full_name,private:false,defaultBranch:git.defaultBranch,branches:Object.keys(git.refs).filter(r=>r.startsWith("refs/heads/")).map(r=>r.slice(11))};
   const branches: string[] = [];
   for (let page = 1; page <= 3; page++) {
     const r = await gh<{ name: string }[]>(`/repos/${ref.owner}/${ref.repo}/branches?per_page=100&page=${page}`, token);
@@ -249,19 +254,24 @@ export async function installationsForCode(code: string) {
 // ------------------------------------------------------------------ fetching the code
 
 /** Download the branch (default branch if none) at its current commit as a .zip, read-only. */
-export async function fetchRepoZip(input: string, branch: string | null, session: GithubSession | null) {
+export async function fetchRepoZip(input: string, branch: string | null, session: GithubSession | null, publicReader=readPublicRefs) {
   const parsed = parseRepoInput(input);
   if (!parsed) throw new GithubError("Paste a GitHub repository address, like https://github.com/your-org/your-app.");
   const ref: RepoRef = { owner: parsed.owner, repo: parsed.repo };
   const wanted = branch || parsed.branch || null;
   if (wanted && !isValidRef(wanted)) throw new GithubError("That branch name doesn't look right.");
-  const { info, token } = await repoInfo(ref, session);
+  const { info, token, git } = await repoInfo(ref, session,publicReader);
   const name = wanted || info.default_branch;
-  const c = await gh<{ sha: string }>(`/repos/${ref.owner}/${ref.repo}/commits/${refPath(name)}`, token);
-  if (c.status !== 200 || !c.data?.sha) throw new GithubError(`Couldn't find the branch "${name}" in ${info.full_name}.`, 404);
-  const sha = c.data.sha;
+  let sha=git?resolvePublicRef(git,name):null;
+  if(!git){
+    const c = await gh<{ sha: string }>(`/repos/${ref.owner}/${ref.repo}/commits/${refPath(name)}`, token);
+    if(c.status===200)sha=c.data?.sha??null;
+    else if(c.rateLimited&&!token)sha=resolvePublicRef(await publicReader(ref),name);
+  }
+  if(!sha||!(/^[a-f0-9]{40}$/).test(sha))throw new GithubError(`Couldn't find the branch "${name}" in ${info.full_name}.`,404);
 
-  const r = await fetch(`${API}/repos/${ref.owner}/${ref.repo}/zipball/${sha}`, {
+  const archiveUrl=token?`${API}/repos/${ref.owner}/${ref.repo}/zipball/${sha}`:`https://codeload.github.com/${ref.owner}/${ref.repo}/zip/${sha}`;
+  const r = await fetch(archiveUrl, {
     headers: { accept: "application/vnd.github+json", "user-agent": "goose-intake", ...(token ? { authorization: `Bearer ${token}` } : {}) },
     redirect: "follow",
     signal: AbortSignal.timeout(5 * 60_000),

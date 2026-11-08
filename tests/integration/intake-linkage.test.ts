@@ -45,7 +45,7 @@ test("public GitHub customer intake records the commit and selects autonomous di
     const url=String(input);
     if(url.endsWith('/repos/acme/complex'))return Response.json({full_name:"acme/complex",private:false,default_branch:"main",html_url:"https://github.com/acme/complex"});
     if(url.includes('/commits/main'))return Response.json({sha});
-    if(url.includes('/zipball/'+sha))return new Response(Buffer.from('PK\x03\x04test-source'));
+    if(url.includes('/zip/'+sha))return new Response(Buffer.from('PK\x03\x04test-source'));
     return Response.json({}, {status:404});
   }) as typeof fetch;
   try{

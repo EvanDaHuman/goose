@@ -30,15 +30,19 @@ export function retryingFetch(base: typeof fetch = globalThis.fetch, tries = 4):
     let last: Response | undefined;
     for (let i = 0; i < tries; i++) {
       try {
-        last = await base(input, init);
+        const timeout=AbortSignal.timeout(String(input).includes("/files")?120000:30000);
+        last = await base(input, { ...init, signal:init?.signal?AbortSignal.any([init.signal,timeout]):timeout });
       } catch (e) {
-        if (i === tries - 1) throw e;
+        if (i === tries - 1 || init?.signal?.aborted) throw e;
         await new Promise((r) => setTimeout(r, 500 * 2 ** i));
         continue;
       }
       if (last.status !== 429 && ![500, 502, 503, 504].includes(last.status)) return last;
-      const after = Number(last.headers.get("retry-after"));
-      await new Promise((r) => setTimeout(r, Number.isFinite(after) && after > 0 ? Math.min(after, 30) * 1000 : 500 * 2 ** i));
+      if(i===tries-1)return last;
+      const raw=last.headers.get("retry-after"),seconds=Number(raw);
+      const after=Number.isFinite(seconds)&&seconds>0?seconds*1000:raw?Date.parse(raw)-Date.now():NaN;
+      await last.body?.cancel().catch(()=>undefined);
+      await new Promise((r) => setTimeout(r, Number.isFinite(after)&&after>0?Math.min(after,30000):500*2**i));
     }
     return last!;
   }) as typeof fetch;

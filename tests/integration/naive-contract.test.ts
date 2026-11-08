@@ -2,7 +2,7 @@
 // fake fetch that answers in the API's shapes; the SDK parses every answer with its own zod schemas, and every request body
 // we send is checked against Naive's published OpenAPI file (tests/fixtures/naive-openapi.json, fetched 2026-11-04), because
 // the SDK itself never validates request bodies. This proves our calls and our handling of each outcome; it does NOT prove
-// the live service behaves the same way. No live Naive run has happened yet.
+// the live service behaves the same way. Separate evidence files record actual live runs.
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
@@ -11,6 +11,7 @@ import { after, before, test } from "node:test";
 import { changeWithAgent, planWithAgent, answerCustomer } from "../../lib/agents";
 import { config } from "../../lib/config";
 import { naiveClient, naiveStatus } from "../../lib/naive/client";
+import { createClient } from "@usenaive-sdk/vetta";
 import { runAgentTask } from "../../lib/naive/run";
 import { AGENT_SPECS, provisionTeam } from "../../lib/naive/team";
 import { pool, q } from "../../lib/db";
@@ -277,4 +278,16 @@ test("two different customer questions get two sessions, not the first answer tw
 
 test("every request body we sent uses only fields the published API accepts", () => {
   assert.deepEqual(problems, []);
+});
+
+test("provider capacity errors resume the same live task without cancelling or duplicating it",async()=>{
+ scripts.push([{status:"idle",stop:"end_turn",consumed:50,out:{decision:"done"}}]);
+ let limited=true;const before=calls.length;
+ const c=createClient({baseUrl:config.naive.baseUrl,apiKey:"sk_test_contract",idempotencyKey:()=>ID("req"),fetch:(async(input:any,init:any)=>{
+  if(limited&&(init?.method??"GET")==="GET"&&/\/sessions\/[^/?]+$/.test(String(input))){limited=false;return json({error:{type:"rate_limit",code:"rate_limited",message:"at capacity",request_id:"req_capacity"}},429);}
+  return fakeFetch(input,init);
+ }) as typeof fetch});
+ const result=await runAgentTask(c,{jobId:JOB,stage:"verify",attempt:1,role:"coordinator",purpose:"capacity-recovery",title:"Capacity recovery",message:"Resume the same session",outputSchema:{type:"object",properties:{decision:{type:"string"}},required:["decision"]},budgetMicroUsd:100000,pollMs:1,timeoutMs:1000});
+ assert.equal(result.ok,true,JSON.stringify(result));assert.equal(limited,false);
+ const added=calls.slice(before);assert.equal(added.filter(c=>c.method==="POST"&&c.path==="/v1/sessions").length,1);assert.equal(added.filter(c=>c.path.endsWith("/cancel")).length,0);
 });

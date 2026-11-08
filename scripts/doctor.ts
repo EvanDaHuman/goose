@@ -51,6 +51,9 @@ checks.push({name:"Native execution tools",state:essential.length?"failed":"read
 checks.push({name:"Python engine",state:fs.existsSync(config.python.engine)?"ready":"failed",required:true,detail:fs.existsSync(config.python.engine)?"Engine virtual environment is present.":"Run npm run setup to create the engine environment."});
 const sqlite=spawnSync(process.execPath,["--input-type=module","-e","import { DatabaseSync } from 'node:sqlite'; const db=new DatabaseSync(':memory:'); db.close();"],{timeout:5000,encoding:"utf8"});
 checks.push({name:"Node SQLite adapter",state:sqlite.status===0?"ready":"pending",detail:sqlite.status===0?"node:sqlite is available.":"This Node runtime cannot run the SQLite adapter; use a supported Node version or another target."});
+const containerRuntime=spawnSync("docker",["version","--format","{{.Server.Os}}"],{timeout:10000,encoding:"utf8"});
+const autonomousReady=containerRuntime.status===0&&containerRuntime.stdout.trim()==="linux";
+checks.push({name:"Autonomous Linux execution",state:autonomousReady?"ready":"pending",detail:autonomousReady?"Docker Linux backend is reachable; each repository still needs successful discovery and acceptance review.":"Start a Docker Linux backend before accepting autonomous repository jobs. Legacy execution remains separate."});
 const image=process.env.GOOSE_ROBOTICS_IMAGE??"goose-robotics:jazzy";
 const docker=spawnSync("docker",["image","inspect",image,"--format","{{.Id}}"],{timeout:5000,encoding:"utf8"});
 checks.push({name:"Optional ROS image",state:docker.status===0?"ready":"pending",detail:docker.status===0?`${image} is available locally. Simulation still requires its own passing validation.`:`${image} is not reachable locally. Robotics is pending; other job types remain available.`});
@@ -70,6 +73,6 @@ checks.push({name:"External email",state:email.ready?"ready":"pending",detail:em
 checks.push({name:"Stripe payments",state:payments.ready?"ready":"pending",detail:payments.ready?`${payments.mode} key configuration is present. Invoice mode must match; no provider request was made.`:payments.issues.length ? payments.issues.join(". ") : "Pending provider activation. TEST invoices support local settlement; real invoices remain unpaid.",missing:payments.missing as string[]});
 checks.push({name:"Inbound inquiry gateway",state:process.env.GOOSE_INQUIRY_WEBHOOK_SECRET?"ready":"pending",detail:process.env.GOOSE_INQUIRY_WEBHOOK_SECRET?"Signing secret present; configure your gateway to use the documented schema.":"Optional signed gateway is unconfigured. Website inquiry intake remains available.",missing:process.env.GOOSE_INQUIRY_WEBHOOK_SECRET?[]:["GOOSE_INQUIRY_WEBHOOK_SECRET"]});
 const coreReady=schemaReady&&checks.filter(c=>c.required).every(c=>c.state==="ready");
-console.log(JSON.stringify({checkedAt:new Date().toISOString(),applicationCoreReady:coreReady,liveEngineeringReady:coreReady&&liveNaiveReady&&config.mode==="naive",naiveAccountReady:liveNaiveReady,mode:config.mode,checks,
+console.log(JSON.stringify({checkedAt:new Date().toISOString(),applicationCoreReady:coreReady,liveEngineeringReady:coreReady&&liveNaiveReady&&config.mode==="naive",autonomousEngineeringReady:coreReady&&liveNaiveReady&&autonomousReady&&config.mode==="naive",naiveAccountReady:liveNaiveReady,mode:config.mode,checks,
   notice:"No secrets printed. No emails, charges, engineering jobs, or model inference were initiated. Optional provider activation is separate from local test functionality."},null,2));
 process.exitCode=coreReady?0:1;

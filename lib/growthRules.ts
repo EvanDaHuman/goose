@@ -10,7 +10,7 @@ export const RECIPES: Record<string, string> = {
   "suitecrm-sales-workspace": "SuiteCRM 7.11 sales workflow moved to a new sales workspace; support stays in SuiteCRM (needs a database dump)",
   "agent-change": "Targeted code changes made by the implementation agent (bug fixes, APIs with no mechanical rewrite)",
   "agent-replatform": "Python, Node or Rust service migrations with explicit API and database acceptance contracts; existing adapters must support source and target",
-  "workspace-change": "General repository engineering such as language migrations, algorithm changes and build modernization, conditional on a reproducible offline build and executable acceptance contract. Python, Node, Rust, Go and C++ are eligible when installed. ROS currently supports only the pinned rrt_exploration fixture. This is an assessment opportunity, not a guarantee of arbitrary project support",
+  "workspace-change": "Autonomous repository engineering across unfamiliar codebases: language/runtime migrations, feature changes, data transformations and build modernization. Naive discovers dependencies and tests in isolated Linux environments without a repository-specific adapter. Eligibility depends on reproducing the original suite, detecting semantic negative controls and independently reviewing requested behavior. Unavailable hardware, proprietary services or ambiguous requirements need clarification. This is an assessment opportunity, not a guarantee that every repository is executable",
 };
 export const FIT = ["High", "Medium", "Low"] as const;
 export type Fit = (typeof FIT)[number];

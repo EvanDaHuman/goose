@@ -97,7 +97,7 @@ test("a branch downloads as a .zip at its current commit; the job records where 
   routes.push(
     [/^GET https:\/\/api\.github\.com\/repos\/octo\/shop$/, () => json({ full_name: "octo/shop", private: false, default_branch: "main", html_url: "https://github.com/octo/shop" })],
     [/^GET https:\/\/api\.github\.com\/repos\/octo\/shop\/commits\/release\/2026-11$/, () => json({ sha: "0123456789abcdef0123456789abcdef01234567" })],
-    [/^GET https:\/\/api\.github\.com\/repos\/octo\/shop\/zipball\/0123456789abcdef/, () => new Response(zip, { status: 200, headers: { "content-length": String(zip.length) } })],
+    [/^GET https:\/\/codeload\.github\.com\/octo\/shop\/zip\/0123456789abcdef/, () => new Response(zip, { status: 200, headers: { "content-length": String(zip.length) } })],
   );
   const r = await gh.fetchRepoZip("https://github.com/octo/shop/tree/release/2026-11", null, null);
   assert.deepEqual(fs.readFileSync(r.zipPath), zip);
@@ -112,12 +112,20 @@ test("downloads stop at 150 MB, and a missing branch or rate limit gives a plain
   routes.push(
     [/^GET https:\/\/api\.github\.com\/repos\/octo\/huge$/, () => json({ full_name: "octo/huge", private: false, default_branch: "main", html_url: "https://github.com/octo/huge" })],
     [/^GET https:\/\/api\.github\.com\/repos\/octo\/huge\/commits\/main$/, () => json({ sha: "f".repeat(40) })],
-    [/^GET https:\/\/api\.github\.com\/repos\/octo\/huge\/zipball\//, () => new Response("x", { status: 200, headers: { "content-length": String(gh.MAX_REPO_ZIP_BYTES + 1) } })],
+    [/^GET https:\/\/codeload\.github\.com\/octo\/huge\/zip\//, () => new Response("x", { status: 200, headers: { "content-length": String(gh.MAX_REPO_ZIP_BYTES + 1) } })],
     [/^GET https:\/\/api\.github\.com\/repos\/octo\/huge\/commits\/nope$/, () => json({ message: "No commit found" }, 422)],
     [/^GET https:\/\/api\.github\.com\/repos\/octo\/busy$/, () => json({ message: "API rate limit exceeded" }, 403, { "x-ratelimit-remaining": "0" })],
   );
   await assert.rejects(gh.fetchRepoZip("octo/huge", null, null), (e: any) => e.status === 413);
   await assert.rejects(gh.fetchRepoZip("octo/huge", "nope", null), /Couldn't find the branch "nope"/);
   await assert.rejects(gh.fetchRepoZip("octo/huge", "bad..ref", null), /branch name/);
-  await assert.rejects(gh.fetchRepoZip("octo/busy", null, null), (e: any) => e.status === 429);
+  await assert.rejects(gh.fetchRepoZip("octo/busy", null, null,async()=>{throw new Error("Unavailable public Git");}), (e: any) => e.status === 429);
+});
+
+test("public GitHub intake works without credentials when REST is rate limited",async()=>{
+ const sha="a".repeat(40),zip=Buffer.from("PK\u0003\u0004 public bytes");
+ routes.push([/^GET https:\/\/api\.github\.com\/repos\/octo\/public$/,()=>json({},403,{"x-ratelimit-remaining":"0"})],[/^GET https:\/\/codeload\.github\.com\/octo\/public\/zip\//,()=>new Response(zip)]);
+ const reader=async()=>({defaultBranch:"main",refs:{HEAD:sha,"refs/heads/main":sha,"refs/tags/v1^{}":sha}});
+ const branches=await gh.listBranches({owner:"octo",repo:"public"},null,reader);assert.deepEqual(branches.branches,["main"]);
+ const result=await gh.fetchRepoZip("octo/public","v1",null,reader);assert.equal(result.source.commit,sha);assert.equal(result.source.access,"public");assert.deepEqual(fs.readFileSync(result.zipPath),zip);assert.ok(calls.every(c=>c.auth===null));fs.rmSync(result.zipPath,{force:true});
 });

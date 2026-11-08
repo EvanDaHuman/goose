@@ -52,9 +52,15 @@ export async function runAgentTask(client: VettaClient, opts: {
     const deadline = Date.now() + (opts.timeoutMs ?? 15 * 60_000);
     let continues = 0;
     const continuedStops = new Set<number>();
-    let s: any;
+    let s: any;let capacityNoted=false;
     for (;;) {
-      s = await client.sessions.get(sessionId);
+      try{s = await client.sessions.get(sessionId);}catch(e){
+        if(e instanceof ApiError && [429,500,502,503,504].includes(e.status) && Date.now()<deadline){
+          if(!capacityNoted){await logEvent(opts.jobId,"system","status","Naive is temporarily busy. Waiting to resume the same session; no replacement task was started.",{session_id:sessionId},{origin:"tool"});capacityNoted=true;}
+          await sleep(opts.pollMs??15000);continue;
+        }
+        throw e;
+      }
       await recordSession(opts.jobId, opts.stage, opts.attempt, opts.role, s);
       const settled = ["completed", "failed", "cancelled"].includes(s.status) || (s.status === "idle" && s.stop_reason !== "awaiting_delegation");
       if (Date.now() > deadline && (!settled || s.stop_reason === "max_iterations")) {
@@ -64,7 +70,7 @@ export async function runAgentTask(client: VettaClient, opts: {
       }
       if (settled && s.stop_reason === "max_iterations" && continuedStops.has(s.last_seq)) {
         // The read endpoint may briefly return the old idle state after accepting a continuation.
-        await sleep(opts.pollMs ?? 3000);
+        await sleep(opts.pollMs ?? 8000);
         continue;
       }
       if (settled && s.stop_reason === "max_iterations" && continues < 3) {
@@ -79,11 +85,11 @@ export async function runAgentTask(client: VettaClient, opts: {
         }
         continuedStops.add(stopSeq);
         continues++;
-        await sleep(opts.pollMs ?? 3000);
+        await sleep(opts.pollMs ?? 8000);
         continue;
       }
       if (settled) break;
-      await sleep(opts.pollMs ?? 3000);
+      await sleep(opts.pollMs ?? 8000);
     }
     const events = await saveTranscript(client, opts.jobId, sessionId);
     // A session that ends idle (rather than completed) carries its submitted result on the final session.idle event, not on the

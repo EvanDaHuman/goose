@@ -1,6 +1,6 @@
 # Autonomous repository engineering
 
-New repository-engineering requests use Naïve to discover their environment and acceptance tests. Customers can paste a public GitHub link, connect a configured GitHub App for selected private repositories, or upload a ZIP. GitHub intake records the immutable commit. No repository-specific Goose adapter or configuration file is required.
+New repository-engineering requests use Naïve to discover their environment and acceptance tests. Customers can paste a public GitHub link, connect a configured GitHub App for selected private repositories, or upload a ZIP. GitHub intake records the immutable commit. Public intake can use credential-free Git discovery and direct commit archives when the shared REST quota is exhausted. Private access still requires the configured GitHub App. No repository-specific Goose adapter or configuration file is required.
 
 The company workflow still scopes work, requests customer approval, implements, verifies, repairs within budget, delivers and invoices. Existing engagements retain their original executors and frozen evidence.
 
@@ -24,7 +24,7 @@ The generic backend uses Docker Linux containers on the operator's execution hos
 
 Source enters containers with Docker copy. Candidates receive no host bind mounts, Docker socket, Goose credentials or other customer files. Setup runs with a restricted capability set in an internal network. Only a separate dependency proxy can reach the internet; it permits exact hostnames from the plan, ports 80/443, and publicly routable resolved addresses. DNS results are checked and pinned before connection. Verification runs without external networking, as an unprivileged user, with acceptance scripts mounted read-only. CPU, memory, process, per-command and total execution time are bounded.
 
-Setup is checked against all original source hashes. It cannot silently rewrite tests or source to make the baseline pass. Original test and CI paths identified in the contract are protected again after implementation.
+Setup is checked against all original source hashes. It cannot silently rewrite tests or source to make the baseline pass. Original test and CI files identified in the contract are protected again after implementation. New test files may be added; existing protected files cannot be changed or removed.
 
 Validated uploaded data snapshots are copied into the isolated environment at `/data/input`; the original is never changed. Generated scripts may inspect schema and rehearse transformations on copies. Data does not enter the Naïve workspace through this path. Any failure diagnostics supplied to agents should be considered part of the job's disclosed execution evidence. Synthetic data fixtures can also be created from the repository's own tests.
 
@@ -40,6 +40,7 @@ Generated tests and independent agent review reduce errors but cannot prove comp
 
 ```sh
 npm run db:migrate
+npm run doctor
 npm run naive:status
 node --import tsx --env-file=.env scripts/autonomous-demo.ts docs/validation/werkzeug-request.json
 ```
