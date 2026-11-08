@@ -18,6 +18,8 @@ Supporting documents and customer clarification answers are included in discover
 
 Discovery asks a customer question when required behavior or infrastructure is missing. It does not invent credentials, access or business requirements.
 
+Before a repair, the independent verification role inspects the failed check definitions and candidate to explain the actual mismatch, including misleading diagnostic text. The implementation role receives concise guidance and failed results; the full acceptance scripts stay with the verifier. Repairs preserve the frozen contract and remain bounded by the job's repair and spending limits.
+
 ## Execution and isolation
 
 The generic backend uses Docker Linux containers on the operator's execution host. It supports official Ubuntu, Debian, Python, Node, Go, Rust, Java, Ruby, PHP and .NET base-image families; agents can install additional tooling inside the environment. The image ID is pinned after successful discovery. Installing an unfamiliar dependency does not require adding a custom migration adapter.

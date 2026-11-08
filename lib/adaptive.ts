@@ -35,6 +35,7 @@ export function adaptiveProblems(p:any):string[]{
  return [...new Set(errors)];
 }
 export function acceptanceReviewApproved(review:any):boolean{return review?.accepted===true && Array.isArray(review.issues) && review.issues.length===0;}
+export const failedAcceptanceDefinitions=(plan:any,report:any)=>plan.checks.filter((c:any)=>report.failed.some((f:any)=>f.id===c.id));
 async function customerContext(job:Job){
  const answers=await q("SELECT prompt,answer FROM questions WHERE job_id=$1 AND status='answered' ORDER BY id",[job.id]);
  const documents=await q<{filename:string;stored_path:string;sha256:string}>("SELECT filename,stored_path,sha256 FROM job_inputs WHERE job_id=$1 AND kind='document' ORDER BY id",[job.id]);
@@ -239,8 +240,16 @@ async function verify(job:Job,a:number):Promise<StageResult>{
  return decision.action==="repair"?{next:"repair"}:{next:"verify",status:"waiting_founder",waiting:decision.reason};
 }
 async function repair(job:Job,a:number):Promise<StageResult>{
- const report=readJson(J(job,"verify",`attempt-${a}`,"report.json"));if(!report.integrity.ok||job.repairs_used>=job.repair_budget)throw new Error("Repair gate closed");
- const evidence=report.failed.map((c:any)=>({id:c.id,title:c.title,actual:c.actual}));return implement(job,a+1,{failed:evidence});
+ const report=readJson(J(job,"verify",`attempt-${a}`,"report.json"));if(!report.integrity.ok||!intact(job)||!runnerIntact(job)||job.repairs_used>=job.repair_budget)throw new Error("Repair gate closed");
+ const evidence=report.failed.map((c:any)=>({id:c.id,title:c.title,actual:c.actual}));
+ const client=naiveClient(),candidate=await uploadFile(client,job.id,J(job,"build",`attempt-${a}`,"candidate.zip"),`${job.id}-diagnose-${a}.zip`,["candidate"]);
+ const diagnosis=await runAgentTask(client,{...(await ctxFor(job,a,"repair")),role:"verification",purpose:"diagnose-autonomous-failure",title:"Diagnose failed acceptance checks before repair",timeoutMs:12*60_000,
+  outputSchema:{type:"object",properties:{summary:{type:"string",maxLength:1500},guidance:{type:"array",maxItems:8,items:{type:"string",maxLength:1000}}},required:["summary","guidance"],additionalProperties:false},
+  message:`Inspect candidate ${candidate.id} with fetch_file. Customer goal: ${job.goal}. Actual failed results: ${JSON.stringify(agentExecutionEvidence(job,evidence))}. These are the frozen definitions of ONLY the failed acceptance checks, available to you as the independent verifier: ${JSON.stringify(failedAcceptanceDefinitions(readJson(J(job,"vault","adaptive-plan.json")),report))}. Explain the specific discrepancy and give bounded repair guidance. Inspect the exact assertion as well as its diagnostic text: shell quoting or truncation can make an error message misleading. Do not change or relax the frozen checks. Do not propose faking outputs or modifying original tests. Do not reproduce full test scripts or unrelated passing evidence in your answer; the implementer receives only your concise diagnosis and the failed results. State uncertainty when the evidence is insufficient.`});
+ if(!diagnosis.ok)return {next:"repair",status:"waiting_founder",waiting:`Independent failure diagnosis stopped: ${diagnosis.message}`};
+ const diagnosisFile=J(job,"verify",`attempt-${a}`,"repair-diagnosis.json");write(diagnosisFile,diagnosis.output);
+ await artifact(job,"repair_diagnosis",`Independent repair diagnosis for attempt ${a}`,diagnosisFile,{by:"verification",visible:true,attempt:a,origin:"agent",originDetail:{session_id:diagnosis.sessionId}});
+ return implement(job,a+1,{failed:evidence,diagnosis:diagnosis.output});
 }
 async function packageStage(job:Job):Promise<StageResult>{
  const candidate=J(job,"build",`attempt-${job.attempt}`,"upgraded"),report=readJson(J(job,"verify",`attempt-${job.attempt}`,"report.json"));

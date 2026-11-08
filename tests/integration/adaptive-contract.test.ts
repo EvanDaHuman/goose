@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
-import { adaptiveProblems, acceptanceReviewApproved, agentExecutionEvidence, executionExcerpt, priorDiscoveryFeedback } from "../../lib/adaptive";
+import { adaptiveProblems, acceptanceReviewApproved, agentExecutionEvidence, executionExcerpt, priorDiscoveryFeedback, failedAcceptanceDefinitions } from "../../lib/adaptive";
 const plan=()=>({version:1,title:"Add subtraction",image:"python:3.12-slim",dependency_hosts:["pypi.org","files.pythonhosted.org"],setup:"pip install pytest==8.3.5",prepare:"",checks:[{id:"existing",title:"Existing suite",kind:"preserve",script:"python -m pytest tests"},{id:"new_behavior",title:"Requested behavior",kind:"requirement",script:"python /acceptance/feature.py"}],protected_paths:["tests"],deliverables:["src/calc.py"],mutations:[{path:"src/calc.py",find:"return a+b",replace:"return a-b",check_id:"existing"}],limitations:["No production deployment"],missing_requirements:[]});
 test("autonomous contracts require preserved behavior, requested behavior and a semantic negative control",()=>{
  assert.deepEqual(adaptiveProblems(plan()),[]);
@@ -25,6 +25,11 @@ test("a reviewer cannot approve unresolved findings with a contradictory accepte
  assert.equal(acceptanceReviewApproved({accepted:true}),false);
  assert.equal(acceptanceReviewApproved({accepted:false,issues:[]}),false);
  assert.equal(acceptanceReviewApproved({accepted:true,issues:[]}),true);
+});
+
+test("independent repair diagnosis receives definitions only for failed checks",()=>{
+ const p=plan();assert.deepEqual(failedAcceptanceDefinitions(p,{failed:[{id:'new_behavior'},{id:'original_tests'}]}),[p.checks[1]]);
+ assert.deepEqual(failedAcceptanceDefinitions(p,{failed:[]}),[]);
 });
 
 // Malformed model output is feedback for discovery, not an orchestration crash.

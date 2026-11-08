@@ -1,13 +1,13 @@
 {
-  "recorded_at": "2026-11-08T02:54:30.552363+00:00",
+  "recorded_at": "2026-11-08T03:58:50.040534+00:00",
   "scope": "Repository-independent engineering upgrade and merged company workflow",
   "checks": [
     {
       "command": "GOOSE_TEST_DOCKER=1 npm test",
-      "passed": 98,
+      "passed": 99,
       "failed": 0,
       "skipped": 0,
-      "includes": "Real Docker baseline, frozen acceptance, candidate verification, delivery integrity, GitHub intake, Naive retries and commerce/outreach integration contracts."
+      "includes": "Real Docker baseline, frozen acceptance, candidate verification, delivery integrity, GitHub intake, Naive retries and commerce/outreach integration contracts. Reported incomplete work cannot bypass independent review; failure diagnosis is scoped to failed checks."
     },
     {
       "command": "npm run test:autonomy",
