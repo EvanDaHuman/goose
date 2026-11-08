@@ -15,7 +15,8 @@ const CONSTRAINTS: [string, string][] = [["keep_framework", "Keep the current we
 export function StartForm({ inquiryId }: { inquiryId?: string }) {
   const router = useRouter();
   const [goal, setGoal] = useState("");
-  const [jobType, setJobType] = useState("service");
+  const [jobType, setJobType] = useState("workspace");
+  const [sourceType,setSourceType]=useState("github");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
@@ -45,7 +46,7 @@ export function StartForm({ inquiryId }: { inquiryId?: string }) {
         <select id="f-job-type" name="job_type" value={jobType} onChange={e => setJobType(e.target.value)}>
           <option value="service">Service, framework, or data migration</option><option value="workspace">Repository engineering change</option>
         </select>
-        <span className="small muted">{jobType === "workspace" ? "Bring an executable repository and a clear objective. The assessment establishes build commands and independent acceptance checks before implementation." : "Upgrade a supported application or choose a new runtime with a reviewed data contract."}</span>
+        <span className="small muted">{jobType === "workspace" ? "Give Goose a repository and objective. Naïve discovers dependencies, builds an isolated environment, and establishes tests before proposing the change." : "Upgrade a supported application or choose a new runtime with a reviewed data contract."}</span>
       </div>
       <div className="field"><label htmlFor="f-goal">Your goal, in your own words</label>
         <textarea id="f-goal" name="goal" rows={3} required value={goal} onChange={(e) => setGoal(e.target.value)}
@@ -69,10 +70,11 @@ export function StartForm({ inquiryId }: { inquiryId?: string }) {
       </fieldset>
       <div className="field"><label htmlFor="f-notes">Anything else we should know (optional)</label>
         <textarea id="f-notes" name="notes" rows={2} placeholder="e.g. A kiosk reads /api/slots.json every minute; we cannot have downtime on Mondays." /></div>
-      <h3 className="section">Files</h3>
-      {jobType === "workspace" && <p className="small muted">Include the source, build instructions, and existing tests. A <code>goose-workspace.json</code> contract can define the source and target commands. The assessment checks what can run in the available environment.</p>}
+      <h3 className="section">Source and supporting files</h3>
+      <div className="field"><label htmlFor="source-type">Share source using</label><select id="source-type" value={sourceType} onChange={e=>setSourceType(e.target.value)}><option value="github">Public GitHub repository</option><option value="zip">Upload a ZIP (including private source)</option></select></div>
+      {jobType === "workspace" && <p className="small muted">No Goose-specific configuration is required. The agents inspect existing setup files, CI, documentation and tests, then attempt a reproducible environment. Missing credentials or unsupported hardware are reported explicitly.</p>}
       <div className="grid g2">
-        <div className="field"><label htmlFor="f-repo">Application or repository (.zip, up to 150 MB)</label><input id="f-repo" type="file" name="repository" accept=".zip" required /></div>
+        {sourceType==="github"?<><div className="field"><label htmlFor="f-github">GitHub repository URL</label><input id="f-github" type="url" name="github_url" placeholder="https://github.com/owner/repository" required /><span className="small muted">Public repositories only. Goose records the exact commit it imports.</span></div><div className="field"><label htmlFor="f-ref">Branch, tag or commit (optional)</label><input id="f-ref" name="github_ref" placeholder="Default branch" /></div></>:<div className="field"><label htmlFor="f-repo">Application or repository (.zip, up to 150 MB)</label><input id="f-repo" type="file" name="repository" accept=".zip" required /></div>}
         <div className="field"><label htmlFor="f-db">Copy of the data (SQLite file or MySQL dump, optional)</label><input id="f-db" type="file" name="database" />
           <span className="small muted">Needed only when the work moves data or needs your records to test against; the plan will say.</span></div>
         <div className="field"><label htmlFor="f-docs">Documentation (optional, up to 5 files)</label><input id="f-docs" type="file" name="documents" multiple /></div>
@@ -83,7 +85,7 @@ export function StartForm({ inquiryId }: { inquiryId?: string }) {
         <span>I own this application and its data, or I am authorized to share them for this assessment. I understand Goose
           works on copies and will not change my live systems.</span></label>
       <div className="row">
-        <button className="btn primary" disabled={busy || !ok}>{busy ? "Uploading..." : "Send for inspection and a plan"}</button>
+        <button className="btn primary" disabled={busy || !ok}>{busy ? "Importing source..." : "Send for inspection and a plan"}</button>
         {err && <span className="small" role="alert" style={{ color: "var(--bad)" }}>{err}</span>}
       </div>
     </form>

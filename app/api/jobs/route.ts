@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fetchGitHubSource, parseGitHubSource } from "@/lib/githubSource";
 import { createJob } from "@/lib/jobs";
 import { fail, json, saveUpload, wrap } from "@/lib/http";
 import { assertSameOrigin } from "@/lib/operatorAuth";
@@ -31,15 +32,21 @@ export async function POST(req: Request) {
     const inquiry = field("inquiry_id", 36);
     if (inquiry && !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(inquiry)) return fail("The inquiry reference is invalid.");
     const repo = form.get("repository");
+    const githubUrl=field("github_url",500), githubRef=field("github_ref",200);
+    if(githubUrl)parseGitHubSource(githubUrl,githubRef);
+    if(githubRef&&!githubUrl)return fail("A revision needs a GitHub repository URL.");
+    if(githubUrl&&repo instanceof File&&repo.size>0)return fail("Choose a GitHub link or a ZIP, not both.");
     const db = form.get("database");
     const documents = form.getAll("documents").filter(d => d instanceof File && d.size > 0) as File[];
     if (documents.length > 5) return fail("Attach up to five documents; none have been submitted.");
     if (form.get("authorized") !== "on") return fail("Please confirm you are authorized to share this application and data.");
-    if (!(repo instanceof File) || repo.size === 0) return fail("Please attach the source code as a .zip file.");
+    if (!githubUrl && (!(repo instanceof File) || repo.size === 0)) return fail("Please attach the source code as a .zip file.");
     const uploaded: string[] = [];
     const save = async (file: File, max: number) => { const saved = await saveUpload(file, max); uploaded.push(saved); return saved; };
     try {
-    const repoPath = await save(repo, 150 * 1024 * 1024);
+    const imported=githubUrl?await fetchGitHubSource(githubUrl,githubRef):null;
+    if(imported)uploaded.push(imported.file);
+    const repoPath = imported?.file ?? await save(repo as File, 150 * 1024 * 1024);
     const demo = form.get("demo") === "on";
     const dbPath = db instanceof File && db.size > 0 ? await save(db, 500 * 1024 * 1024) : null;
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "app";
@@ -55,7 +62,7 @@ export async function POST(req: Request) {
       timezone,
       repoZip: repoPath, dbFile: dbPath, goal, constraints, constraintNotes: notes || null, documents: docs,
       migrationRequest: target ? { target, dataChanges } : undefined,
-      workspaceRequest: jobType === "workspace", inquiryPublicId: inquiry || undefined,
+      workspaceRequest: jobType === "workspace", adaptiveRequest:jobType === "workspace", githubSource:imported?.provenance, inquiryPublicId: inquiry || undefined,
     });
     return json({ id, t: token });
     } finally {

@@ -87,6 +87,8 @@ export async function createJob(opts: {
   goal?: string; constraints?: string[]; constraintNotes?: string | null; documents?: { file: string; name: string }[];
   migrationRequest?: { target: string; dataChanges: string };
   workspaceRequest?: boolean;
+  adaptiveRequest?: boolean;
+  githubSource?: import("./githubSource").GitHubSource;
   inquiryPublicId?: string;
 }) {
   const offer = await pilotOffer();
@@ -117,8 +119,11 @@ export async function createJob(opts: {
     fs.mkdirSync(inputs, { recursive: true });
     if (opts.workspaceRequest) {
       const requestFile = path.join(inputs, "workspace-request.json");
-      fs.writeFileSync(requestFile, JSON.stringify({ version: 1, goal: opts.goal }), { mode: 0o444, flag: "wx" });
+      fs.writeFileSync(requestFile, JSON.stringify({ version: 1, goal: opts.goal, adaptive: opts.adaptiveRequest === true }), { mode: 0o444, flag: "wx" });
       await c.query("UPDATE jobs SET recipe='workspace-change',work_type='code' WHERE id=$1", [id]);
+    }
+    if (opts.githubSource) {
+      fs.writeFileSync(path.join(inputs,"github-source.json"), JSON.stringify(opts.githubSource,null,2), {mode:0o444,flag:"wx"});
     }
     if (opts.migrationRequest?.target) {
       const requestFile = path.join(inputs, "migration-request.json");
