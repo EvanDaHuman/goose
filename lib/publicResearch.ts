@@ -23,7 +23,9 @@ export function repositoryUrl(value:string):string|null{
 export async function fetchPublicPage(value:string,fetcher:typeof fetch=fetch):Promise<{url:string;text:string;sha256:string;bytes:number;fetchedAt:string}>{
   let url=safeUrl(value);const signal=AbortSignal.timeout(8000);
   for(let redirect=0;redirect<=2;redirect++){
-    const res=await fetcher(url.toString(),{method:"GET",redirect:"manual",credentials:"omit",headers:{Accept:url.hostname==="api.github.com"?"application/vnd.github+json":"text/plain","User-Agent":"Goose-Public-Research"},signal});
+    const res=await fetcher(url.toString(),{method:"GET",redirect:"manual",credentials:"omit",headers:{Accept:url.hostname==="api.github.com"?"application/vnd.github+json":"text/plain","User-Agent":"Goose-Public-Research",
+      // a read-only token only raises GitHub's anonymous rate limit; it is sent to api.github.com and nowhere else
+      ...(url.hostname==="api.github.com"&&process.env.GITHUB_TOKEN?{Authorization:`Bearer ${process.env.GITHUB_TOKEN}`}:{})},signal});
     if([301,302,303,307,308].includes(res.status)){
       await res.body?.cancel();const location=res.headers.get("location");if(!location||redirect===2)throw new Error("Public source redirect limit exceeded");
       url=safeUrl(new URL(location,url).toString());continue;
@@ -43,7 +45,10 @@ export async function fetchPublicResearch(recoveryUrls:string[],knownUrls:string
   const result:PublicResearch={repositories:[],pages:[],errors:[],requests:0,discovery:roots.length?"recovery_urls":"github_repository_search"};
   const get=async(url:string)=>{if(result.requests>=MAX_FILES)throw new Error("Public source request limit reached");result.requests++;return fetchPublicPage(url,fetcher);};
   if(!roots.length){
-    const url="https://api.github.com/search/repositories?"+new URLSearchParams({q:"migration in:description archived:false fork:false",sort:"updated",order:"desc",per_page:"5"});
+    // active applications on stacks Goose can upgrade, rotating by hour so successive cycles see different candidates
+    const stacks=["django","flask"],stack=stacks[new Date().getUTCHours()%stacks.length];
+    const since=new Date(Date.now()-365*86400_000).toISOString().slice(0,10);
+    const url="https://api.github.com/search/repositories?"+new URLSearchParams({q:`${stack} in:readme,description language:Python archived:false fork:false stars:>=10 pushed:>${since}`,sort:"updated",order:"desc",per_page:"5",page:String(1+new Date().getUTCDate()%5)});
     try{const data=JSON.parse((await get(url)).text);for(const item of data.items??[]){const root=repositoryUrl(item.html_url);if(root&&item.private===false&&!known.has(root)&&!roots.includes(root)&&roots.length<MAX_REPOS)roots.push(root);}}
     catch(e){result.errors.push({url,reason:(e as Error).message});}
   }
