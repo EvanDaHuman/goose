@@ -27,7 +27,8 @@ test("classification: retry transient failures, raise limits and repairs within 
   assert.equal(classify("Repair budget exhausted", base).action, "extra_repair");
   assert.equal(classify("Repair budget exhausted", { ...base, auto_extra_repairs: 2 }).action, "end");
   assert.equal(classify("Frozen acceptance evidence changed", base).action, "end");
-  assert.equal(classify("Autonomous environment/test discovery exhausted eight bounded attempts. See evidence.", base).action, "end");
+  assert.equal(classify("Autonomous environment/test discovery exhausted eight bounded attempts. See evidence.", { ...base, round: 1 }).action, "new_round");
+  assert.equal(classify("Autonomous environment/test discovery exhausted eight bounded attempts. See evidence.", { ...base, round: 2 }).action, "end");
   assert.equal(classify("A data decision needs the founder", base).action, "route_question");
   assert.equal(classify("Autonomous discovery requires live Naive", { ...base, mode: "local" }).action, "end");
   assert.equal(classify("Autonomous discovery requires live Naive", base).action, "retry");

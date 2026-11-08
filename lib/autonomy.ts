@@ -16,18 +16,21 @@ import { logEvent, usd } from "./records";
 
 const MAX_RETRIES = () => Math.max(1, Number(process.env.GOOSE_AUTO_RECOVERY_MAX ?? 6) || 6);
 const COST_CEILING = () => Math.round(Math.max(1, Number(process.env.GOOSE_AUTO_COST_CEILING_USD ?? 50) || 50) * 1_000_000);
+const EXTRA_ROUNDS = () => Math.max(0, Number(process.env.GOOSE_AUTO_EXTRA_ROUNDS ?? 1) || 0);
 const EXTRA_REPAIRS = () => Math.max(0, Number(process.env.GOOSE_AUTO_EXTRA_REPAIRS ?? 2) || 0);
 const APPROVAL_WAIT = "Your request is awaiting operator approval";
 
-export type Recovery = "infra" | "approval" | "raise_limit" | "extra_repair" | "route_question" | "end" | "retry" | "backoff";
+export type Recovery = "infra" | "approval" | "new_round" | "raise_limit" | "extra_repair" | "route_question" | "end" | "retry" | "backoff";
 
 /** Decide what to do with a waiting job. Pure: tested in tests/integration/autonomy.test.ts. */
-export function classify(reason: string, job: { auto_recoveries: number; auto_extra_repairs: number; cost_limit_micro_usd: number; mode?: string }, now = Date.now(), lastAt: number | null = null): { action: Recovery; why: string } {
+export function classify(reason: string, job: { auto_recoveries: number; auto_extra_repairs: number; cost_limit_micro_usd: number; mode?: string; round?: number }, now = Date.now(), lastAt: number | null = null): { action: Recovery; why: string } {
   const r = reason ?? "";
   if (isInfraWait(r)) return { action: "infra", why: "execution backend" };
   if (r.startsWith(APPROVAL_WAIT)) return { action: "approval", why: "operator approval was explicitly required (GOOSE_PUBLIC_JOBS_REQUIRE_APPROVAL)" };
   if (/integrity|evidence changed|no longer reproduce/i.test(r)) return { action: "end", why: "the frozen acceptance evidence could not be trusted, so the work cannot be verified" };
-  if (/exhausted eight bounded attempts/i.test(r)) return { action: "end", why: "Goose could not reproduce a working environment and acceptance checks for this repository" };
+  // a new discovery round inherits the previous round's real execution evidence for the same source
+  if (/exhausted eight bounded attempts/i.test(r)) return (job.round ?? 1) <= EXTRA_ROUNDS() ? { action: "new_round", why: "all eight discovery attempts used; starting another round with their evidence" }
+    : { action: "end", why: "Goose could not reproduce a working environment and acceptance checks for this repository" };
   if (/Additional execution support is needed|cannot run yet|No repair is available|no known repair applies|No worker step/i.test(r)) return { action: "end", why: r.slice(0, 300) };
   if (/requires live Naive|needs the live|not running in local mode|requires the live/i.test(r) && (job.mode ?? config.mode) !== "naive") return { action: "end", why: "this work needs the live agent team, which is not running" };
   if (/^Spending limit reached/i.test(r)) return job.cost_limit_micro_usd < COST_CEILING() ? { action: "raise_limit", why: r } : { action: "end", why: `the job reached its ${usd(COST_CEILING(), 0)} cost ceiling without finishing` };
@@ -55,6 +58,10 @@ export async function serviceAutonomy(now = Date.now()) {
     const c = classify(reason, job, now, job.auto_recovered_at ? Date.parse(job.auto_recovered_at) : null);
     if (c.action === "infra" || c.action === "backoff") continue;
     if (c.action === "approval") { if (config.publicJobsRequireApproval) continue; await resume(job); }
+    else if (c.action === "new_round") {
+      await q("UPDATE proposals SET status='superseded' WHERE job_id=$1 AND status='sent'", [job.id]);
+      await q("UPDATE jobs SET stage='intake', status='running', waiting_reason=NULL, round=round+1, next_run_at=now(), updated_at=now() WHERE id=$1 AND status='waiting_founder'", [job.id]);
+    }
     else if (c.action === "retry") await resume(job, ", auto_recoveries=auto_recoveries+1, auto_recovered_at=now()");
     else if (c.action === "raise_limit") {
       const to = Math.min(COST_CEILING(), Math.round(job.cost_limit_micro_usd * 1.5));
