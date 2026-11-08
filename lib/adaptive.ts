@@ -56,6 +56,25 @@ export function agentExecutionEvidence(job:Pick<Job,"constraints">,value:any):an
  return value;
 }
 function protectedHashes(source:string,paths:string[]){const values:Record<string,string>=Object.create(null);for(const f of paths){if(!safe(f))throw new Error("Unsafe protected path");const full=path.join(source,f);if(!fs.existsSync(full))throw new Error("Missing protected path: "+f);values[f]=fs.statSync(full).isDirectory()?digest(full):sha256(full);}return values;}
+/** Cheap checks of a plan against the actual original source, before any execution. Paths absent from the supplied
+ *  archive (e.g. git submodules) cannot be protected, so they are dropped and recorded as a limitation instead of
+ *  rejecting the plan; a negative control must make one exact replacement in a file that exists in the original. */
+export function sourcePreflight(source:string,p:any):{plan:any;problems:string[]}{
+ const problems:string[]=[];const plan={...p};
+ if(Array.isArray(p.protected_paths)){
+  const missing=p.protected_paths.filter((f:any)=>typeof f==="string"&&safe(f)&&!fs.existsSync(path.join(source,f)));
+  if(missing.length){plan.protected_paths=p.protected_paths.filter((f:any)=>!missing.includes(f));plan.limitations=[...(Array.isArray(p.limitations)?p.limitations:[]),`Not present in the supplied source, so not protected: ${missing.join(", ")}`];}
+  if(!plan.protected_paths.length)problems.push("protected_paths must list original test or CI paths that exist in the supplied source");
+ }
+ for(const m of Array.isArray(p.mutations)?p.mutations:[]){
+  if(!m||typeof m.path!=="string"||!safe(m.path))continue;
+  const full=path.join(source,m.path);
+  if(!fs.existsSync(full)||!fs.statSync(full).isFile()){problems.push(`Negative control path ${m.path} does not exist in the ORIGINAL source; mutate an existing original file (before migration)`);continue;}
+  const text=fs.readFileSync(full,"utf8"),n=typeof m.find==="string"&&m.find?text.split(m.find).length-1:0;
+  if(n!==1)problems.push(`Negative control find text must occur exactly once in ${m.path} (found ${n} times)`);
+ }
+ return {plan,problems};
+}
 function protectedFiles(source:string,paths:string[]){
  const files:Record<string,string>=Object.create(null);
  const visit=(full:string)=>{const s=fs.lstatSync(full);if(s.isSymbolicLink())throw new Error("Protected paths cannot be symlinks");if(s.isDirectory())for(const entry of fs.readdirSync(full).sort())visit(path.join(full,entry));else if(s.isFile())files[path.relative(source,full)]=sha256(full);};
@@ -125,16 +144,20 @@ Inspect actual manifests, lockfiles, CI workflows, source interfaces, and tests.
 Host executes your scripts in disposable Linux Docker containers; you do NOT need Docker in your Naive computer. Supported official base repositories: ubuntu, debian, python, node, golang, rust, eclipse-temurin, ruby, php, mcr.microsoft.com/dotnet/sdk. Choose an appropriate pinned version. Setup has network ONLY through HTTP_PROXY/HTTPS_PROXY to exact dependency_hosts. Include package registries AND their artifact CDN hosts, no private addresses. APT/pip/npm work via the proxy. Setup should install build/test dependencies using actual project metadata; package installation scripts are untrusted and sandboxed. It may build/install the project. Never change original source or existing tests in setup/prepare. Every check starts from an independent copy of the same prepared image, OFFLINE, as UID1000 with writable /workspace and /home/goose. prepare can start local service processes; install services during setup. No Docker socket, no credentials, no host filesystem. Checks run from /workspace with scripts stored read-only at /acceptance. Project imports and test discovery must work from there (set PYTHONPATH if needed). Native tests that spawn other executables cannot invoke docker.
 Run the repository's full default test suite as preservation checks when executable within the limits. Split it into independent checks if necessary. A focused subset alone is insufficient when the default suite can run. State every exclusion and its observed reason in limitations; do not replace the default suite with just tests around the requested change. Protect all original test directories and CI configuration in protected_paths, including suites not executed. If existing failures block it, diagnose them; never quietly skip relevant tests. Additional focused preservation assertions should cover changed behavior. Requirement checks must PASS on correct new implementation and FAIL on original source with a clear assertion or missing-feature error. They must verify the actual requested behavior, not merely inspect source text. Do not implement the change yet. A negative control must make an exact unique replacement in ORIGINAL code, preserve syntax/imports and make a preservation check fail with an assertion. Never mutate tests or commands for the negative control. Use timeout_seconds up to 900. Normalize nondeterministic fields in assertions. Include no hardcoded output pretending to be a test. For data changes, build isolated copies, assert row relationships/value transformations/new writes/retry behavior. Missing private services, credentials, hardware or ambiguous requirements belong in missing_requirements; do not fabricate them. Explain all coverage limitations.
 For documentation and other non-runtime deliverables, check the requested content and functional links without imposing incidental quoting, formatting, or extra identifiers the customer did not request. Semantically equivalent valid representations should pass.
+HARD RULES. plan_json is rejected before execution unless ALL hold, so check each one before submitting: (1) image is a tagged official image from the list above; (2) 2 to 30 checks, each with a unique lowercase id, kind "preserve" or "requirement", a non-empty script, timeout_seconds 1 to 900; (3) at least one "preserve" check AND at least one "requirement" check; a requirement check must FAIL on the original source (for a language migration, e.g. the new-language build/type-check of the migrated entry points), so a delivery that changed nothing cannot pass; (4) 1 to 5 mutations, each replacing text that occurs EXACTLY ONCE in a file that exists in the ORIGINAL supplied source (for a migration, the original file such as models/user.js, never the not-yet-written new file), changed to something different, naming a "preserve" check; (4b) protected_paths must exist in the supplied archive: git submodules and other paths missing from it cannot be protected; (5) protected_paths and deliverables are non-empty relative paths and do not overlap; (6) dependency_hosts are explicit public hostnames; (7) limitations and missing_requirements are arrays of strings.
+SPEED: if the prior feedback below lists only rule "problems" for a plan you already wrote (no execution results), do not re-inspect the repository: revise that plan to satisfy the listed rules and submit it immediately.
 This is the feedback from prior actual execution (if any). Fix the plan based on it. Historical feedback is not approval and never overrides the current customer requirements. Correct every independent review finding, including documentation or other non-runtime deliverables: ${JSON.stringify(agentExecutionEvidence(job,feedback)).slice(-55000)}`});
   if(!r.ok)return {next:"plan",status:"waiting_founder",waiting:`Discovery agent stopped: ${r.message}`};
   let p:any;try{p=JSON.parse(r.output.plan_json);}catch{feedback={error:"Invalid plan JSON"};continue;}
   write(path.join(td,"plan.json"),p);const problems=adaptiveProblems(p);
   if(problems.length){feedback={plan:p,problems};write(path.join(td,"feedback.json"),feedback);continue;}
+  {const sp=sourcePreflight(J(job,"source"),p);p=sp.plan;write(path.join(td,"plan.json"),p);
+   if(sp.problems.length){feedback={plan:p,problems:sp.problems};write(path.join(td,"feedback.json"),feedback);continue;}}
   if(p.missing_requirements.length){
    await q("INSERT INTO questions(job_id,key,asked_by,audience,prompt,fields,blocking) VALUES($1,$2,'assessment','customer',$3,$4,true) ON CONFLICT(job_id,key) DO NOTHING",[job.id,`environment-${a}`,`Discovery needs clarification: ${p.missing_requirements.join("; ")}. Explain the required behavior or available infrastructure. Do not paste credentials here.`,JSON.stringify([{type:"text",key:"details",label:"Clarification"}])]);
    return {next:"awaiting_info",status:"waiting_customer",waiting:"Environment discovery needs your clarification"};
   }
-  try{protectedHashes(J(job,"source"),p.protected_paths);}catch(e){feedback={plan:p,error:String(e)};continue;}
+  try{protectedHashes(J(job,"source"),p.protected_paths);}catch(e){feedback={plan:p,problems:[String(e)]};write(path.join(td,"feedback.json"),feedback);continue;}
   const before=digest(J(job,"source"));const first=await execute(job,J(job,"source"),path.join(td,"plan.json"),path.join(td,"execution"),"baseline",true);
   if(before!==digest(J(job,"source")))throw new Error("Discovery changed the original source");
   write(path.join(td,"summary.json"),concise(first));

@@ -44,7 +44,7 @@ type LiveGoose = GoosePose & {
   airT: number; dropT: number; dx: number; rk: number; side: number;
 };
 type Air = {
-  x: number; y: number; v: number; t: number; dur: number; landing: boolean; landT: number; leave: boolean;
+  x: number; y: number; v: number; t: number; dur: number; landing: boolean; landT: number; leave: boolean; wave: number;
   minDx: number; maxDx: number; toY?: number;
 };
 type Mark = { x: number; y: number; h: number; trail?: boolean };
@@ -85,7 +85,7 @@ export function createLive(els: LiveElements, ev: LiveEvents, reduceMotion: bool
     data: null as LiveCode | null, fi: 0, perStop: 1,
     started: false, visible: false, finished: false,
     rows: [] as Row[], units: [] as Unit[], folds: [] as number[], geese: [] as LiveGoose[], prints: [] as Mark[], drops: [] as { x: number; y: number }[],
-    w: 1, h: 1, dpr: 1, lh: 26, sc: 0.68, contentH: 0, camY: 0,
+    w: 1, h: 1, dpr: 1, lh: 26, sc: 0.68, contentH: 0, camY: 0, camV: 0, camDraw: 0,
     survey: false, cur: 0, fileDone: 0, fileTotal: 0, doneBefore: 0, total: 0, walkT: 0, walkConv: 0, tailT: 0, leaveT: 0,
     phase: "build" as "build" | "tail" | "leave" | "rest",
     air: null as Air | null,
@@ -145,7 +145,7 @@ export function createLive(els: LiveElements, ev: LiveEvents, reduceMotion: bool
       }
     } else {
       const lines = run.rows.filter((r) => r.r.k === "same" && (r.r as { t: string }).t.trim().length > 3);
-      const step = Math.max(5, Math.round(lines.length / 12));
+      const step = Math.max(4, Math.round(lines.length / 18));
       for (let k = Math.floor(step / 2); k < lines.length; k += step)
         run.units.push({ rows: [lines[k]], kind: "read", done: false, lines: 0, y: 0, hgt: 0, cy: 0, sx0: 0, sx1: 0, cx: 0 });
     }
@@ -153,8 +153,8 @@ export function createLive(els: LiveElements, ev: LiveEvents, reduceMotion: bool
     run.fileTotal = replay() ? changedRows(f) : 0;
     run.doneBefore = replay() ? run.data!.files.slice(0, i).reduce((a, x) => a + changedRows(x), 0) : 0;
     Object.assign(run, { cur: 0, prints: [], drops: [], air: null, walkT: 0, walkConv: 0, tailT: 0, leaveT: 0, phase: "build" });
-    run.camY = 0;
-    els.scroll.style.transform = "translateY(0)";
+    run.camY = 0; run.camV = 0; run.camDraw = 0;
+    els.scroll.style.transform = "translate3d(0, 0, 0)";
     measure();
     ev.file(i);
     emitProgress();
@@ -445,12 +445,12 @@ export function createLive(els: LiveElements, ev: LiveEvents, reduceMotion: bool
     const li = m > 0 && Math.abs(byX[m - 1].x - aimX) < Math.abs(byX[m].x - aimX) ? m - 1 : m;
     const front = Math.max(...run.geese.map((g) => g.y));
     byX.forEach((g, k) => { g.dx = xs[k] - xs[li]; g.rk = Math.abs(k - li); g.side = Math.sign(k - li); });
-    run.air = { x: xs[li], y: front, v: 78, t: 0, dur: leave ? Infinity : rnd(4.2, 5.6), landing: false, landT: 0, leave,
+    run.air = { x: xs[li], y: front, v: 78, t: 0, dur: leave ? Infinity : rnd(2.6, 3.8), landing: false, landT: 0, leave, wave: rnd(0, TAU),
       minDx: Math.min(...byX.map((g) => g.dx)), maxDx: Math.max(...byX.map((g) => g.dx)) };
     for (const g of run.geese) {
       g.rankF = g.rk;
       g.mode = "air";
-      g.airT = -(g.rk * 0.26 + (g.side > 0 ? 0.12 : 0) + rnd(0, 0.08)); // one after another, lead first
+      g.airT = -(g.rk * rnd(0.35, 0.75) + rnd(0, 0.7)); // one after another, lead first, each in its own time
       g.dropT = rnd(0.5, 1.2);
     }
     run.walkT = 0;
@@ -462,7 +462,7 @@ export function createLive(els: LiveElements, ev: LiveEvents, reduceMotion: bool
     g.airT += dt;
     if (g.airT < 0) { g.speed *= Math.pow(0.05, dt); return; } // waiting for its turn to go
     const wob = g.rk ? 1 : 0.4;
-    const sx = clamp(A.x + g.dx + Math.sin(now * 0.8 + g.seed) * 6 * wob, 30, run.w - 24);
+    const sx = clamp(A.x + g.dx + Math.sin(now * 0.8 + g.seed) * 16 * wob, 30, run.w - 24);
     const sy = A.y - g.rk * 96 * (run.sc / 0.68) + Math.cos(now * 0.6 + g.seed) * 5 * wob;
     // fly like a bird: always forward along the heading, which stays close to straight down;
     // reaching its place in the V is done by leaning a little, never by sliding sideways
@@ -524,6 +524,8 @@ export function createLive(els: LiveElements, ev: LiveEvents, reduceMotion: bool
     // keep the whole V on the page; the V drifts over gently toward the work
     const tx = clamp(cur && !A.leave ? cur.cx : run.w / 2, 30 - A.minDx, Math.max(30 - A.minDx, run.w - 24 - A.maxDx));
     A.x += clamp(tx - A.x, -A.v * 0.25 * dt, A.v * 0.25 * dt);
+    // a gentle, unhurried meander so the flight never runs dead straight
+    A.x = clamp(A.x + Math.sin(A.t * 0.7 + A.wave) * 22 * dt, 30 - A.minDx, Math.max(30 - A.minDx, run.w - 24 - A.maxDx));
     // the flock converts each stop as it passes over it
     if (cur && !A.landing && !A.leave && run.phase === "build") {
       const over = run.geese.filter((g) => g.mode === "air" && (g.alt ?? 0) > 0.4 && g.y >= cur.cy - 4);
@@ -574,10 +576,7 @@ export function createLive(els: LiveElements, ev: LiveEvents, reduceMotion: bool
       if ((r.r.k === "chg" || r.r.k === "add") && !r.li.classList.contains("checked") && r.li.offsetTop < A.y - 40) r.li.classList.add("checked");
     }
     if (A.y > run.contentH + 220) { startSurvey((run.fi + 1) % run.data!.files.length); return; }
-    const focus = A.y - 60;
-    const camT = clamp(focus - run.h * 0.35, 0, Math.max(0, run.contentH - run.h + 40));
-    run.camY += (camT - run.camY) * Math.min(1, dt * 1.8);
-    els.scroll.style.transform = `translateY(${(-run.camY).toFixed(1)}px)`;
+    moveCamera(dt, A.y - 60, 0.35);
   }
 
   function update(dt: number, now: number) {
@@ -590,14 +589,15 @@ export function createLive(els: LiveElements, ev: LiveEvents, reduceMotion: bool
       if (ground) run.walkT += dt;
       if (cur && ground && !run.air) {
         const minY = Math.min(...run.geese.map((g) => g.y));
-        if (run.walkConv >= 3 || run.walkT > 8 || cur.y - minY > 6 * run.lh + 30 || foldAhead(minY, cur.y)) startAir(false);
+        const [stops, secs, gap] = replay() ? [5, 14, 10] : [7, 22, 14];
+        if (run.walkConv >= stops || run.walkT > secs || cur.y - minY > gap * run.lh + 30 || foldAhead(minY, cur.y)) startAir(false);
       }
     }
     if (run.phase === "tail" && !run.air && run.geese.every((g) => g.mode === "ground")) {
       run.tailT += dt;
       const lastFile = run.fi >= run.data!.files.length - 1;
       if (replay() && lastFile) { run.phase = "rest"; if (!run.finished) { run.finished = true; ev.finish(); } }
-      else if (run.tailT > (replay() ? 1.8 : 2.6)) { run.phase = "leave"; run.leaveT = 0; startAir(true); }
+      else if (run.tailT > (replay() ? 1.8 : 4.5)) { run.phase = "leave"; run.leaveT = 0; startAir(true); }
     }
     if (run.phase === "leave") {
       run.leaveT += dt;
@@ -605,18 +605,29 @@ export function createLive(els: LiveElements, ev: LiveEvents, reduceMotion: bool
     }
     if (run.air) updateAirLead(dt);
     for (const g of run.geese) updateGoose(g, dt, now);
-    // the camera follows the flock: the page scrolls up under the birds
-    const focus = run.geese.reduce((a, g) => a + g.y, 0) / run.geese.length;
-    const camT = clamp(focus - run.h * 0.3, 0, Math.max(0, run.contentH - run.h + 40));
-    run.camY += (camT - run.camY) * Math.min(1, dt * 1.8);
-    els.scroll.style.transform = `translateY(${(-run.camY).toFixed(1)}px)`;
+    // the camera follows the flock: the page scrolls up under the birds (birds still arriving from above don't pull it back)
+    const seen = run.geese.filter((g) => g.y > run.camY - 40);
+    if (seen.length) moveCamera(dt, seen.reduce((a, g) => a + g.y, 0) / seen.length, 0.3);
+  }
+
+  /** A critically damped spring: the page starts and stops scrolling smoothly and never jumps, even when a frame is late. */
+  function moveCamera(dt: number, focus: number, lead: number) {
+    const camT = clamp(focus - run.h * lead, 0, Math.max(0, run.contentH - run.h + 40));
+    const k = 5, c = 2 * Math.sqrt(k);
+    run.camV += ((camT - run.camY) * k - run.camV * c) * dt;
+    run.camY += run.camV * dt;
+    setCam();
+  }
+  function setCam() {
+    run.camDraw = Math.round(run.camY * run.dpr) / run.dpr;
+    els.scroll.style.transform = `translate3d(0, ${-run.camDraw}px, 0)`;
   }
 
   function draw() {
     const { dpr, w, h } = run;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
-    ctx.translate(0, -run.camY);
+    ctx.translate(0, -run.camDraw);
     for (const p of run.prints) if (p.y > run.camY - 30 && p.y < run.camY + h + 30) drawPrint(ctx, p.x, p.y, p.h, run.sc * 1.3, p.trail ? TRAIL : PRINT);
     for (const d of run.drops) drawDropping(ctx, d.x, d.y, run.sc * 1.2);
     const vis = run.geese.filter((g) => g.y > run.camY - 220 && g.y < run.camY + h + 220);
@@ -655,8 +666,8 @@ export function createLive(els: LiveElements, ev: LiveEvents, reduceMotion: bool
     });
     run.air = null;
     run.phase = replay() ? "rest" : "build";
-    run.camY = clamp(bottom + 60 - run.h * 0.7, 0, Math.max(0, run.contentH - run.h + 40));
-    els.scroll.style.transform = `translateY(${(-run.camY).toFixed(1)}px)`;
+    run.camY = clamp(bottom + 60 - run.h * 0.7, 0, Math.max(0, run.contentH - run.h + 40)); run.camV = 0;
+    setCam();
     if (replay() && !run.finished) { run.finished = true; ev.finish(); }
     draw();
   }

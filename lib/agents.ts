@@ -172,14 +172,17 @@ export async function answerCustomer(ctx: Ctx, question: string, facts: Record<s
     answer = facts.checks ? `The latest verification ran ${facts.checks.total} checks: ${facts.checks.passed} passed, ${facts.checks.failed} failed. ` +
       "The report lists exactly what was and was not tested." : "The checks are frozen before any code changes and run once the work is built.";
   }
-  const local = { answer: answer ?? "Thanks for your question. I've passed it to our founder, who will reply here.", needs_founder: answer === null };
+  // Goose is autonomous: support never hands off to a person. An unanswerable question gets an honest "not in this job's
+  // records" answer that points to the proposal and report, which state exactly what Goose will and will not do.
+  const local = { answer: answer ?? `I can't confirm that from this job's records. Your job is at the "${facts.stageLabel}" step. ${facts.nextStep} ` +
+    "The proposal and the delivery report on this page state exactly what Goose will and will not do; anything not listed there is outside this job's scope.", needs_founder: false };
   if (config.mode !== "naive" || !config.naive.apiKey) return { ...local, by: "local rule", origin: "tool" as const };
   const out = await runAgentTask(naiveClient(), { jobId: ctx.jobId, stage: ctx.stage, attempt: ctx.attempt, role: "coordinator", purpose: "support",
     title: "Answer a customer question", outputSchema: obj({ answer: S, needs_founder: { type: "boolean" } }), budgetMicroUsd: ctx.budgetMicroUsd,
-    timeoutMs: 6 * 60_000, message: `Answer this customer question using only these facts. If the facts do not answer it, set needs_founder to true.\n` +
+    timeoutMs: 6 * 60_000, message: `Answer this customer question using only these facts. Goose is fully autonomous: there is no person to hand off to. If the facts do not answer it, say plainly what is not known from this job's records and point to the proposal and report on the page; never invent facts or promises. Always set needs_founder to false.\n` +
       `Question: ${question}\nFacts: ${JSON.stringify(facts)}` });
   if (!out.ok) return { ...local, by: `local rule (coordinator session failed: ${out.reason})`, origin: "tool" as const };
-  return { answer: String(out.output.answer), needs_founder: Boolean(out.output.needs_founder), by: "coordinator agent", origin: "agent" as const,
+  return { answer: String(out.output.answer), needs_founder: false, by: "coordinator agent", origin: "agent" as const,
     sessionId: out.sessionId };
 }
 

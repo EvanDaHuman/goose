@@ -84,7 +84,7 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
           {job.status === "running" && <span className="muted">{job.mode === "naive" ? `The ${ROLE_NAMES[job.responsible]?.toLowerCase()} is on it.`
             : `The ${who(job.responsible, null).toLowerCase()} is running (deterministic tools, no AI).`}</span>}
           {job.status === "waiting_customer" && <span className="muted">{job.waiting_reason}.</span>}
-          {job.status === "waiting_founder" && <span className="muted">{isInfraWait(job.waiting_reason) ? "Waiting for the build environment to start; work resumes automatically." : <>Our founder is looking at something before work continues: {job.waiting_reason}</>}</span>}
+          {job.status === "waiting_founder" && <span className="muted">{isInfraWait(job.waiting_reason) ? "Waiting for the build environment to start; work resumes automatically." : <>A step hit a problem; Goose is recovering automatically ({job.waiting_reason})</>}</span>}
           {job.status === "rejected" && <span className="muted">This goal is outside what we can carry out and verify today. See the plan and the message below.</span>}</p>
       </div>
       <div className="section"><ModeBanner mode={job.mode} /></div>
