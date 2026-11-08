@@ -42,7 +42,8 @@ export function composeOutreach(draft: string, id: OutreachIdentity): ComposedOu
   if (!d) throw new Error("The stored draft has no subject and body");
   const site = publicWebsite(id.websiteUrl) ?? id.websiteUrl;
   const signer = id.signer.trim() || "The Goose team";
-  let body = d.body.replace(/\[Founder name\]/gi, signer);
+  // a signer that already names the company ("Goose Outreach Agent") replaces the whole "[Founder name], Goose" sign-off
+  let body = (/goose/i.test(signer) ? d.body.replace(/\[Founder name\],?\s*Goose\b/gi, signer) : d.body).replace(/\[Founder name\]/gi, signer);
   // the link to the site goes just before the closing question/sign-off block
   const visit = `You can see how Goose works, and request the free assessment, at ${site}`;
   if (!body.includes(site)) {
