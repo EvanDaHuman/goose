@@ -33,6 +33,7 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
   const pkg = artifacts.find((a: any) => a.kind === "delivery_package");
   const reportArt = [...artifacts].reverse().find((a: any) => a.kind === "verification_report");
   const mission = [...artifacts].reverse().find((a:any)=>a.kind==="robotics_mission");
+  const missionQuality = [...artifacts].reverse().find((a:any)=>a.kind==="robotics_quality");
   const delivered = ["delivered", "invoice", "follow_up", "closed"].includes(job.stage);
   const quote = proposal?.scope?.quote;
   const st = insp?.stack;
@@ -83,6 +84,7 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
       {mission&&<section className="card section"><div className="card-head"><h2>Recorded simulation</h2><span className="small muted">Actual Gazebo, SLAM and odometry telemetry</span></div>
         <img src={`/api/jobs/${id}/artifacts/${mission.id}?${ops?"ops=1":`t=${encodeURIComponent(token)}`}&inline=1`} alt="Observed robot occupancy map and measured trajectory with independent acceptance results" style={{width:"100%",height:"auto",borderRadius:12}} />
         <p className="small muted">One simulated robot. Physical hardware has not been validated. The source report and map are available with the verification artifacts.</p>
+        {missionQuality&&<p className="notice warn" style={{marginTop:12}}>{missionQuality.label}</p>}
       </section>}
 
       {open.length > 0 && (
@@ -133,14 +135,14 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
                 <td className="small muted">{o.why}</td></tr>))}</tbody></table></>)}
           {p.decision !== "unsupported" && (
             <div className="grid g2 section" style={{ alignItems: "start" }}>
-              <div><h3>What changes, and why</h3><ul>{(p.changes ?? []).map((c: any) => <li key={c.id}><b>{c.title}.</b> <DetailedText value={c.reason} />
+              <div><h3>What changes, and why</h3><ul>{(p.changes ?? []).map((c: any) => <li key={c.id}>{String(c.title??"").length>420?<><b>Engineering objective</b><DetailedText value={c.title} label="Read the full change objective" /></>:<b>{c.title}.</b>} <DetailedText value={c.reason} />
                 {c.by === "agent" && <span className="origin agent" style={{ marginLeft: 6 }}>implementation agent</span>}</li>)}</ul>
                 <h3>Intended differences</h3>
                 <ul>{(p.intended_differences ?? []).map((d: any) => <li key={d.id}><b>{d.title ?? d.what}.</b> <span className="muted">{d.reason ?? d.why}</span></li>)}
                   {(p.intended_differences ?? []).length === 0 && <li className="muted">None: every recorded request must answer exactly as today.</li>}</ul></div>
               <div><h3>What we keep as it is</h3><ul>{(p.preserve ?? []).map((k: any, i: number) => <li key={i}>{k.what} <span className="muted small">{k.reason}</span></li>)}</ul>
                 <h3>Not in this job</h3><ul>{(p.follow_ups ?? []).map((f: any) => <li key={f.finding_id ?? f.id} className="small">{f.title} <span className="muted">- {f.why_not_now ?? (f.quote === "separate" ? "quoted separately if you want it" : "")}</span></li>)}
-                  {(p.follow_ups ?? []).length === 0 && <li className="muted small">No additional follow-up items identified. The agreed contract defines coverage.</li>}</ul></div>
+                  {(p.follow_ups ?? []).length === 0 && <li className="muted small">No additional exclusions were listed at assessment. Later requests appear under Support &amp; next steps.</li>}</ul></div>
             </div>)}
           {(p.boundary ?? []).length > 0 && (
             <div className="section">
@@ -214,9 +216,10 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
               <td>{r.verdict === "pass" ? <span className="pill ok">All mandatory checks passed</span> : <span className="pill bad">Failed - delivery blocked</span>}</td>
               <td className="num">{r.passed}</td><td className="num">{r.failed}</td><td>{when(r.created_at)}</td></tr>))}</tbody></table>
           {report && (<>
-            <div className="grid g3 section">{Object.entries(report.by_category ?? {}).map(([k, c]: any) => (
-              <div key={k} className="card tight"><div className="stat-label">{c.title}</div><div className="stat">{c.pass}/{c.pass + c.fail + c.skip}</div>
-                {c.fail + c.skip > 0 && <div className="small" style={{ color: "var(--bad)" }}>{c.fail} failed, {c.skip} not run</div>}</div>))}</div>
+            <div className="grid g3 section">{Object.entries(report.by_category ?? {}).map(([k, c]: any) => {
+              const passed=c.passed??c.pass??0,failed=c.failed??c.fail??0,skipped=c.skipped??c.skip??0,total=c.total??passed+failed+skipped;
+              return <div key={k} className="card tight"><div className="stat-label">{c.title??k.replaceAll("_"," ")}</div><div className="stat">{passed}/{total}</div>
+                {failed + skipped > 0 && <div className="small" style={{ color: "var(--bad)" }}>{failed} failed, {skipped} not run</div>}</div>;})}</div>
             {(report.failed ?? []).length > 0 && (<><h3>What failed</h3><ul className="small">{report.failed.slice(0, 12).map((f: any) => <li key={f.id}><b>{f.title}</b>
               <span className="mono muted"> {JSON.stringify(f.evidence?.problems?.[0] ?? f.evidence ?? {}).slice(0, 220)}</span></li>)}</ul></>)}
             {(report.summary?.optional_skipped ?? []).length > 0 && <p className="small">Optional checks not run: {report.summary.optional_skipped.map((x: any) => `${x.id} (${x.reason})`).join("; ")}</p>}
@@ -261,7 +264,7 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
       {delivered && pkg && (
         <section className="section card">
           <h2>Delivery</h2>
-          <p>The upgraded application, what changed and why, the run book, the rollback guide and the verification evidence are in one package.</p>
+          <p>{workspace?"The verified source, frozen contract, change diff, run book and verification evidence are in one package.":"The upgraded application, what changed and why, the run book, the rollback guide and the verification evidence are in one package."}</p>
           <a className="btn primary" href={`/api/jobs/${id}/artifacts/${pkg.id}?${ops ? "ops=1" : `t=${token}`}`}>Download the package</a>
           <p className="small muted mono" style={{ marginTop: 8 }}>SHA-256 {pkg.sha256}</p>
           {job.stage === "delivered" && !ops && <div className="section"><SignForm url={`/api/jobs/${id}/accept-delivery`} token={token} button="Accept the delivery"

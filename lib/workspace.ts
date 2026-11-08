@@ -256,7 +256,10 @@ async function repair(job:Job,a:number) {
   if(result.next==="verify")await q(`INSERT INTO repairs(job_id,attempt,diagnoses,actions,diff,unresolved,outcome) VALUES($1,$2,$3,$4,$5,'[]','pending') ON CONFLICT(job_id,attempt) DO UPDATE SET diagnoses=EXCLUDED.diagnoses,actions=EXCLUDED.actions,diff=EXCLUDED.diff`,[job.id,a,JSON.stringify(report.failed),JSON.stringify([{action:"Naive implementation repair based on independent failures"}]),fs.readFileSync(J(job,"build",`attempt-${a+1}`,"change.diff"),"utf8")]);
   return result;
 }
-async function packageStage(job:Job,a:number):Promise<StageResult> {
+async function packageStage(job:Job,_stageAttempt:number):Promise<StageResult> {
+  // Packaging has one durable stage key, while the verified implementation may
+  // have several repair attempts. Always package the job's accepted candidate.
+  const a=job.attempt;
   const report=readJson(J(job,"verify",`attempt-${a}`,"report.json")),candidate=J(job,"build",`attempt-${a}`,"upgraded");
   if(report.summary.verdict!=="pass" || !report.integrity.ok || report.candidate_digest!==treeDigest(candidate))throw new Error("Only the exact independently verified candidate can be delivered");
   const manifest=readJson(J(job,"vault","MANIFEST.json"));

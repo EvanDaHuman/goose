@@ -12,16 +12,17 @@ try {
   const job=await jobById(id);if(!job||job.recipe!=="workspace-change")throw new Error("No repository engineering job with this id");
   const reportFile=J(job,"verify",`attempt-${job.attempt}`,"report.json"),packageFile=J(job,"delivery","delivery.zip");
   const report=fs.existsSync(reportFile)?readJson(reportFile):null;
-  const [attempts,sessions,stages,approvals,interventions,invoices,payments]=await Promise.all([
+  const [attempts,sessions,stages,approvals,interventions,invoices,payments,events]=await Promise.all([
     q("SELECT attempt,total,passed,failed,skipped,integrity_ok,verdict,created_at FROM check_runs WHERE job_id=$1 ORDER BY attempt",[id]),
     q("SELECT session_id,role,purpose,model,status,stop_reason,consumed_micro_usd,created_at FROM naive_sessions WHERE job_id=$1 ORDER BY id",[id]),
     q("SELECT stage,attempt,status,runs,actor,started_at,finished_at,error FROM stage_runs WHERE job_id=$1 ORDER BY id",[id]),
     q("SELECT kind,decision,by_name,statement,at FROM approvals WHERE job_id=$1 ORDER BY id",[id]),
     q("SELECT kind,reason,minutes,at FROM interventions WHERE job_id=$1 ORDER BY id",[id]),
     q("SELECT number,status,is_test,amount_cents FROM invoices WHERE job_id=$1",[id]),
-    q("SELECT p.method,p.is_test,p.amount_cents FROM payments p JOIN invoices i ON i.id=p.invoice_id WHERE i.job_id=$1",[id])]);
+    q("SELECT p.method,p.is_test,p.amount_cents FROM payments p JOIN invoices i ON i.id=p.invoice_id WHERE i.job_id=$1",[id]),
+    q("SELECT actor,kind,summary,origin,at FROM events WHERE job_id=$1 AND (important OR kind='error') ORDER BY id",[id])]);
   const evidence={generated_at:new Date().toISOString(),job:{id,title:job.title,goal:job.goal,kind:job.kind,mode:job.mode,stage:job.stage,status:job.status},
-    attempts,sessions,stages,approvals,interventions,invoices,payments,spend_micro_usd:await jobSpend(id),
+    attempts,sessions,stages,approvals,interventions,invoices,payments,events,spend_micro_usd:await jobSpend(id),
     contract_manifest_sha256:job.checks_manifest_sha,verification:report,
     delivery:fs.existsSync(packageFile)?{sha256:sha256(packageFile),bytes:fs.statSync(packageFile).size}:null,
     claims:{synthetic_customer:job.kind==="demo",production_deployment:false,paid_real_customer:payments.some((p:any)=>!p.is_test),

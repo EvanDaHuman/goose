@@ -4,7 +4,8 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import crypto from "node:crypto";
-import { createJob, jobById } from "../../lib/jobs";
+import { execFileSync } from "node:child_process";
+import { createJob, jobById, runCurrentStage, stageAttempt } from "../../lib/jobs";
 import { addUpload, answerQuestion } from "../../lib/actions";
 import { pool, q } from "../../lib/db";
 import { jobDir } from "../../lib/config";
@@ -13,6 +14,7 @@ import { verifyWorkspace, WORKSPACE_STAGES } from "../../lib/workspace";
 import { sourceSnapshot } from "../../lib/sourceSnapshot";
 import { cleanEnv, run } from "../../lib/proc";
 import { observedOutput } from "../../lib/workspaceContract";
+import { IMPL_ALL } from "../../lib/pipeline";
 
 const temporary=fs.mkdtempSync(path.join(os.tmpdir(),"goose-workspace-test-"));
 const jobs:string[]=[];
@@ -101,4 +103,50 @@ test("a changed robotics verifier stops before running a build or asking agents 
   assert.equal(report.checks.find((c:any)=>c.id==="verifier_version").status,"fail");
   assert.equal(report.checks.some((c:any)=>c.id==="target_build"),false);
   assert.equal(fs.existsSync(jobDir(job.id,"runtime","workspace-verify-1")),false);
+});
+
+test("the once-only packaging stage ships the verified repaired attempt instead of failed attempt one",async()=>{
+  const original='const input=JSON.parse(process.argv[2]);console.log(JSON.stringify({sum:input.a+input.b}));';
+  const broken='console.log(JSON.stringify({sum:999}));';
+  const fixture=path.join(temporary,"repaired-source");fs.mkdirSync(fixture);
+  fs.writeFileSync(path.join(fixture,"calc.mjs"),original);
+  const archive=path.join(temporary,"repaired-input.zip");
+  execFileSync("/usr/bin/zip",["-q",archive,"calc.mjs"],{cwd:fixture});
+  const created=await createJob({accountName:"Repaired delivery fixture",kind:"demo",title:"Package the verified repair",slug:"repaired-delivery",timezone:"UTC",repoZip:archive,workspaceRequest:true});jobs.push(created.id);
+  const source=jobDir(created.id,"source"),work=jobDir(created.id,"work");
+  fs.mkdirSync(source,{recursive:true});fs.mkdirSync(work,{recursive:true});fs.copyFileSync(path.join(fixture,"calc.mjs"),path.join(source,"calc.mjs"));
+  const contract={version:1,title:"Preserve addition after repair",source_build:[],target_build:[],
+    checks:[{id:"positive",title:"Positive addition",kind:"preserve",source:{argv:["node","calc.mjs",'{"a":2,"b":3}']},target:{argv:["node","calc.mjs",'{"a":2,"b":3}']},compare:"json"},
+      {id:"negative",title:"Negative addition",kind:"preserve",source:{argv:["node","calc.mjs",'{"a":-7,"b":2}']},target:{argv:["node","calc.mjs",'{"a":-7,"b":2}']},compare:"json"}],
+    deliverables:["calc.mjs","README.md"],limitations:["Synthetic stage-dispatch regression"]};
+  fs.writeFileSync(path.join(work,"accepted-plan.json"),JSON.stringify({workspace_contract:contract}));
+  const step=async()=>{await runCurrentStage((await jobById(created.id))!,IMPL_ALL);return (await jobById(created.id))!;};
+  await q("UPDATE jobs SET stage='baseline',repair_budget=0 WHERE id=$1",[created.id]);
+  assert.equal((await step()).stage,"freeze");
+  assert.equal((await step()).stage,"implement");
+  // The implementation fixture supplies two real programs; both go through the
+  // same native verifier and durable dispatcher used by live engineering jobs.
+  for(const attempt of [1,2]){
+    const candidate=jobDir(created.id,"build",`attempt-${attempt}`,"upgraded");fs.mkdirSync(candidate,{recursive:true});
+    fs.writeFileSync(path.join(candidate,"calc.mjs"),attempt===1?broken:original);
+    fs.writeFileSync(path.join(candidate,"README.md"),attempt===1?"FAILED first candidate":"VERIFIED repaired candidate");
+    fs.writeFileSync(jobDir(created.id,"build",`attempt-${attempt}`,"change.diff"),`Recorded changes for attempt ${attempt}\n`);
+  }
+  await q("UPDATE jobs SET stage='verify',status='running',attempt=1 WHERE id=$1",[created.id]);
+  assert.equal((await step()).status,"waiting_founder");
+  const first=JSON.parse(fs.readFileSync(jobDir(created.id,"verify","attempt-1","report.json"),"utf8"));assert.equal(first.summary.verdict,"fail");
+  assert.equal((await q("SELECT id FROM artifacts WHERE job_id=$1 AND kind='delivery_package'",[created.id])).length,0);
+  await q("UPDATE jobs SET stage='verify',status='running',attempt=2,repairs_used=1,repair_budget=1 WHERE id=$1",[created.id]);
+  const repaired=await step();assert.equal(repaired.stage,"package");assert.equal(repaired.attempt,2);
+  assert.equal(stageAttempt(repaired,"package"),1);
+  const second=JSON.parse(fs.readFileSync(jobDir(created.id,"verify","attempt-2","report.json"),"utf8"));assert.equal(second.summary.verdict,"pass");
+  const delivered=await step();assert.equal(delivered.stage,"delivered",delivered.waiting_reason??undefined);assert.equal(delivered.status,"waiting_customer");
+  const packages=await q<{path:string}>("SELECT path FROM artifacts WHERE job_id=$1 AND kind='delivery_package'",[created.id]);assert.equal(packages.length,1);
+  const member=(name:string)=>execFileSync("/usr/bin/unzip",["-p",packages[0].path,name],{encoding:"utf8"});
+  assert.equal(member("source/calc.mjs"),original);assert.notEqual(member("source/calc.mjs"),broken);
+  assert.equal(member("source/README.md"),"VERIFIED repaired candidate");
+  assert.equal(member("change.diff"),"Recorded changes for attempt 2\n");
+  const packagedReport=JSON.parse(member("report.json"));assert.equal(packagedReport.summary.verdict,"pass");assert.equal(packagedReport.candidate_digest,second.candidate_digest);assert.notEqual(packagedReport.candidate_digest,first.candidate_digest);
+  const packageRuns=await q<{attempt:number;status:string}>("SELECT attempt,status FROM stage_runs WHERE job_id=$1 AND stage='package'",[created.id]);assert.deepEqual(packageRuns,[{attempt:1,status:"succeeded"}]);
+  const verified=await q<{attempt:number;verdict:string}>("SELECT attempt,verdict FROM check_runs WHERE job_id=$1 ORDER BY attempt",[created.id]);assert.deepEqual(verified,[{attempt:1,verdict:"fail"},{attempt:2,verdict:"pass"}]);
 });
