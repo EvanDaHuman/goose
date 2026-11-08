@@ -42,8 +42,8 @@ after(async () => {
 
 async function prospect(name: string, email: string | null, fit = "High") {
   const url = `https://github.com/fixture/${crypto.randomUUID().slice(0, 8)}`;
-  return (await one<any>(`INSERT INTO prospects(name,url,category,summary,evidence,fit_score,status,outreach_draft,contact_email,contact_kind,contact_checked_at)
-    VALUES($1,$2,'c','Fixture',$3,$4,'draft_ready',$5,$6,'business',now()) RETURNING *`,
+  return (await one<any>(`INSERT INTO prospects(name,url,category,summary,evidence,fit_score,status,outreach_draft,contact_email,contact_kind,contact_checked_at,found_by)
+    VALUES($1,$2,'c','Fixture',$3,$4,'draft_ready',$5,$6,'business',now(),'research agent') RETURNING *`,
     [name, url, JSON.stringify([{ text: "pins Flask==1.1.4", url: url + "/blob/main/requirements.txt" }]), fit,
      `Subject: Upgrading ${name}\n\nHello,\n\n${name} pins Flask==1.1.4.\n\nWe have no past customers to point to yet.\n\n[Founder name], Goose`, email]))!;
 }
@@ -140,6 +140,8 @@ test("the automatic policy needs the exact phrase, then sends one High-fit prosp
   await q("UPDATE prospects SET status='lost' WHERE status='draft_ready'");
   const hi = await prospect("Policy High", "hello@policyhigh.example", "High");
   const med = await prospect("Policy Medium", "hello@policymed.example", "Medium");
+  const manual = await prospect("Policy Manual", "hello@policymanual.example", "High");
+  await q("UPDATE prospects SET found_by='founder research' WHERE id=$1", [manual.id]);
   await setOutreachPolicy({ enabled: true, dailyCap: 1, minFit: "High", authorization: "Authorize prospect outreach" });
   const before = sent.length;
   await serviceOutreach(Date.now() + 10 * 60_000);
@@ -147,5 +149,7 @@ test("the automatic policy needs the exact phrase, then sends one High-fit prosp
   assert.deepEqual(sent.at(-1).to, ["hello@policyhigh.example"]);
   assert.equal((await one<any>("SELECT status FROM prospects WHERE id=$1", [hi.id]))!.status, "contacted");
   assert.equal((await one<any>("SELECT status FROM prospects WHERE id=$1", [med.id]))!.status, "draft_ready", "Medium fit is not sent under a High-only policy");
+  await serviceOutreach(Date.now() + 30 * 60_000);
+  assert.equal((await one<any>("SELECT status FROM prospects WHERE id=$1", [manual.id]))!.status, "draft_ready", "only research-agent prospects are sent automatically");
   await setOutreachPolicy({ enabled: false });
 });

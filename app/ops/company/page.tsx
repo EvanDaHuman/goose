@@ -139,7 +139,7 @@ export default async function Company() {
       <section className="section card">
         <div className="card-head"><h2>Outreach</h2><span className="small muted">AgentMail inbox {outreach.status.inbox ?? "not configured"} · {outreach.sentToday} real email(s) in the last 24 h (hard limit {outreach.status.dailyMax})</span></div>
         {!outreach.status.canSendReal && <div className="banner warn"><b>Real sends are blocked</b><span>Configure: {outreach.status.realBlockers.join("; ")}.</span></div>}
-        <p className="small">{outreach.policy.enabled ? <>Automatic: the outreach agent sends up to <b>{outreach.policy.dailyCap}</b> a day to {outreach.policy.minFit === "High" ? "High" : "High and Medium"} fit prospects with a published contact, one at a time, never to opted-out or bounced addresses.</>
+        <p className="small">{outreach.policy.enabled ? <>Automatic: the outreach agent sends up to <b>{outreach.policy.dailyCap}</b> a day to {outreach.policy.minFit === "High" ? "High" : "High and Medium"} fit prospects found by the research agent with a published contact, one at a time, never to opted-out or bounced addresses.</>
           : <>Manual: every prospect email is sent only when you authorize that exact message above.</>}{" "}
           {outreach.policy.enabled ? <ActionButton url="/api/ops/outreach" body={{ policy: { enabled: false } }} label="Turn automatic outreach off" />
             : <ActionButton url="/api/ops/outreach" body={{ policy: { enabled: true, dailyCap: 5, minFit: "High", authorization: POLICY_PHRASE } }} label="Let the agent send (5/day, High fit)"

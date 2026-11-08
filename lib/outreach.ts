@@ -40,6 +40,8 @@ export function outreachStatus() {
 // ------------------------------------------------------------------ policy
 
 export type OutreachPolicy = { enabled: boolean; dailyCap: number; minFit: "High" | "Medium"; spacingMinutes?: number; id: string | null; authorizedAt: string | null };
+/** Automatic outreach only goes to prospects the live research agent found (not seeded or hand-entered ones). */
+export const RESEARCH_AGENT_SOURCES = ["research agent", "Naive assessment of host-fetched evidence"];
 const POLICY_OFF: OutreachPolicy = { enabled: false, dailyCap: 5, minFit: "High", spacingMinutes: 10, id: null, authorizedAt: null };
 export const outreachPolicy = () => getSetting<OutreachPolicy>("outreach.policy", POLICY_OFF);
 export const POLICY_PHRASE = "Authorize prospect outreach";
@@ -323,10 +325,10 @@ export async function serviceOutreach(now = Date.now()) {
       const recent = await one("SELECT 1 FROM outreach_messages WHERE NOT is_test AND authorized_at > now() - make_interval(mins => $1)", [policy.spacingMinutes ?? 10]);
       if (!recent && (await sentToday()) < cap) {
         const next = await one<any>(`SELECT p.id FROM prospects p WHERE p.status='draft_ready' AND p.contact_email IS NOT NULL
-          AND p.fit_score = ANY($1) AND NOT EXISTS(SELECT 1 FROM outreach_suppressions s WHERE s.email=lower(p.contact_email))
+          AND p.fit_score = ANY($1) AND p.found_by = ANY($2) AND NOT EXISTS(SELECT 1 FROM outreach_suppressions s WHERE s.email=lower(p.contact_email))
           AND NOT EXISTS(SELECT 1 FROM outreach_messages m WHERE m.prospect_id=p.id AND NOT m.is_test AND m.status NOT IN ('cancelled','draft'))
           AND NOT EXISTS(SELECT 1 FROM prospects o WHERE o.id<>p.id AND lower(o.contact_email)=lower(p.contact_email) AND o.contacted_at > now()-interval '90 days')
-          ORDER BY CASE p.fit_score WHEN 'High' THEN 0 ELSE 1 END, p.id LIMIT 1`, [policy.minFit === "High" ? ["High"] : ["High", "Medium"]]);
+          ORDER BY CASE p.fit_score WHEN 'High' THEN 0 ELSE 1 END, p.id LIMIT 1`, [policy.minFit === "High" ? ["High"] : ["High", "Medium"], RESEARCH_AGENT_SOURCES]);
         if (next) {
           const m = await queueOutreach(next.id);
           if (m.status === "draft") await dispatch(m.id, `policy:${policy.id}`, cap).catch((e) => console.error("[outreach] send", e.message));
