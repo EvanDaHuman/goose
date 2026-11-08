@@ -56,6 +56,25 @@ export function agentExecutionEvidence(job:Pick<Job,"constraints">,value:any):an
  return value;
 }
 function protectedHashes(source:string,paths:string[]){const values:Record<string,string>=Object.create(null);for(const f of paths){if(!safe(f))throw new Error("Unsafe protected path");const full=path.join(source,f);if(!fs.existsSync(full))throw new Error("Missing protected path: "+f);values[f]=fs.statSync(full).isDirectory()?digest(full):sha256(full);}return values;}
+/** Cheap checks of a plan against the actual original source, before any execution. Paths absent from the supplied
+ *  archive (e.g. git submodules) cannot be protected, so they are dropped and recorded as a limitation instead of
+ *  rejecting the plan; a negative control must make one exact replacement in a file that exists in the original. */
+export function sourcePreflight(source:string,p:any):{plan:any;problems:string[]}{
+ const problems:string[]=[];const plan={...p};
+ if(Array.isArray(p.protected_paths)){
+  const missing=p.protected_paths.filter((f:any)=>typeof f==="string"&&safe(f)&&!fs.existsSync(path.join(source,f)));
+  if(missing.length){plan.protected_paths=p.protected_paths.filter((f:any)=>!missing.includes(f));plan.limitations=[...(Array.isArray(p.limitations)?p.limitations:[]),`Not present in the supplied source, so not protected: ${missing.join(", ")}`];}
+  if(!plan.protected_paths.length)problems.push("protected_paths must list original test or CI paths that exist in the supplied source");
+ }
+ for(const m of Array.isArray(p.mutations)?p.mutations:[]){
+  if(!m||typeof m.path!=="string"||!safe(m.path))continue;
+  const full=path.join(source,m.path);
+  if(!fs.existsSync(full)||!fs.statSync(full).isFile()){problems.push(`Negative control path ${m.path} does not exist in the ORIGINAL source; mutate an existing original file (before migration)`);continue;}
+  const text=fs.readFileSync(full,"utf8"),n=typeof m.find==="string"&&m.find?text.split(m.find).length-1:0;
+  if(n!==1)problems.push(`Negative control find text must occur exactly once in ${m.path} (found ${n} times)`);
+ }
+ return {plan,problems};
+}
 function protectedFiles(source:string,paths:string[]){
  const files:Record<string,string>=Object.create(null);
  const visit=(full:string)=>{const s=fs.lstatSync(full);if(s.isSymbolicLink())throw new Error("Protected paths cannot be symlinks");if(s.isDirectory())for(const entry of fs.readdirSync(full).sort())visit(path.join(full,entry));else if(s.isFile())files[path.relative(source,full)]=sha256(full);};
@@ -111,8 +130,8 @@ THE WORKFLOW. Goose (1) builds your environment and runs EVERY check on the ORIG
 
 THE BASELINE MUST SHOW EXACTLY THIS ON THE ORIGINAL CODE
 - Every "preserve" check PASSES (exit code 0). These test behaviour the app already has and must keep.
-- Every "requirement" check FAILS (nonzero exit) AND prints an assertion or missing-feature message (words like assert, AssertionError, expected, fail, AttributeError). These test the NEW behaviour, which does not exist yet. They must verify the real requested behaviour, never just search the source text.
-- Every deliberate break (a "mutation") is CAUGHT: Goose applies your find/replace to the original code, reruns the named preserve check, and that check must fail with a printed assertion.
+- Every "requirement" check FAILS (nonzero exit) AND prints why: a failed assertion or a missing feature, in any language's wording (for example "expected 7", "FAIL", "wrong", "mismatch", "panicked", "not implemented", "missing"). These test the NEW behaviour, which does not exist yet. They must verify the real requested behaviour, never just search the source text. For a migration to another language, a requirement check can build or run the migrated code, which does not exist yet on the original.
+- Every deliberate break (a "mutation") is CAUGHT: Goose applies your find/replace to the original code, reruns the named preserve check, and that check must fail by printing a failed result (any language's wording, as above), not by failing to compile or import.
 
 HOST ENVIRONMENT (facts: do not try to work around them)
 - Linux Docker container from the image you name. Official tagged images only: ubuntu, debian, python, node, golang, rust, eclipse-temurin, ruby, php, mcr.microsoft.com/dotnet/sdk. Pick the tag the repository declares or supports (the Python or Node version in runtime.txt, .nvmrc, engines, CI files) so the ORIGINAL code runs. If the original and the target need different runtime versions, choose one that both support.
@@ -131,13 +150,13 @@ CHECKS
 
 DELIVERABLES AND PROTECTED PATHS
 - deliverables: the files the engineer must change (source, manifests such as requirements.txt or package.json, configuration, docs). Relative paths that exist.
-- protected_paths: ONLY the original tests and CI files (individual files or test folders). Every path must exist. A deliverable can never be inside a protected path, so never protect a whole source folder, and never protect a manifest that has to change. If you are unsure whether a file will need changing, do not protect it.
+- protected_paths: ONLY the original tests and CI files (individual files or test folders). Every path must exist in the supplied archive: git submodules and other paths missing from it cannot be protected. A deliverable can never be inside a protected path, so never protect a whole source folder, and never protect a manifest that has to change. If you are unsure whether a file will need changing, do not protect it.
 
 NEGATIVE CONTROLS (mutations): 1 to 5, no more than 5.
 - Each is {path, find, replace, check_id}. find is text copied EXACTLY (spaces, quotes, indentation) from the file at path and appears EXACTLY ONCE in that file: add surrounding context if needed. find must differ from replace.
-- path must be an ORIGINAL SOURCE file: never a test file, CI file or anything inside protected_paths.
+- path must be an ORIGINAL SOURCE file that exists in the supplied repository: never a test file, CI file or anything inside protected_paths. For a migration, mutate the original file (such as models/user.js), never the not-yet-written new one.
 - check_id must name a PRESERVE check that really runs that code and asserts on its result.
-- replace must make the code return a WRONG RESULT while it still loads and runs normally: change a value, status, comparison, boundary, filter or returned field. Do NOT make it crash. Removing a save or create call, setting something to None, an unsaved object, a bad import or a syntax error do not count, because a crash is not an assertion. The check must fail with a printed assertion (AssertionError, "expected ...", a test-framework failure).
+- replace must make the code return a WRONG RESULT while it still loads and runs normally: change a value, status, comparison, boundary, filter or returned field. Do NOT make it crash. Removing a save or create call, setting something to None, an unsaved object, a bad import, a syntax or compile error do not count, because a crash is not a failed result. The check must fail by printing a failed result (an assertion, "expected ...", a test-framework or test-program failure message).
 - Before choosing a control, find the specific assertion in the named check that depends on that line. A repository's own small test suite often asserts on very little, so aim controls at your own focused preserve checks and write those checks to assert exact values.
 
 DATA, SECRETS AND GAPS
@@ -152,7 +171,9 @@ BEFORE YOU ANSWER, CHECK EACH ITEM
 [ ] Every preserve check would pass on the original, and every requirement check would fail on the original with an assertion.
 [ ] There are 1 to 5 mutations. Each find appears exactly once in its file, each path is an unprotected source file, each check_id is a preserve check that asserts on that code, and each replace changes a result without crashing.
 [ ] No deliverable is inside protected_paths, and every protected path and deliverable exists.
-[ ] There are about 3 to 8 checks and they are fast.`;
+[ ] There are about 3 to 8 checks and they are fast.
+
+SPEED: if the prior feedback below lists only rule "problems" for a plan you already wrote (no execution results), do not re-inspect the repository: revise that plan to satisfy the listed rules and submit it immediately.`;
 async function plan(job:Job,a:number):Promise<StageResult>{
  if(config.mode!=="naive")return {next:"plan",status:"waiting_founder",waiting:"Autonomous discovery requires live Naive"};
  const backend=await run({cmd:"docker",args:["version","--format","{{.Server.Os}}"],cwd:config.root,env:cleanEnv({PATH:"/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",...(process.env.DOCKER_HOST?{DOCKER_HOST:process.env.DOCKER_HOST}:{})},config.home),timeoutMs:10000});
@@ -183,11 +204,13 @@ This is the feedback from prior actual execution (if any). Fix the plan based on
   let p:any;try{p=JSON.parse(r.output.plan_json);}catch{feedback={error:"Invalid plan JSON"};await failed(trial,"the agent's plan was not valid JSON.");continue;}
   write(path.join(td,"plan.json"),p);const problems=adaptiveProblems(p);
   if(problems.length){feedback={plan:p,problems};write(path.join(td,"feedback.json"),feedback);await failed(trial,`Goose's rules rejected the plan: ${problems.map(s=>s.split(/\.\s/)[0]).join("; ").slice(0,400)}.`);continue;}
+  {const sp=sourcePreflight(J(job,"source"),p);p=sp.plan;write(path.join(td,"plan.json"),p);
+   if(sp.problems.length){feedback={plan:p,problems:sp.problems};write(path.join(td,"feedback.json"),feedback);await failed(trial,`the plan does not match your code: ${sp.problems.map((s:string)=>s.split(/\.\s/)[0]).join("; ").slice(0,400)}.`);continue;}}
   if(p.missing_requirements.length){
    await q("INSERT INTO questions(job_id,key,asked_by,audience,prompt,fields,blocking) VALUES($1,$2,'assessment','customer',$3,$4,true) ON CONFLICT(job_id,key) DO NOTHING",[job.id,`environment-${a}`,`Discovery needs clarification: ${p.missing_requirements.join("; ")}. Explain the required behavior or available infrastructure. Do not paste credentials here.`,JSON.stringify([{type:"text",key:"details",label:"Clarification"}])]);
    return {next:"awaiting_info",status:"waiting_customer",waiting:"Environment discovery needs your clarification"};
   }
-  try{protectedHashes(J(job,"source"),p.protected_paths);}catch(e){feedback={plan:p,error:String(e)};await failed(trial,`the plan protects a file or folder that does not exist (${String(e).slice(0,160)}).`);continue;}
+  try{protectedHashes(J(job,"source"),p.protected_paths);}catch(e){feedback={plan:p,problems:[String(e)]};write(path.join(td,"feedback.json"),feedback);await failed(trial,`the plan protects a file or folder that does not exist (${String(e).slice(0,160)}).`);continue;}
   await logEvent(job.id,"assessment","status",`Attempt ${trial}: the agent's plan passed Goose's rules. Now testing it on your original code in an isolated environment; this takes a few minutes.`,undefined,{important:true,origin:"tool"});
   const before=digest(J(job,"source"));const first=await execute(job,J(job,"source"),path.join(td,"plan.json"),path.join(td,"execution"),"baseline",true);
   if(before!==digest(J(job,"source")))throw new Error("Discovery changed the original source");

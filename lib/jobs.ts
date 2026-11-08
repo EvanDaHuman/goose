@@ -251,7 +251,7 @@ export async function runCurrentStage(job: Job, impl: Record<string, (job: Job, 
       [job.id, stage, attempt, msg.slice(0, 4000)]);
     await q("UPDATE jobs SET status = 'waiting_founder', waiting_reason = $2, updated_at = now() WHERE id = $1",
       [job.id, `"${meta.label}" failed: ${msg.slice(0, 300)}`]);
-    await logEvent(job.id, "system", "error", `"${meta.label}" stopped with an error; the founder has been asked to look.`,
+    await logEvent(job.id, "system", "error", `"${meta.label}" stopped with an error; Goose will retry it automatically.`,
       { error: msg.slice(0, 2000) }, { important: true });
   } finally {
     clearInterval(beat);

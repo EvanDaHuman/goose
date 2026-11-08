@@ -128,7 +128,10 @@ export function Landing() {
               <div className="fact"><b>Works on copies</b><span>Read-only access to your code. Your live systems are never touched.</span></div>
             </div>
             <ol className="pipeline" aria-label="How a job runs">
-              {["Inspect", "Plan", "Quote", "Record", "Freeze", "Build", "Verify", "Deliver"].map((s) => <li key={s}>{s}</li>)}
+              {["Inspect", "Plan", "Quote", "Record", "Freeze", "Build", "Verify", "Deliver"].map((s) => (
+                // grow in proportion to the label (plus the number in front), so wider pills take more of the spare space
+                <li key={s} style={{ flexGrow: s.length + 3 }}>{s}</li>
+              ))}
             </ol>
           </div>
         </section>
@@ -158,10 +161,13 @@ export function Landing() {
                 </article>
               ))}
             </div>
-            <p className="ex-note">
-              These are only examples. Goose can move any stack to any other: connect the repository, and the inspection tells you what it
-              takes and what it costs.
-            </p>
+            <div className="ex-note">
+              <p>
+                These are only examples. <b>Goose can move any stack to any other:</b> connect the repository, and the inspection tells you
+                what it takes and what it costs.
+              </p>
+              <Link className="s-btn" href="/start">Bring your own stack →</Link>
+            </div>
           </div>
         </section>
 
