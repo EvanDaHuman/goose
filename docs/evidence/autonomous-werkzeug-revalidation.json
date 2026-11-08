@@ -1,0 +1,74 @@
+{
+  "phase": "verify",
+  "started_at": 1794105274.876781,
+  "runner_sha256": "f5f5bd1cfa953b90f160b73a6e2721b69842338b22d9be6acdd030c0fc7231af",
+  "egress_sha256": "768954c40ad38b3585d09a919bf2559ee2d6a897ebeb9742a0f3038298aa4385",
+  "plan_sha256": "64b086811079b492bb790aec37561dc7e4dc8251575f34aec8d350c7f3738010",
+  "checks": [
+    {
+      "id": "preserve_existing_test_datastructures",
+      "title": "Existing test_datastructures.py suite passes unchanged",
+      "kind": "preserve",
+      "code": 0,
+      "output": "prepare ok\n........................................................................ [ 58%]\n...................................................                      [100%]\n123 passed in 0.25s\nexisting test_datastructures suite passed\n",
+      "seconds": 0.721,
+      "timed_out": false,
+      "expected": "pass",
+      "accepted": true
+    },
+    {
+      "id": "preserve_headers_behavior",
+      "title": "Focused preservation assertions for existing Headers mutating and immutable behavior",
+      "kind": "preserve",
+      "code": 0,
+      "output": "prepare ok\npreserve assertions ok\npreserve ok\n",
+      "seconds": 0.287,
+      "timed_out": false,
+      "expected": "pass",
+      "accepted": true
+    },
+    {
+      "id": "require_poplist_behavior",
+      "title": "poplist returns all values in order, removes them, independent list, empty when absent",
+      "kind": "requirement",
+      "code": 0,
+      "output": "prepare ok\nrequirement assertions ok\nrequirement ok\n",
+      "seconds": 0.333,
+      "timed_out": false,
+      "expected": "pass",
+      "accepted": true
+    },
+    {
+      "id": "require_poplist_immutable_raises",
+      "title": "poplist on ImmutableHeadersMixin (EnvironHeaders) raises TypeError",
+      "kind": "requirement",
+      "code": 0,
+      "output": "prepare ok\nimmutable poplist raises ok\nimmutable ok\n",
+      "seconds": 0.278,
+      "timed_out": false,
+      "expected": "pass",
+      "accepted": true
+    },
+    {
+      "id": "require_poplist_typing_docstring",
+      "title": "poplist has a docstring and a list[str] return annotation",
+      "kind": "requirement",
+      "code": 0,
+      "output": "prepare ok\ntyping/docstring ok {'key': <class 'str'>, 'return': list[str]}\ntyping ok\n",
+      "seconds": 0.278,
+      "timed_out": false,
+      "expected": "pass",
+      "accepted": true
+    }
+  ],
+  "mutations": [],
+  "ok": true,
+  "base_image": "sha256:cad37dd20c7cac861af9003af8796d03ea7a998ec1e3a664429740fc9d7d2691",
+  "setup": {
+    "code": 0,
+    "output": "Collecting flit_core<4\n  Downloading flit_core-3.12.0-py3-none-any.whl.metadata (888 bytes)\nCollecting MarkupSafe>=2.1.1\n  Downloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (2.7 kB)\nDownloading flit_core-3.12.0-py3-none-any.whl (45 kB)\nDownloading markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (24 kB)\nInstalling collected packages: MarkupSafe, flit_core\nSuccessfully installed MarkupSafe-3.0.4 flit_core-3.12.0\nWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n\n[notice] A new release of pip is available: 25.0.1 -> 26.3\n[notice] To update, run: pip install --upgrade pip\nCollecting cffi==1.17.1 (from -r requirements/tests.txt (line 7))\n  Downloading cffi-1.17.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (1.5 kB)\nCollecting cryptography==43.0.3 (from -r requirements/tests.txt (line 11))\n  Downloading cryptography-43.0.3-cp39-abi3-manylinux_2_28_aarch64.whl.metadata (5.4 kB)\nCollecting ephemeral-port-reserve==1.1.4 (from -r requirements/tests.txt (line 13))\n  Downloading ephemeral_port_reserve-1.1.4-py2.py3-none-any.whl.metadata (2.6 kB)\nCollecting iniconfig==2.0.0 (from -r requirements/tests.txt (line 15))\n  Downloading iniconfig-2.0.0-py3-none-any.whl.metadata (2.6 kB)\nCollecting packaging==24.1 (from -r requirements/tests.txt (line 17))\n  Downloading packaging-24.1-py3-none-any.whl.metadata (3.2 kB)\nCollecting pluggy==1.5.0 (from -r requirements/tests.txt (line 19))\n  Downloading pluggy-1.5.0-py3-none-any.whl.metadata (4.8 kB)\nCollecting pycparser==2.22 (from -r requirements/tests.txt (line 21))\n  Downloading pycparser-2.22-py3-none-any.whl.metadata (943 bytes)\nCollecting pytest==8.3.3 (from -r requirements/tests.txt (line 23))\n  Downloading pytest-8.3.3-py3-none-any.whl.metadata (7.5 kB)\nCollecting pytest-timeout==2.3.1 (from -r requirements/tests.txt (line 27))\n  Downloading pytest_timeout-2.3.1-py3-none-any.whl.metadata (20 kB)\nCollecting watchdog==5.0.3 (from -r requirements/tests.txt (line 29))\n  Downloading watchdog-5.0.3-py3-none-manylinux2014_aarch64.whl.metadata (41 kB)\nDownloading cffi-1.17.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (478 kB)\nDownloading cryptography-43.0.3-cp39-abi3-manylinux_2_28_aarch64.whl (3.7 MB)\n   \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501 3.7/3.7 MB 2.7 MB/s eta 0:00:00\nDownloading ephemeral_port_reserve-1.1.4-py2.py3-none-any.whl (4.4 kB)\nDownloading iniconfig-2.0.0-py3-none-any.whl (5.9 kB)\nDownloading packaging-24.1-py3-none-any.whl (53 kB)\nDownloading pluggy-1.5.0-py3-none-any.whl (20 kB)\nDownloading pycparser-2.22-py3-none-any.whl (117 kB)\nDownloading pytest-8.3.3-py3-none-any.whl (342 kB)\nDownloading pytest_timeout-2.3.1-py3-none-any.whl (14 kB)\nDownloading watchdog-5.0.3-py3-none-manylinux2014_aarch64.whl (79 kB)\nInstalling collected packages: watchdog, pycparser, pluggy, packaging, iniconfig, ephemeral-port-reserve, pytest, cffi, pytest-timeout, cryptography\nSuccessfully installed cffi-1.17.1 cryptography-43.0.3 ephemeral-port-reserve-1.1.4 iniconfig-2.0.0 packaging-24.1 pluggy-1.5.0 pycparser-2.22 pytest-8.3.3 pytest-timeout-2.3.1 watchdog-5.0.3\nWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n\n[notice] A new release of pip is available: 25.0.1 -> 26.3\n[notice] To update, run: pip install --upgrade pip\nObtaining file:///workspace\n  Installing build dependencies: started\n  Installing build dependencies: finished with status 'done'\n  Checking if build backend supports build_editable: started\n  Checking if build backend supports build_editable: finished with status 'done'\n  Getting requirements to build editable: started\n  Getting requirements to build editable: finished with status 'done'\n  Preparing editable metadata (pyproject.toml): started\n  Preparing editable metadata (pyproject.toml): finished with status 'done'\nBuilding wheels for collected packages: Werkzeug\n  Building editable for Werkzeug (pyproject.toml): started\n  Building editable for Werkzeug (pyproject.toml): finished with status 'done'\n  Created wheel for Werkzeug: filename=werkzeug-3.1.3-py3-none-any.whl size=3507 sha256=f7c74cfddb71777c90b4838536a9f2492f24a323aff6f380ec5445d810a6782f\n  Stored in directory: /tmp/pip-ephem-wheel-cache-0z5lt2oa/wheels/b0/41/ab/4e04a8678980f3355548f1261923479fbf2a713a7393a7dea8\nSuccessfully built Werkzeug\nInstalling collected packages: Werkzeug\nSuccessfully installed Werkzeug-3.1.3\nWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\n\n[notice] A new release of pip is available: 25.0.1 -> 26.3\n[notice] To update, run: pip install --upgrade pip\nwerkzeug installed:\n/workspace/src/werkzeug/__init__.py\n",
+    "seconds": 15.217,
+    "timed_out": false
+  },
+  "finished_at": 1794105312.6572568
+}

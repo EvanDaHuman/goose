@@ -8,11 +8,11 @@ The company workflow still scopes work, requests customer approval, implements, 
 
 1. Naïve reads the upstream manifests, lockfiles, CI, source and tests.
 2. It proposes a tagged official Linux runtime image, dependency hosts, setup script, optional service startup script, substantive existing tests and new requirement checks.
-3. A generic runner attempts that environment. Failures return to Naïve for up to eight bounded discovery attempts, within the job spending cap, with every attempt retained.
+3. A generic runner attempts that environment. Failures return to Naïve for up to eight bounded discovery attempts, within the job spending cap, with every attempt retained. An explicitly requested new planning round carries forward completed execution and review findings only when the source and plan hashes still match; it must still pass fresh execution and review.
 4. Existing behavior must pass. New-feature checks must fail on the original implementation. A deliberately introduced semantic fault must be detected by a preservation check.
 5. A separate Naïve verification agent reviews the test coverage and actual execution evidence. Accepted environments are rebuilt on a fresh instance before a proposal is offered.
 6. After approval the original baseline runs again. The environment, acceptance scripts, protected original tests, input hashes and runner version are frozen before implementation.
-7. Naïve implements the objective. Each independent check gets a fresh prepared copy, and final verification rebuilds from source. Delivery requires the exact verified candidate and unchanged frozen evidence.
+7. Naïve implements the objective. Each independent check gets a fresh prepared copy, and final verification rebuilds from source. If the implementer reports unfinished work or unavailable local tests, those statements remain visible. Passing host checks alone cannot dismiss them: a separate verification agent must inspect the candidate and resolve every statement against actual execution and the accepted scope. Delivery requires the exact verified candidate, resolved completion findings and unchanged frozen evidence.
 
 Supporting documents and customer clarification answers are included in discovery, independent review and implementation. Accepted requirements are frozen alongside the checks. When a customer selects the no-data-sharing constraint, execution output is withheld from agent feedback because test logs can contain record values. This can reduce automatic diagnosis and require a customer clarification.
 
@@ -24,7 +24,7 @@ The generic backend uses Docker Linux containers on the operator's execution hos
 
 Source enters containers with Docker copy. Candidates receive no host bind mounts, Docker socket, Goose credentials or other customer files. Setup runs with a restricted capability set in an internal network. Only a separate dependency proxy can reach the internet; it permits exact hostnames from the plan, ports 80/443, and publicly routable resolved addresses. DNS results are checked and pinned before connection. Verification runs without external networking, as an unprivileged user, with acceptance scripts mounted read-only. CPU, memory, process, per-command and total execution time are bounded.
 
-Setup is checked against all original source hashes. It cannot silently rewrite tests or source to make the baseline pass. Original test and CI files identified in the contract are protected again after implementation. New test files may be added; existing protected files cannot be changed or removed.
+Setup and per-check preparation are checked against all input source hashes. They cannot silently rewrite tests or source to make a check pass. Deliberately broken source has its own expected hashes, so preparation cannot undo the negative control. Plans that require changing a protected file are rejected before implementation. Original test and CI files identified in the contract are protected again after implementation. New test files may be added; existing protected files cannot be changed or removed.
 
 Validated uploaded data snapshots are copied into the isolated environment at `/data/input`; the original is never changed. Generated scripts may inspect schema and rehearse transformations on copies. Data does not enter the Naïve workspace through this path. Any failure diagnostics supplied to agents should be considered part of the job's disclosed execution evidence. Synthetic data fixtures can also be created from the repository's own tests.
 

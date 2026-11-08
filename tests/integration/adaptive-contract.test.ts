@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { adaptiveProblems, acceptanceReviewApproved, agentExecutionEvidence } from "../../lib/adaptive";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import crypto from "node:crypto";
+import { adaptiveProblems, acceptanceReviewApproved, agentExecutionEvidence, executionExcerpt, priorDiscoveryFeedback } from "../../lib/adaptive";
 const plan=()=>({version:1,title:"Add subtraction",image:"python:3.12-slim",dependency_hosts:["pypi.org","files.pythonhosted.org"],setup:"pip install pytest==8.3.5",prepare:"",checks:[{id:"existing",title:"Existing suite",kind:"preserve",script:"python -m pytest tests"},{id:"new_behavior",title:"Requested behavior",kind:"requirement",script:"python /acceptance/feature.py"}],protected_paths:["tests"],deliverables:["src/calc.py"],mutations:[{path:"src/calc.py",find:"return a+b",replace:"return a-b",check_id:"existing"}],limitations:["No production deployment"],missing_requirements:[]});
 test("autonomous contracts require preserved behavior, requested behavior and a semantic negative control",()=>{
  assert.deepEqual(adaptiveProblems(plan()),[]);
@@ -35,4 +39,31 @@ test("private data diagnostics never reach agents when a customer forbids data s
  const safe=agentExecutionEvidence({constraints:["no_data"]},report);
  assert.ok(!JSON.stringify(safe).includes("private"));assert.equal(safe.checks[0].id,"writes");assert.equal(safe.checks[0].code,1);
  assert.equal(agentExecutionEvidence({constraints:[]},report),report);assert.equal(report.error,"private row");
+});
+
+test("long compiler diagnostics retain the first cause and the final summary",()=>{
+ const output="Missing required logger property\n"+"verbose overload detail\n".repeat(1000)+"4 errors, compilation failed";
+ const excerpt=executionExcerpt(output,1000);assert.match(excerpt,/Missing required logger property/);assert.match(excerpt,/4 errors, compilation failed/);assert.ok(excerpt.length<1200);
+});
+
+test("a plan cannot require editing files that it freezes as immutable",()=>{
+ for(const root of ["src", "src/", "src/./", "."]){const p=plan();p.protected_paths=[root];assert.match(adaptiveProblems(p).join(),/deliverables overlap protected/);}
+ const p=plan();p.protected_paths=["tests/"];p.mutations[0].path="tests/example.py";assert.match(adaptiveProblems(p).join(),/must not mutate protected/);
+});
+
+test("replanning carries independent review findings only from finished evidence bound to unchanged source and plan",()=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),"goose-replan-"));
+ try{
+  const dir=path.join(root,"round-1","trial-8");fs.mkdirSync(path.join(dir,"execution"),{recursive:true});
+  const p=JSON.stringify(plan());fs.writeFileSync(path.join(dir,"plan.json"),p);
+  fs.writeFileSync(path.join(dir,"execution/binding.json"),JSON.stringify({source:"source-A",plan:crypto.createHash("sha256").update(p).digest("hex")}));
+  const report={ok:true,checks:[],mutations:[],finished_at:123};
+  fs.writeFileSync(path.join(dir,"execution/report.json"),JSON.stringify(report));
+  fs.writeFileSync(path.join(dir,"review.json"),JSON.stringify({accepted:false,issues:["Documentation is unverified"]}));
+  assert.equal(priorDiscoveryFeedback(root,1,"source-A"),null);
+  assert.equal(priorDiscoveryFeedback(root,2,"changed-source"),null);
+  const feedback=priorDiscoveryFeedback(root,2,"source-A");assert.deepEqual(feedback.review.issues,["Documentation is unverified"]);assert.equal(feedback.review.accepted,false);
+  fs.writeFileSync(path.join(dir,"execution/report.json"),JSON.stringify({...report,finished_at:null}));assert.equal(priorDiscoveryFeedback(root,2,"source-A"),null);
+  fs.writeFileSync(path.join(dir,"execution/report.json"),JSON.stringify(report));fs.appendFileSync(path.join(dir,"plan.json")," ");assert.equal(priorDiscoveryFeedback(root,2,"source-A"),null);
+ }finally{fs.rmSync(root,{recursive:true,force:true});}
 });

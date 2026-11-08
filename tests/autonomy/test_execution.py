@@ -48,7 +48,7 @@ else:raise AssertionError('unapproved proxy hostname allowed')
 PYCODE"""
     baseline=runner.execute(source,p,tmp_path/'baseline','baseline');assert baseline['ok'],baseline
     assert baseline['mutations'][0]['detected']
-    (source/'calc.py').write_text('def add(a,b):\n    return a+b\ndef subtract(a,b):\n    return a-b\n')
+    (source/'calc.py').write_text('def add(a,b):\n    return sum((a,b))\ndef subtract(a,b):\n    return a-b\n')
     candidate=runner.execute(source,p,tmp_path/'candidate','verify');assert candidate['ok'],candidate
     (source/'calc.py').write_text('def add(a,b):\n    return a+b\ndef subtract(a,b):\n    return 999\n')
     broken=runner.execute(source,p,tmp_path/'broken','verify');assert not broken['ok'];assert any(c['id']=='feature' and not c['accepted'] for c in broken['checks'])
@@ -80,3 +80,10 @@ with sqlite3.connect('file:/data/input?mode=ro',uri=True) as original:
  assert len(original.execute('pragma table_info(customers)').fetchall())==2
 PYCODE'''})
     r=runner.execute(source,p,tmp_path/'result','baseline',data=data);assert r['ok'],r;assert data.read_bytes()==original
+
+@pytest.mark.skipif(os.environ.get('GOOSE_TEST_DOCKER')!='1',reason='requires Docker')
+def test_prepare_cannot_rewrite_tests_or_undo_negative_control(tmp_path):
+    source,p=fixture(tmp_path);p['prepare']="printf 'pass\\n' > test_calc.py"
+    r=runner.execute(source,p,tmp_path/'rewrite','baseline');assert not r['ok'];assert 'prepare changed original source' in r['checks'][0]['output']
+    p['prepare']="sed -i 's/return a-b/return a+b/' calc.py"
+    r=runner.execute(source,p,tmp_path/'undo-mutation','baseline');assert not r['ok'];assert not r['mutations'][0]['detected'];assert 'prepare changed original source' in r['mutations'][0]['output']
