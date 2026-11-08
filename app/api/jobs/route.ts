@@ -1,10 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createJob } from "@/lib/jobs";
+import { fetchRepoZip, GithubError, sessionFrom, type RepoSource } from "@/lib/github";
+import { logEvent } from "@/lib/records";
 import { fail, json, saveUpload, wrap } from "@/lib/http";
 import { assertSameOrigin } from "@/lib/operatorAuth";
 
-// A real customer submits a repository (and usually a database copy).
+// A real customer submits a repository, either as a GitHub link (read with read-only access) or as a
+// .zip upload, and usually a database copy.
 export async function POST(req: Request) {
   const denied = assertSameOrigin(req); if (denied) return denied;
   return wrap(async () => {
@@ -14,8 +17,12 @@ export async function POST(req: Request) {
       if (value.length > max) throw new Error(`${key} must be no longer than ${max} characters; nothing has been submitted`);
       return value;
     };
-    const goal = field("goal", 20000);
-    if (!goal) return fail("Please tell us what you want to improve.");
+    const goalText = field("goal", 20000);
+    if (!goalText) return fail("Please tell us what you want to improve.");
+    // the move the customer described ("Flask + SQLite" -> "FastAPI + PostgreSQL") leads the goal the planner reads
+    const moveFrom = field("move_from", 120), moveTo = field("move_to", 120);
+    const goal = moveFrom && moveTo ? `Move from ${moveFrom} to ${moveTo}. ${goalText}` : goalText;
+    const githubRepo = field("github_repo", 300), githubBranch = field("github_branch", 200) || null;
     const email = field("email", 254).toLowerCase();
     if (!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email)) return fail("Enter a valid customer email address.");
     const title = field("title", 120, "Application") || "Application";
@@ -35,11 +42,22 @@ export async function POST(req: Request) {
     const documents = form.getAll("documents").filter(d => d instanceof File && d.size > 0) as File[];
     if (documents.length > 5) return fail("Attach up to five documents; none have been submitted.");
     if (form.get("authorized") !== "on") return fail("Please confirm you are authorized to share this application and data.");
-    if (!(repo instanceof File) || repo.size === 0) return fail("Please attach the source code as a .zip file.");
+    const hasZip = repo instanceof File && repo.size > 0;
+    if (!githubRepo && !hasZip) return fail("Please give us the GitHub repository, or attach the source code as a .zip file.");
     const uploaded: string[] = [];
     const save = async (file: File, max: number) => { const saved = await saveUpload(file, max); uploaded.push(saved); return saved; };
     try {
-    const repoPath = await save(repo, 150 * 1024 * 1024);
+    let repoPath: string, repoSource: RepoSource | null = null, repoFileName: string | undefined;
+    if (githubRepo) {
+      try {
+        const r = await fetchRepoZip(githubRepo, githubBranch, sessionFrom(req));
+        uploaded.push(r.zipPath);
+        repoPath = r.zipPath; repoSource = r.source; repoFileName = r.fileName;
+      } catch (e) {
+        if (e instanceof GithubError) return fail(e.message, e.status);
+        throw e;
+      }
+    } else repoPath = await save(repo as File, 150 * 1024 * 1024);
     const demo = form.get("demo") === "on";
     const dbPath = db instanceof File && db.size > 0 ? await save(db, 500 * 1024 * 1024) : null;
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "app";
@@ -56,7 +74,12 @@ export async function POST(req: Request) {
       repoZip: repoPath, dbFile: dbPath, goal, constraints, constraintNotes: notes || null, documents: docs,
       migrationRequest: target ? { target, dataChanges } : undefined,
       workspaceRequest: jobType === "workspace", inquiryPublicId: inquiry || undefined,
+      repoSource, repoFileName,
     });
+    if (repoSource) {
+      await logEvent(id, "coordinator", "status",
+        `Read ${repoSource.repo} from GitHub at ${repoSource.ref} (commit ${repoSource.commit.slice(0, 7)}) with read-only access.`, repoSource);
+    }
     return json({ id, t: token });
     } finally {
       for (const file of uploaded) fs.rmSync(path.dirname(file), { recursive: true, force: true });

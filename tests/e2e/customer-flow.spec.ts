@@ -26,12 +26,16 @@ async function signIn(page: Page, destination = "/ops") {
   }
 }
 
-test("landing page states the promise, what the customer provides, what we carry out today, and the pilot prices", async ({ page }) => {
+test("landing page states the promise, shows example migrations, and starts a job from an example", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /Change the software.*Keep the business moving/i })).toBeVisible();
-  await expect(page.getByRole("link", { name: /Discuss a change/ }).first()).toBeVisible();
-  await expect(page.getByText("What we carry out today")).toBeVisible();
-  await expect(page.getByText("Pilot engagements", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Migrations that land/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /An AI team that upgrades your software/i })).toBeVisible();
+  await expect(page.locator(".ex")).toHaveCount(4);
+  await expect(page.getByText("These are only examples.", { exact: false })).toBeVisible();
+  await page.locator(".ex", { hasText: "ROS 2" }).getByRole("link", { name: /Start with this/ }).click();
+  await expect(page).toHaveURL(/\/start\?example=ros/);
+  await expect(page.getByLabel("Migrating to")).toHaveValue("ROS 2");
+  await expect(page.getByLabel("GitHub repository")).toBeVisible();
 });
 
 test("a customer completes assessment, verified delivery, test payment, support, monitoring and follow-up work", async ({ page, context }) => {
@@ -44,11 +48,12 @@ test("a customer completes assessment, verified delivery, test payment, support,
   await page.getByLabel(/Your goal/).fill("Bring our booking site onto a supported Django version. The pages, the reception kiosk feed and " +
     "the reminder script must keep working exactly as today.");
   for (const c of ["keep_database", "keep_api", "keep_connections"]) await page.locator(`input[name=constraints][value=${c}]`).check();
-  await page.getByLabel(/Application or repository/).setInputFiles(clinicZip());
-  await page.getByLabel(/Copy of the data/).setInputFiles(path.join(CLINIC, "data", "clinic.db"));
+  await page.getByRole("button", { name: "Upload a .zip instead" }).click();   // the sample isn't on GitHub
+  await page.locator("input[name=repository]").setInputFiles(clinicZip());
+  await page.locator("input[name=database]").setInputFiles(path.join(CLINIC, "data", "clinic.db"));
   await page.locator("input[name=demo]").check();
   await page.locator("input[name=authorized]").check();
-  await page.getByRole("button", { name: "Send for inspection and a plan" }).click();
+  await page.getByRole("button", { name: "Begin migration" }).click();
   await expect(page).toHaveURL(/\/jobs\/GS-\d+\?t=/);
   await expect(page.getByText("Demo · synthetic data")).toBeVisible();
   await expect(page.getByText("Your goal", { exact: true })).toBeVisible();
@@ -228,10 +233,11 @@ test("a public inquiry links to a repository engineering assessment without chan
   await page.getByLabel(/Your goal/).fill("Upgrade the dispatch routing CLI while preserving its existing JSON command interface and add bounded route constraints.");
   const source = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "e2e-workspace-")), "routing.zip");
   execFileSync("/usr/bin/zip", ["-r", "-q", source, "."], { cwd: path.resolve("demo/workspace-routing/repo") });
-  await page.getByLabel(/Application or repository/).setInputFiles(source);
+  await page.getByRole("button", { name: "Upload a .zip instead" }).click();
+  await page.locator("input[name=repository]").setInputFiles(source);
   await page.locator("input[name=demo]").check();
   await page.locator("input[name=authorized]").check();
-  await page.getByRole("button", { name: "Send for inspection and a plan" }).click();
+  await page.getByRole("button", { name: "Begin migration" }).click();
   await expect(page).toHaveURL(/\/jobs\/GS-\d+\?t=/);
   await expect(page.getByText(/Repository engineering needs the live Naive assessment team/).first()).toBeVisible({ timeout: 120_000 });
   await expect(page.getByRole("button", { name: "Accept proposal" })).toHaveCount(0);
@@ -252,11 +258,12 @@ test("a Rust request keeps its explicit target and requests live execution in lo
   await page.getByLabel(/Your goal/).fill("Migrate this application to Rust and keep its customer history.");
   await page.getByLabel("Target runtime (optional)").selectOption("rust");
   await page.getByLabel("Requested data changes (optional)").fill("Add a customer tier with a standard default.");
-  await page.getByLabel(/Application or repository/).setInputFiles(clinicZip());
-  await page.getByLabel(/Copy of the data/).setInputFiles(path.join(CLINIC, "data", "clinic.db"));
+  await page.getByRole("button", { name: "Upload a .zip instead" }).click();   // the sample isn't on GitHub
+  await page.locator("input[name=repository]").setInputFiles(clinicZip());
+  await page.locator("input[name=database]").setInputFiles(path.join(CLINIC, "data", "clinic.db"));
   await page.locator("input[name=demo]").check();
   await page.locator("input[name=authorized]").check();
-  await page.getByRole("button", { name: "Send for inspection and a plan" }).click();
+  await page.getByRole("button", { name: "Begin migration" }).click();
   await expect(page).toHaveURL(/\/jobs\/GS-\d+\?t=/);
   await expect(page.getByText("Migrate the application to Rust.", { exact: true }).first()).toBeVisible({ timeout: 120_000 });
   await expect(page.getByText(/needs the live agent team on Naive/).first()).toBeVisible();
