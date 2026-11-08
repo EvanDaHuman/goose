@@ -49,7 +49,7 @@ export async function fetchPublicResearch(recoveryUrls:string[],knownUrls:string
   const supplied:string[]=[];
   if(!roots.length&&process.env.GITHUB_TOKEN){
     const pins=["Django==1.11","Django==2.2","Django==3.2","Flask==1.1","Flask==0.12"],pin=pins[(new Date().getUTCHours()+new Date().getUTCDate())%pins.length];
-    const url="https://api.github.com/search/code?"+new URLSearchParams({q:`"${pin}" filename:requirements.txt`,per_page:"30",page:String(1+new Date().getUTCHours()%3)});
+    const url="https://api.github.com/search/code?"+new URLSearchParams({q:`"${pin}" filename:requirements.txt`,per_page:"10",page:String(1+new Date().getUTCHours()%5)});
     try{
       const data=JSON.parse((await get(url)).text);result.discovery="github_code_search";
       for(const item of data.items??[]){
