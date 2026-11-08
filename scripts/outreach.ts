@@ -7,7 +7,7 @@
 //   npm run outreach -- replies            poll AgentMail for replies to sent outreach
 //   npm run outreach -- policy on <cap> [High|Medium] | policy off
 import { pool, q } from "../lib/db";
-import { cancelOutreach, outreachDashboard, outreachStatus, pollReplies, POLICY_PHRASE, queueOutreach, resolveContact, sendOutreach, setOutreachPolicy } from "../lib/outreach";
+import { outreachDashboard, outreachStatus, pollReplies, POLICY_PHRASE, queueOutreach, resolveContact, sendOutreach, setOutreachPolicy } from "../lib/outreach";
 
 const [cmd = "status", arg, ...rest] = process.argv.slice(2);
 const id = () => { const n = Number(arg); if (!Number.isInteger(n) || n < 1) throw new Error("Give a prospect id"); return n; };
@@ -26,7 +26,7 @@ try {
   } else if (cmd === "preview") {
     const m = await queueOutreach(id(), { test: !outreachStatus().canSendReal });
     show(m);
-    if (m.is_test) { await cancelOutreach(m.id); console.log(`Real sending is not configured yet: ${outreachStatus().realBlockers.join("; ")}`); }
+    if (m.is_test) { await q("DELETE FROM outreach_messages WHERE id=$1 AND is_test AND status='draft'", [m.id]); console.log(`Real sending is not configured yet: ${outreachStatus().realBlockers.join("; ")}`); }
   } else if (cmd === "test") {
     const m = await queueOutreach(id(), { test: true }); show(m);
     const r = await sendOutreach(m.id, "Send this exact message"); console.log(`Sent TEST copy via AgentMail: ${r.messageId}`);

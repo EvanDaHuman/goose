@@ -47,7 +47,8 @@ export const POLICY_PHRASE = "Authorize prospect outreach";
 export async function setOutreachPolicy(input: any) {
   if (typeof input?.enabled !== "boolean") throw new Error("Choose enabled true or false");
   if (input.enabled && input.authorization !== POLICY_PHRASE) throw new Error(`Type "${POLICY_PHRASE}" to let the outreach agent send without per-message approval`);
-  const cap = Math.round(Number(input.dailyCap ?? 5));
+  const requested = Math.round(Number(input.dailyCap ?? 5));
+  const cap = input.enabled ? requested : Math.min(Math.max(1, requested || 1), HARD_DAILY_MAX());   // turning off never fails validation
   if (!Number.isFinite(cap) || cap < 1 || cap > HARD_DAILY_MAX()) throw new Error(`dailyCap must be 1 to ${HARD_DAILY_MAX()}`);
   const minFit = input.minFit === "Medium" ? "Medium" : "High";
   const policy: OutreachPolicy = { enabled: input.enabled, dailyCap: cap, minFit, id: crypto.randomUUID(), authorizedAt: new Date().toISOString() };
