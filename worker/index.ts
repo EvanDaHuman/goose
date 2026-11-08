@@ -10,7 +10,7 @@ import { serviceShowrooms, stopAllShowrooms } from "../lib/showroom";
 import { IMPL_ALL as IMPL } from "../lib/pipeline";
 import { serviceGrowth } from "../lib/growth";
 import { serviceOutreach } from "../lib/outreach";
-import { serviceInfraRecovery } from "../lib/infraRecovery";
+import { serviceAutonomy } from "../lib/autonomy";
 import { runMaintenanceChecks, serviceCommerce } from "../lib/commerce";
 
 let stopping = false;
@@ -36,7 +36,7 @@ async function main() {
       lastMaintenance = Date.now();
       await serviceCommerce().catch(e => console.error("[worker] commerce", e.message));
       await runMaintenanceChecks().catch(e => console.error("[worker] maintenance", e.message));
-      await serviceInfraRecovery().catch(e => console.error("[worker] infra recovery", e.message));   // resume jobs that only waited for Docker
+      await serviceAutonomy().catch(e => console.error("[worker] autonomy", e.message));   // resolve every job waiting for the founder, without a person
     }
     await serviceShowrooms().catch((e) => console.error("[worker] showroom", e.message));
     await serviceGrowth().catch((e) => console.error("[worker] growth", e.message));   // runs in the background; never blocks jobs

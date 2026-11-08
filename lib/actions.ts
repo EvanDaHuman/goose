@@ -129,7 +129,7 @@ export async function customerMessage(jobId: string, body: string) {
   const facts = {
     stageLabel: STAGES[job.stage]?.label ?? job.stage,
     nextStep: job.status === "waiting_customer" ? `It is waiting for you: ${job.waiting_reason ?? ""}`
-      : job.status === "waiting_founder" ? "It is waiting for our founder to review something; we'll update you here."
+      : job.status === "waiting_founder" ? "Goose hit a problem on this step and is recovering automatically; we'll update you here."
         : job.status === "done" ? "The job is complete." : "The agents are working on it now; this page updates as each step finishes.",
     price: job.price_cents ? `$${(job.price_cents / 100).toLocaleString("en-US")}` : null,
     checks: run,

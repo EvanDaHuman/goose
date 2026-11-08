@@ -42,7 +42,7 @@ export default async function CustomerJob({ params, searchParams }: { params: Pr
         <p style={{ margin: "12px 0 0" }}>
           <b>Now:</b> {v.stageLabel}. {job.status === "running" && <span className="muted">The {ROLE_NAMES[job.responsible]?.toLowerCase()} is working on it.</span>}
           {job.status === "waiting_customer" && <span className="muted">{job.waiting_reason}.</span>}
-          {job.status === "waiting_founder" && <span className="muted">{isInfraWait(job.waiting_reason) ? "Waiting for the build environment to start; work resumes automatically." : "Our founder is looking at something before work continues."}</span>}
+          {job.status === "waiting_founder" && <span className="muted">{isInfraWait(job.waiting_reason) ? "Waiting for the build environment to start; work resumes automatically." : "A step hit a problem; Goose is recovering automatically."}</span>}
           {job.status === "rejected" && <span className="muted">This application is outside what we can upgrade today. See the message below.</span>}
         </p>
       </div>

@@ -23,7 +23,7 @@ function copyFor(scene: RunScene, o: { paused?: "environment" | "review"; attemp
     case "agree": return { eyebrow: "Agree", title: <>Waiting <em>for you</em>.</>, meta: "Your proposal is ready above", pill: "waiting for you", note: "Review the proposal above. Nothing is built until you accept it." };
     case "answer": return { eyebrow: "Question", title: <>The geese have <em>a question</em>.</>, meta: "Answer above to carry on", pill: "waiting for your answer", note: "Goose needs an answer from you before work can continue. The question is above." };
     case "founder": if (o.paused === "environment") return { eyebrow: "Starting up", title: <>Waiting for <em>the build environment</em>.</>, meta: "The isolated machine that runs your code is starting", pill: "starting environment", note: "Goose is waiting for its isolated execution environment to come online. Work resumes automatically; nothing in your code has changed." };
-      return { eyebrow: "With our founder", title: <>Resting while <em>our founder</em> takes a look.</>, meta: "A person is checking something before work continues", pill: "with our founder", note: "Our founder is looking at something before work continues. You'll see it here when the job moves on." };
+      return { eyebrow: "Recovering", title: <>The geese are <em>regrouping</em>.</>, meta: "A step hit a problem; Goose is recovering automatically", pill: "recovering", note: "A step didn't finish cleanly. Goose retries it automatically, and if it can't be completed safely the job stops with an explanation. Nothing is invoiced before delivery." };
     case "record": return { eyebrow: "Record", title: <>Recording how <em>your code behaves</em>.</>, meta: "An exact record of the original, before anything changes", pill: "recording the original", note: "Goose runs your original code and records how it behaves, so the new version can be compared with it." };
     case "freeze": return { eyebrow: "Freeze checks", title: <>Freezing <em>the checks</em>.</>, meta: o.checksCount ? `${o.checksCount} acceptance checks, locked before any code changes` : "Acceptance checks, locked before any code changes", pill: "freezing checks", note: "The agreed checks are locked so nobody, including the agents, can change them later." };
     case "build": return o.replay
@@ -176,7 +176,7 @@ export function JobRun({ src, sig, scene, attempt, now, stages, checks = null, c
               {stages.map((s) => (
                 <li key={s.key} className={s.state === "stuck" || s.state === "failed" ? `active ${s.state}` : s.state === "todo" ? "" : s.state}>
                   <span>{s.label}</span>
-                  <span className="st">{s.state === "done" ? "done" : s.state === "active" ? "running" : s.state === "stuck" ? (paused === "environment" ? "starting environment" : "with our founder") : s.state === "failed" ? "repairing" : ""}</span>
+                  <span className="st">{s.state === "done" ? "done" : s.state === "active" ? "running" : s.state === "stuck" ? (paused === "environment" ? "starting environment" : "recovering") : s.state === "failed" ? "repairing" : ""}</span>
                   <small>{s.detail ?? ""}</small>
                 </li>
               ))}
