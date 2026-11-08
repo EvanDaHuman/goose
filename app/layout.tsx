@@ -5,6 +5,7 @@ import { siteFontVars } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.GOOSE_PUBLIC_URL || "https://goose-autonomous.vercel.app"),
   title: { default: "Goose | Autonomous engineering", template: "%s | Goose" },
   description: "Give Goose your existing software and the outcome you need. Our agent team assesses, implements, and independently verifies the change, from proposal through delivery and support.",
 };
