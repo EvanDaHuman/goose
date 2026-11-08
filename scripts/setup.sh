@@ -1,6 +1,6 @@
 #!/bin/bash
 # One-time setup. Safe to run again. macOS (Apple silicon) with Homebrew.
-#   Needs: Node 20.9+, /usr/bin/python3 (3.9, the legacy runtime), python3.13, uv, postgresql@17, zip.
+#   Needs: Node 22+, /usr/bin/python3 (3.9, the legacy runtime), python3.13, uv, postgresql@17, zip.
 set -euo pipefail
 PGPORT_PW="${GOOSE_PG_PORT:-54349}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -16,10 +16,10 @@ need /opt/homebrew/bin/uv "brew install uv"
 need /opt/homebrew/opt/postgresql@17/bin/postgres "brew install postgresql@17"
 need /usr/bin/sandbox-exec "macOS sandbox (built in)"
 need /usr/bin/zip "zip"
-node -e 'const [a,b]=process.versions.node.split(".").map(Number); if (a<20||(a===20&&b<9)) {console.error("Node 20.9+ required"); process.exit(1)}'
+node -e 'if (Number(process.versions.node.split(".")[0])<22) {console.error("Node 22+ required"); process.exit(1)}'
 
 say "Node packages"
-[ -d node_modules/next ] || npm ci --no-audit --no-fund
+npm ci --no-audit --no-fund
 
 if [ ! -f .env ]; then
   say "PostgreSQL (project-local, 127.0.0.1:$PGPORT_PW)"

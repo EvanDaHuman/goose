@@ -17,7 +17,7 @@ const journey = [
 export default async function Home() {
   const [offer, demo] = await Promise.all([
     pilotOffer(),
-    one<{ id: string; customer_token: string }>("SELECT id, customer_token FROM jobs WHERE kind = 'demo' AND status = 'done' AND pipeline >= 2 ORDER BY created_at DESC LIMIT 1"),
+    one<{ id: string; customer_token: string }>("SELECT id, customer_token FROM jobs WHERE kind = 'demo' AND status = 'done' AND pipeline >= 2 ORDER BY (mode='naive') DESC, created_at DESC LIMIT 1"),
   ]);
   return (
     <main>

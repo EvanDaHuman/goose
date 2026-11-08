@@ -174,6 +174,37 @@ test("the operator view shows the job, its responsible agent and its spend", asy
   await expect(page.getByRole("heading", { name: "Spending" })).toBeVisible();
 });
 
+test("incoming email receipts preserve exact text and display original HTML without executing it", async ({ page }) => {
+  await signIn(page, "/ops/business");
+  const plain = "Hello Goose,\n\nPlease preserve  this spacing.\n<script>window.__gooseInjected=true</script>\n";
+  const html = '<p>Original email</p><img src="https://goose-test.invalid/tracker" onerror="window.__gooseInjected=true">';
+  const fixture = { id: 881177, event_type: "message.received", sender: "Synthetic sender <receipt@example.test>", subject: "Browser fixture: original inbound content", is_test: true, outcome: "needs_review", reason: "Synthetic receipt for UI rendering verification", inquiry_id: null, received_at: "2026-11-07T12:00:00.000Z" };
+  // Provider signatures and database storage have integration coverage. This fixture
+  // specifically tests the browser boundary for untrusted email content.
+  await page.route("**/api/commerce", async route => {
+    if (route.request().method() !== "GET") { await route.continue(); return; }
+    const response = await route.fetch(), snapshot = await response.json();
+    await route.fulfill({ response, json: { ...snapshot, inboundMessages: [fixture] } });
+  });
+  await page.route("**/api/commerce/inbound/881177", route => route.fulfill({ json: { ...fixture, text_body: plain, html_body: html, message_id: "synthetic-receipt" } }));
+  const externalRequests: string[] = [];
+  page.on("request", request => { if (request.url().includes("goose-test.invalid")) externalRequests.push(request.url()); });
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Incoming AgentMail" })).toBeVisible();
+  const receipt = page.locator("article.incoming-receipt").filter({ hasText: fixture.subject });
+  await expect(receipt).toContainText("needs review");
+  await receipt.getByRole("button", { name: "Read original email" }).click();
+  await expect(receipt.getByLabel("Original plain-text body")).toBeVisible();
+  expect(await receipt.getByLabel("Original plain-text body").textContent()).toBe(plain);
+  await receipt.getByText("Original HTML source, displayed as text", { exact: true }).click();
+  expect(await receipt.getByLabel("Original HTML source").textContent()).toBe(html);
+  await expect(receipt.locator("img,script,iframe")).toHaveCount(0);
+  expect(await page.evaluate(() => (window as Window & { __gooseInjected?: boolean }).__gooseInjected)).toBeUndefined();
+  expect(externalRequests).toEqual([]);
+  await receipt.getByRole("button", { name: "Hide original email" }).click();
+  await expect(receipt.getByLabel("Original plain-text body")).toHaveCount(0);
+});
+
 test("a public inquiry links to a repository engineering assessment without changing its requested scope", async ({ page, context }) => {
   const nonce = Date.now(), organization = `Routing systems browser test ${nonce}`, email = `routing-${nonce}@example.test`;
   await page.goto("/contact");

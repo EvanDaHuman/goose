@@ -34,7 +34,7 @@ Goose calls the documented `POST /v0/inboxes/{inbox_id}/messages/send` endpoint 
 
 A custom delivery gateway can instead use `GOOSE_EMAIL_PROVIDER=webhook`, `GOOSE_EMAIL_WEBHOOK_URL` (HTTPS), and `GOOSE_EMAIL_WEBHOOK_TOKEN`. Goose sends `{idempotency_key,to,subject,text}` with bearer authentication; the gateway must return `{id}` or `{message_id}`. The gateway should enforce the idempotency key. Goose never assumes a failed network response proves a message was not sent.
 
-For inbound email or another inquiry source, configure a gateway that POSTs to `/api/webhooks/inquiries` with `{event_id,name,email,organization,goal,repositoryUrl?,isTest?}`. Set `GOOSE_INQUIRY_WEBHOOK_SECRET`. The gateway signs the raw request body as HMAC-SHA256 over `<unix_timestamp>.<body>` and sends `X-Goose-Signature: t=<unix_timestamp>,v1=<hex_digest>`. Requests outside a five-minute window are rejected. The provider event ID and body hash deduplicate retries, including concurrent requests. This endpoint is a documented generic gateway interface, not a claim that native AgentMail webhooks have this schema.
+AgentMail incoming mail uses the native integration described below. For other inquiry providers, an optional gateway can POST to `/api/webhooks/inquiries` with `{event_id,name,email,organization,goal,repositoryUrl?,isTest?}`. Set `GOOSE_INQUIRY_WEBHOOK_SECRET`. The gateway signs the raw request body as HMAC-SHA256 over `<unix_timestamp>.<body>` and sends `X-Goose-Signature: t=<unix_timestamp>,v1=<hex_digest>`. Requests outside a five-minute window are rejected. The provider event ID and body hash deduplicate retries, including concurrent requests. This is the generic gateway schema, separate from native AgentMail events.
 
 ## Payments
 

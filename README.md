@@ -32,7 +32,7 @@ All current customers, approvals and payments in the demonstrations are syntheti
 
 ## Run locally
 
-The native executor targets macOS on Apple Silicon. Install Node 20.9+, Homebrew `python@3.13`, `uv` and `postgresql@17`. The ROS adapter additionally needs Docker with a running Linux VM and its image built from `robotics/Dockerfile`.
+The native executor targets macOS on Apple Silicon. Install Node 22 or later, Homebrew `python@3.13`, `uv` and `postgresql@17`. The AgentMail signature library requires Node 22 or later. The ROS adapter additionally needs Docker with a running Linux VM and its image built from `robotics/Dockerfile`.
 
 ```bash
 npm run setup
@@ -51,6 +51,8 @@ npm start
 Open [localhost:3100](http://localhost:3100). `/ops/login` accepts `GOOSE_OPERATOR_TOKEN` from local `.env`. Customer workspaces use separate unguessable tokens. Local mode runs deterministic service fixtures and test commerce; general engineering requires live Naïve.
 
 Add AgentMail and Stripe keys when ready. Their absence does not prevent test engagements, local test checkout or recorded test notifications. Real sends and settlement require providers and the relevant authorization. See [commerce setup](docs/commerce.md).
+
+`npm run test:e2e` builds an isolated production app on port 3101, creates a disposable database and job directory, and runs the browser workflow with live agents and external providers disabled. It removes its test data and stops its services afterward. It does not add fixtures to the company's history. Set `GOOSE_E2E_PORT` if port 3101 is occupied.
 
 ## Commands
 

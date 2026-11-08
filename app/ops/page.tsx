@@ -11,18 +11,21 @@ export const dynamic = "force-dynamic";
 export default async function Ops() {
   const { jobs, totals } = await opsOverview();
   const anyRunning = jobs.some((j: any) => j.status === "running");
+  const demonstrations = jobs.filter((j: any) => j.kind === "demo" && j.mode === "naive").slice(0, 2);
   return (
     <main className="wrap">
       <OpsNav active="delivery" />
       <AutoRefresh active={anyRunning} seconds={3} />
       <div className="row between"><h1>Operator</h1><span className="small muted">Delivery queue · Agent decisions and interventions on record</span></div>
       <ModeBanner mode={config.mode} />
+      {!!demonstrations.length && <section className="section"><h2>Live agent demonstrations</h2><p className="small muted">Synthetic engagements with real agent execution. Each workspace shows its current status and recorded evidence.</p><div className="grid g2">{demonstrations.map((j: any) => <Link key={j.id} className="card" href={`/ops/jobs/${j.id}`}><div className="kicker">{j.id} · Demonstration</div><h3>{j.title}</h3><JobStatus status={j.status} stage={j.stage} />{j.run && <p className="small muted" style={{marginTop:10}}>{j.run.passed}/{j.run.total} recorded checks passed</p>}</Link>)}</div></section>}
       <div className="grid g4 section">
-        <div className="card tight"><div className="stat">{totals.running}</div><div className="stat-label">jobs the agents are working on</div></div>
+        <div className="card tight"><div className="stat">{totals.running}</div><div className="stat-label">jobs in progress</div></div>
         <div className="card tight"><div className="stat">{totals.customer}</div><div className="stat-label">waiting for a customer</div></div>
         <div className="card tight"><div className="stat" style={{ color: totals.founder ? "var(--warn)" : undefined }}>{totals.founder}</div><div className="stat-label">waiting for the founder</div></div>
         <div className="card tight"><div className="stat">{totals.interventions}</div><div className="stat-label">founder interventions ({totals.founder_minutes} min logged)</div></div>
       </div>
+      <p className="small muted">Queue counts include labelled demonstrations. Test engagements and test payments are excluded from real customer revenue.</p>
       <div className="card section">
         <div className="table-wrap">
           <table>
@@ -31,7 +34,7 @@ export default async function Ops() {
               {jobs.map((j: any) => (
                 <tr key={j.id}>
                   <td><Link href={`/ops/jobs/${j.id}`}><b>{j.id}</b></Link><div className="small muted">{j.title}</div></td>
-                  <td>{j.account_name}<div><KindTag kind={j.kind} /></div></td>
+                  <td>{j.account_name}<div><KindTag kind={j.kind} /></div><span className="tag mode">{j.mode === "naive" ? "Live agents" : "Local tools"}</span></td>
                   <td>{opsStageLabel(j.stage)}{j.attempt > 1 ? <div className="small muted">attempt {j.attempt}</div> : null}</td>
                   <td className="small">{ROLE_NAMES[j.responsible] ?? j.responsible}</td>
                   <td><JobStatus status={j.status} stage={j.stage} />{j.waiting_reason && <div className="small muted" style={{ maxWidth: 260 }}>{j.waiting_reason}</div>}</td>
@@ -48,7 +51,7 @@ export default async function Ops() {
           </table>
         </div>
       </div>
-      <p className="small muted">Updated {when(new Date())}. Total recorded spend across all jobs: {usd(totals.spent)} ({config.mode === "local" ? "estimates at Naive's published computer rate; nothing billed" : "metered by Naive"}).</p>
+      <p className="small muted">Updated {when(new Date())}. Total recorded spend across all jobs: {usd(totals.spent)}. Job ledgers distinguish metered agent usage from local compute estimates.</p>
     </main>
   );
 }

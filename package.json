@@ -26,7 +26,7 @@
     "migration:evidence": "tsx --env-file=.env scripts/migration-evidence.ts",
     "test": "tsx --env-file=.env scripts/test-integration.ts",
     "test:engine": "var/venvs/engine/bin/python -m pytest -q engine/tests",
-    "test:e2e": "playwright test",
+    "test:e2e": "tsx --env-file=.env scripts/test-e2e.ts",
     "history": "tsx --env-file=.env scripts/export-history.ts",
     "typecheck": "tsc --noEmit",
     "crm": "tsx --env-file=.env scripts/crm.ts",
