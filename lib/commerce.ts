@@ -261,7 +261,7 @@ export async function startChangeRequest(id: number, input: { repoZip: string; d
     const child = await createJob({ accountName: parent.name, contactName: parent.contact_name, contactEmail: parent.contact_email, kind: parent.kind,
       acquiredVia: `change-request:${id}`, title: `Follow-up: ${parent.title}`, slug: `${parent.app_slug}-followup`, timezone: parent.timezone,
       repoZip: input.repoZip, dbFile: input.dbFile, costLimitUsd: request.budget_micro_usd / 1_000_000, goal: request.goal,
-      workspaceRequest, constraints: parent.constraints ?? [], constraintNotes: parent.constraint_notes,
+      workspaceRequest, adaptiveRequest:workspaceRequest && fs.existsSync(jobDir(parent.id,"inputs","workspace-request.json")) && JSON.parse(fs.readFileSync(jobDir(parent.id,"inputs","workspace-request.json"),"utf8")).adaptive===true, constraints: parent.constraints ?? [], constraintNotes: parent.constraint_notes,
       ...(!workspaceRequest && input.target ? { migrationRequest: { target: input.target, dataChanges: request.goal } } : {}) });
     await q("UPDATE commerce_change_requests SET status='started',child_job_id=$2 WHERE id=$1", [id, child.id]);
     await logEvent(parent.id, "coordinator", "handoff", `Follow-up ${child.id} created with a fresh source snapshot and separate approval gates.`, { change_request_id: id, child_job_id: child.id });

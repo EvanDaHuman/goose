@@ -31,10 +31,14 @@ export function adaptiveProblems(p:any):string[]{
  if(!Array.isArray(p.missing_requirements)||p.missing_requirements.some((s:any)=>typeof s!=="string"))errors.push("State missing requirements");
  return [...new Set(errors)];
 }
-function protectedHashes(source:string,paths:string[]){const values:Record<string,string>={};for(const f of paths){if(!safe(f))throw new Error("Unsafe protected path");const full=path.join(source,f);if(!fs.existsSync(full))throw new Error("Missing protected path: "+f);values[f]=fs.statSync(full).isDirectory()?digest(full):sha256(full);}return values;}
+function protectedHashes(source:string,paths:string[]){const values:Record<string,string>=Object.create(null);for(const f of paths){if(!safe(f))throw new Error("Unsafe protected path");const full=path.join(source,f);if(!fs.existsSync(full))throw new Error("Missing protected path: "+f);values[f]=fs.statSync(full).isDirectory()?digest(full):sha256(full);}return values;}
 function intact(job:Job){try{const m=readJson(J(job,"vault","MANIFEST.json"));return sha256(J(job,"vault","MANIFEST.json"))===job.checks_manifest_sha&&Object.entries(m).every(([f,h])=>safe(f)&&sha256(J(job,"vault",f))===h);}catch{return false;}}
 async function execute(job:Job,source:string,planFile:string,out:string,phase:"baseline"|"verify"){
- mkdir(out);const r=await run({cmd:config.python.engine,args:[path.join(config.root,"autonomy/run.py"),"--source",source,"--plan",planFile,"--out",out,"--phase",phase],cwd:config.root,env:cleanEnv({PATH:"/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",...(process.env.DOCKER_HOST?{DOCKER_HOST:process.env.DOCKER_HOST}:{})},config.home),timeoutMs:55*60_000,logFile:path.join(out,"runner.log")});
+ const data=await one<{path:string;sha256:string}>("SELECT path,sha256 FROM artifacts WHERE job_id=$1 AND kind='database_snapshot' AND frozen ORDER BY id DESC LIMIT 1",[job.id]);
+ if(data&&(!fs.realpathSync(data.path).startsWith(fs.realpathSync(J(job,"snapshot"))+path.sep)||sha256(data.path)!==data.sha256))throw new Error("Original database snapshot integrity failed");
+ const frozenInputs=J(job,"vault","adaptive-inputs.json");
+ if(fs.existsSync(frozenInputs)&&readJson(frozenInputs).database_sha256!==(data?.sha256??null))throw new Error("Database input changed after scope acceptance");
+ mkdir(out);const r=await run({cmd:config.python.engine,args:[path.join(config.root,"autonomy/run.py"),"--source",source,"--plan",planFile,"--out",out,"--phase",phase,...(data?["--data",data.path]:[])],cwd:config.root,env:cleanEnv({PATH:"/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",...(process.env.DOCKER_HOST?{DOCKER_HOST:process.env.DOCKER_HOST}:{})},config.home),timeoutMs:55*60_000,logFile:path.join(out,"runner.log")});
  await recordCompute(job.id,"verification",job.stage,job.attempt,r.ms,"Generic isolated environment and acceptance execution");
  if(!fs.existsSync(path.join(out,"report.json")))throw new Error("Environment runner failed: "+r.stderr.slice(-3000));
  const report=readJson(path.join(out,"report.json"));if(r.timedOut)report.ok=false;return report;
@@ -44,6 +48,8 @@ const SHAPE=`{version:1,title:string,image:"official-runtime:tag",dependency_hos
 async function plan(job:Job,a:number):Promise<StageResult>{
  if(config.mode!=="naive")return {next:"plan",status:"waiting_founder",waiting:"Autonomous discovery requires live Naive"};
  const client=naiveClient(),source=await uploadFile(client,job.id,await sourceSnapshot(job),`${job.id}-unfamiliar-source.zip`,["source"]);
+ const answers=await q("SELECT prompt,answer FROM questions WHERE job_id=$1 AND status='answered' ORDER BY id",[job.id]);
+ const database=await one("SELECT filename,validation FROM job_inputs WHERE job_id=$1 AND kind='database' AND validation IS NOT NULL ORDER BY id DESC LIMIT 1",[job.id]);
  let feedback:any=null;
  // Durable per-round files and SDK idempotency preserve actual failed attempts on retry.
  const base=J(job,"discovery",`round-${a}`);mkdir(base);
@@ -53,7 +59,8 @@ async function plan(job:Job,a:number):Promise<StageResult>{
   const r=await runAgentTask(client,{...(await ctxFor(job,a*10+trial,"plan")),role:"assessment",purpose:"autonomous-environment",title:"Discover and reproduce an unfamiliar repository",timeoutMs:25*60_000,
    outputSchema:{type:"object",properties:{plan_json:{type:"string"}},required:["plan_json"],additionalProperties:false},
    message:`Fetch and inspect repository ${source.id}. No repo-specific Goose adapter or prewritten tests are supplied. Goal: ${job.goal}. Constraints: ${JSON.stringify(job.constraints)} ${job.constraint_notes??""}.
-Read actual manifests, lockfiles, CI workflows, source interfaces, and tests. Infer dependencies and commands. Return plan_json with this exact shape: ${SHAPE}.
+Customer clarifications: ${JSON.stringify(answers)}. Data snapshot metadata: ${JSON.stringify(database)}. If a validated data copy exists, the HOST provides it read-only at /data/input inside each environment. Discover its schema using available tools in scripts; copy it before migrations. Never infer records or schemas from metadata. No customer data is uploaded to your Naive workspace. Data tests must check actual values, relationships, writes and repeat migration/recovery against isolated copies.
+Inspect actual manifests, lockfiles, CI workflows, source interfaces, and tests. Do not spend the planning session installing dependencies or running full suites in your own computer: the host executes your proposed environment and returns observed failures for repair. Infer dependencies and commands. Return plan_json with this exact shape: ${SHAPE}.
 Host executes your scripts in disposable Linux Docker containers; you do NOT need Docker in your Naive computer. Supported official base repositories: ubuntu, debian, python, node, golang, rust, eclipse-temurin, ruby, php, mcr.microsoft.com/dotnet/sdk. Choose an appropriate pinned version. Setup has network ONLY through HTTP_PROXY/HTTPS_PROXY to exact dependency_hosts. Include package registries AND their artifact CDN hosts, no private addresses. APT/pip/npm work via the proxy. Setup should install build/test dependencies using actual project metadata; package installation scripts are untrusted and sandboxed. It may build/install the project. Never change original source or existing tests in setup/prepare. Every check starts from an independent copy of the same prepared image, OFFLINE, as UID1000 with writable /workspace and /home/goose. prepare can start local service processes; install services during setup. No Docker socket, no credentials, no host filesystem. Checks run from /workspace with scripts stored read-only at /acceptance. Project imports and test discovery must work from there (set PYTHONPATH if needed). Native tests that spawn other executables cannot invoke docker.
 Run the substantial existing test suite as at least one preservation check. Protect its files in protected_paths. If existing failures block it, diagnose them; never quietly skip relevant tests. Additional focused preservation assertions should cover changed behavior. Requirement checks must PASS on correct new implementation and FAIL on original source with a clear assertion or missing-feature error. They must verify the actual requested behavior, not merely inspect source text. Do not implement the change yet. A negative control must make an exact unique replacement in ORIGINAL code, preserve syntax/imports and make a preservation check fail with an assertion. Never mutate tests or commands for the negative control. Use timeout_seconds up to 900. Normalize nondeterministic fields in assertions. Include no hardcoded output pretending to be a test. For data changes, build isolated copies, assert row relationships/value transformations/new writes/retry behavior. Missing private services, credentials, hardware or ambiguous requirements belong in missing_requirements; do not fabricate them. Explain all coverage limitations.
 This is the feedback from prior actual execution (if any). Fix the plan based on it: ${JSON.stringify(feedback).slice(-55000)}`});
@@ -61,7 +68,10 @@ This is the feedback from prior actual execution (if any). Fix the plan based on
   let p:any;try{p=JSON.parse(r.output.plan_json);}catch{feedback={error:"Invalid plan JSON"};continue;}
   write(path.join(td,"plan.json"),p);const problems=adaptiveProblems(p);
   if(problems.length){feedback={plan:p,problems};write(path.join(td,"feedback.json"),feedback);continue;}
-  if(p.missing_requirements.length)return {next:"plan",status:"waiting_founder",waiting:`Discovery needs information or infrastructure: ${p.missing_requirements.join("; ")}`};
+  if(p.missing_requirements.length){
+   await q("INSERT INTO questions(job_id,key,asked_by,audience,prompt,fields,blocking) VALUES($1,$2,'assessment','customer',$3,$4,true) ON CONFLICT(job_id,key) DO NOTHING",[job.id,`environment-${a}`,`Discovery needs clarification: ${p.missing_requirements.join("; ")}. Explain the required behavior or available infrastructure. Do not paste credentials here.`,JSON.stringify([{type:"text",key:"details",label:"Clarification"}])]);
+   return {next:"awaiting_info",status:"waiting_customer",waiting:"Environment discovery needs your clarification"};
+  }
   try{protectedHashes(J(job,"source"),p.protected_paths);}catch(e){feedback={plan:p,error:String(e)};continue;}
   const before=digest(J(job,"source"));const first=await execute(job,J(job,"source"),path.join(td,"plan.json"),path.join(td,"execution"),"baseline");
   if(before!==digest(J(job,"source")))throw new Error("Discovery changed the original source");
@@ -96,6 +106,8 @@ async function baseline(job:Job,a:number):Promise<StageResult>{
 }
 async function freeze(job:Job):Promise<StageResult>{
  const vault=mkdir(J(job,"vault")),files=["adaptive-plan.json","adaptive-baseline.json","adaptive-protected.json"];
+ const data=await one<{sha256:string}>("SELECT sha256 FROM artifacts WHERE job_id=$1 AND kind='database_snapshot' AND frozen ORDER BY id DESC LIMIT 1",[job.id]);
+ write(J(job,"work","adaptive-inputs.json"),{source_digest:digest(J(job,"source")),database_sha256:data?.sha256??null});files.push("adaptive-inputs.json");
  for(const f of files)fs.copyFileSync(J(job,"work",f),path.join(vault,f));
  const runtime={"autonomy/run.py":sha256(path.join(config.root,"autonomy/run.py")),"autonomy/egress.py":sha256(path.join(config.root,"autonomy/egress.py"))};write(path.join(vault,"adaptive-runner.json"),runtime);files.push("adaptive-runner.json");
  write(path.join(vault,"MANIFEST.json"),Object.fromEntries(files.map(f=>[f,sha256(path.join(vault,f))])));const hash=sha256(path.join(vault,"MANIFEST.json"));makeReadOnly(vault);

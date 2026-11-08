@@ -1,9 +1,6 @@
 # Connecting the live agent team (Naive)
 
-**Status on 2026-11-04:** not connected. `.env` has no `VETTA_API_KEY` and `GOOSE_MODE=local`, so every run so far used
-Goose's deterministic tools and no AI model was called. Everything below is checked against Naive's quickstart as published
-today (https://vetta.sh/docs/quickstart.md) and the public API description (`https://api.vetta.sh/v1/openapi.json`, version
-2026-09-30, unchanged for the endpoints Goose uses). The SDK `@usenaive-sdk/vetta` 0.10.0 is still the latest release.
+**Current implementation:** live Naïve powers assessment, implementation, coordination, research and autonomous environment discovery. Seven roles are provisioned. Autonomous repository jobs also use the verification role to review discovered tests independently. Completed-job and validation records under `docs/evidence/` distinguish actual sessions from configured capabilities. The connection commands below describe setup for a fresh checkout; the running development company is already connected.
 
 These steps involve your account and a payment, so they are yours to do. Do not paste the key into a chat or a ticket.
 
@@ -40,7 +37,7 @@ These steps involve your account and a payment, so they are yours to do. Do not 
    GOOSE_MODE=naive
    ```
    Keep the file private: `chmod 600 .env`. Restart Goose (`npm start`) so the worker reads it.
-7. **Run the smoke test.** It checks the plan, the scopes and the model, provisions the four agents, runs one real session and
+7. **Run the smoke test.** It checks the plan, the scopes and the model, provisions the seven agents, runs one real session and
    writes the result to `docs/evidence/naive-smoke.md`. A wrong key or a missing scope stops it with the exact reason.
    ```bash
    npm run naive:smoke
@@ -64,8 +61,6 @@ Spending limits are set per agent: monthly budgets of $40 (coordinator), $60 (as
 every agent's monthly budget and per-task ceiling to at most those values. Every session's metered cost (`consumed_micro_usd`) is recorded with the
 job, including failed and retried sessions.
 
-## What has been verified, and what has not
-The four agents are provisioned on Naive and a live coordinator session has completed with structured output
-(`docs/evidence/naive-smoke.md`). The rest of the integration is checked by contract tests against the real SDK and the published API
-description (`npm test`), which cannot show that an agent delivers working changes. Treat agent delivery as unverified until a live
-job has run and its evidence is recorded.
+## What has been verified
+
+See the recorded live engagements and build validation in `docs/evidence/`. Naïve usage is traced per session, including failed and retried work. Provider adapters use separate local tests until email/payment activation. Never infer live delivery merely from a provisioned agent or a passing SDK contract test.

@@ -4,6 +4,7 @@ Setup egress is restricted through a public-address dependency proxy. Checks run
 """
 import argparse, hashlib, json, os, pathlib, re, shutil, subprocess, tempfile, time, uuid
 ROOT=pathlib.Path(__file__).resolve().parent
+DEADLINE=None
 BASES={'ubuntu','debian','python','node','golang','rust','eclipse-temurin','ruby','php','mcr.microsoft.com/dotnet/sdk'}
 def validate(p):
     if p.get('version')!=1:raise ValueError('Unknown environment version')
@@ -32,6 +33,7 @@ def safe_path(s):return isinstance(s,str) and s and not s.startswith('/') and '.
 
 def command(argv,timeout=600,log=None):
     start=time.monotonic()
+    if DEADLINE is not None:timeout=max(1,min(timeout,DEADLINE-start))
     try:
         with tempfile.TemporaryFile() as f:
             p=subprocess.Popen(argv,stdout=f,stderr=subprocess.STDOUT)
@@ -47,10 +49,12 @@ def docker(*args,timeout=600,required=True):
     if required and r['code']:raise RuntimeError(r['output'][-6000:])
     return r
 
-def execute(source,plan,out,phase='baseline'):
+def execute(source,plan,out,phase='baseline',data=None):
+    global DEADLINE
+    DEADLINE=time.monotonic()+1800
     validate(plan);out=pathlib.Path(out);out.mkdir(parents=True,exist_ok=True)
     key='goose-auto-'+uuid.uuid4().hex[:12];network=key+'-net';proxy=key+'-proxy';setup=key+'-setup';image=key+':prepared'
-    report={'phase':phase,'started_at':time.time(),'plan_sha256':hashlib.sha256(json.dumps(plan,sort_keys=True).encode()).hexdigest(),'checks':[],'mutations':[],'ok':False}
+    report={'phase':phase,'started_at':time.time(),'runner_sha256':hashlib.sha256((ROOT/'run.py').read_bytes()).hexdigest(),'egress_sha256':hashlib.sha256((ROOT/'egress.py').read_bytes()).hexdigest(),'plan_sha256':hashlib.sha256(json.dumps(plan,sort_keys=True).encode()).hexdigest(),'checks':[],'mutations':[],'ok':False}
     containers=[];volume=key+'-checks'
     work=pathlib.Path(tempfile.mkdtemp(prefix='goose-run-'))
     limits=['--cpus','2','--memory','3g','--pids-limit','384','--security-opt','no-new-privileges','--cap-drop','ALL','--ulimit','nofile=4096:4096']
@@ -75,6 +79,8 @@ def execute(source,plan,out,phase='baseline'):
         # Package installation needs ownership and UID operations, but never network administration or host privileges.
         docker('create','--name',setup,*limits,'--cap-add','CHOWN','--cap-add','DAC_OVERRIDE','--cap-add','FOWNER','--cap-add','SETUID','--cap-add','SETGID','--network',network,*env,'--workdir','/workspace',base,'sleep','infinity');containers.append(setup)
         docker('cp',str(pathlib.Path(source).resolve())+'/.',setup+':/workspace');docker('start',setup)
+        if data:
+            docker('exec',setup,'mkdir','-p','/data');docker('cp',str(pathlib.Path(data).resolve()),setup+':/data/input');docker('exec',setup,'chmod','0444','/data/input')
         (work/'setup.sh').write_text('set -eu\ncd /workspace\n'+plan['setup'])
         docker('cp',str(work/'setup.sh'),setup+':/tmp/goose-setup.sh')
         r=docker('exec',setup,'/bin/sh','/tmp/goose-setup.sh',timeout=900,required=False);report['setup']={**r};(out/'setup.log').write_text(r['output']);save()
@@ -98,7 +104,7 @@ def execute(source,plan,out,phase='baseline'):
         docker('create','--name',seed,'--network','none','--mount',f'type=volume,src={volume},dst=/acceptance',base,'true');docker('cp',str(scripts)+'/.',seed+':/acceptance');docker('rm',seed)
         for c in plan['checks']:
             r=check(c);r['expected']='pass' if phase=='verify' or c['kind']=='preserve' else 'fail'
-            r['accepted']=(r['code']==0 if r['expected']=='pass' else r['code']>0 and not r['timed_out'] and bool(re.search(r'assert|expect|fail',r['output'],re.I)))
+            r['accepted']=(r['code']==0 if r['expected']=='pass' else r['code']>0 and not r['timed_out'] and bool(re.search(r'assert|expect|fail|AttributeError|TypeError:.*is not a function',r['output'],re.I)))
             report['checks'].append(r);save()
         if phase=='baseline':
             for i,m in enumerate(plan['mutations']):
@@ -116,11 +122,12 @@ def execute(source,plan,out,phase='baseline'):
         report['ok']=all(c['accepted'] for c in report['checks']) and (phase!='baseline' or all(m['detected'] for m in report['mutations']))
     except Exception as e:report['error']=str(e)
     finally:
+        DEADLINE=time.monotonic()+120
         for c in containers:docker('rm','-f',c,required=False)
         docker('image','rm','-f',image,required=False);docker('volume','rm','-f',volume,required=False);docker('network','rm',network,required=False)
-        shutil.rmtree(work,ignore_errors=True);report['finished_at']=time.time();save()
+        shutil.rmtree(work,ignore_errors=True);report['finished_at']=time.time();save();DEADLINE=None
     return report
 
 if __name__=='__main__':
-    ap=argparse.ArgumentParser();ap.add_argument('--source',required=True);ap.add_argument('--plan',required=True);ap.add_argument('--out',required=True);ap.add_argument('--phase',choices=['baseline','verify'],default='baseline');a=ap.parse_args()
-    p=json.loads(pathlib.Path(a.plan).read_text());r=execute(a.source,p,a.out,a.phase);print(json.dumps({'ok':r['ok'],'checks':[{k:c[k] for k in ['id','code','accepted']} for c in r['checks']],'error':r.get('error')}));raise SystemExit(0 if r['ok'] else 1)
+    ap=argparse.ArgumentParser();ap.add_argument('--source',required=True);ap.add_argument('--plan',required=True);ap.add_argument('--out',required=True);ap.add_argument('--data');ap.add_argument('--phase',choices=['baseline','verify'],default='baseline');a=ap.parse_args()
+    p=json.loads(pathlib.Path(a.plan).read_text());r=execute(a.source,p,a.out,a.phase,a.data);print(json.dumps({'ok':r['ok'],'checks':[{k:c[k] for k in ['id','code','accepted']} for c in r['checks']],'error':r.get('error')}));raise SystemExit(0 if r['ok'] else 1)

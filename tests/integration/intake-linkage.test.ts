@@ -38,3 +38,22 @@ test("concurrent intake submissions link exactly one job and retain the entire c
   const linked=(await q<{job_id:string}>("SELECT job_id FROM commerce_inquiries WHERE public_id=$1",[inquiry.id]))[0];assert.equal(linked.job_id,result.id);
   const retry=await POST(request(email,inquiry.id,goal));assert.equal(retry.status,400);assert.equal(await countJobs(email),1);
 });
+
+test("public GitHub customer intake records the commit and selects autonomous discovery",async()=>{
+  const original=globalThis.fetch,sha="d".repeat(40);
+  globalThis.fetch=(async(input:any)=>{
+    const url=String(input);
+    if(url.endsWith('/repos/acme/complex'))return Response.json({full_name:"acme/complex",private:false,default_branch:"main",html_url:"https://github.com/acme/complex"});
+    if(url.includes('/commits/main'))return Response.json({sha});
+    if(url.includes('/zipball/'+sha))return new Response(Buffer.from('PK\x03\x04test-source'));
+    return Response.json({}, {status:404});
+  }) as typeof fetch;
+  try{
+    const form=new FormData();for(const [k,v] of Object.entries({business:"GitHub intake test",contact:"Synthetic customer",title:"Complex repository",email:"github-intake@example.test",goal:"Discover this repository and implement the requested feature.",authorized:"on",demo:"on",job_type:"workspace",github_repo:"https://github.com/acme/complex",timezone:"UTC"}))form.set(k,v);
+    const r=await POST(new Request("http://localhost/api/jobs",{method:"POST",headers:{origin:"http://localhost"},body:form}));assert.equal(r.status,200);const body=await r.json();created.push(body.id);
+    const job=await jobByToken(body.id,body.t);assert.ok(job);assert.equal(job.recipe,"workspace-change");
+    assert.equal(JSON.parse(fs.readFileSync(jobDir(body.id,"inputs","workspace-request.json"),"utf8")).adaptive,true);
+    const source=(await q<{source:any}>("SELECT source FROM job_inputs WHERE job_id=$1 AND kind='repository'",[body.id]))[0].source;assert.equal(source.commit,sha);assert.equal(source.access,"public");
+    assert.equal(JSON.parse(fs.readFileSync(jobDir(body.id,"inputs","github-source.json"),"utf8")).commit,sha);
+  }finally{globalThis.fetch=original;}
+});

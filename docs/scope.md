@@ -4,11 +4,11 @@ Goose accepts engineering objectives across software domains. Execution depends 
 
 ## General repository engineering
 
-Live Naïve assessment creates source/target build commands, preserved behaviors, new requirement checks, required files and limitations. Commands use bounded argv arrays. Native tool names include Python, Node, Cargo/Rust, Go, C++, CMake, CTest and Make when installed. Compiled executables inside the job can run. Dependencies must already be available because candidate execution has no network.
+New repository requests use [autonomous discovery](autonomous-engineering.md). Naïve reads the actual repository, proposes and repairs an isolated Linux environment, discovers substantive existing tests, creates requirement checks and semantic negative controls, and obtains an independent review of the evidence. Fresh environment reproduction is required before a proposal. No manually written repository adapter is needed.
 
-Source checks run on two fresh copies before quotation. After approval, the baseline runs again and its hashes are frozen outside the implementation workspace. Naïve creates the candidate. Separate tools build and check it, enforce repair limits and bind delivery to the exact verified files.
+After customer approval, the baseline runs again. Acceptance scripts, protected original tests, input hashes and the runner are frozen. Implementation receives the public requirements and setup information. Independent execution decides acceptance and binds delivery to the verified files.
 
-This covers algorithm migration, bug fixes, CLI features and build/configuration changes when substantive checks exist. It does not mean every repository, framework or integration is supported. Nondeterministic outputs require suitable normalization. Native execution currently requires macOS; other native hosts fail explicitly.
+Existing engagements retain the original command-contract executor. That executor uses installed native tools without network access and requires macOS. New autonomous requests use the generic Docker backend with dependency-only egress during setup and offline verification. Windows/macOS-only dependencies, unavailable private services, hardware and ambiguous business semantics are explicit blockers, not silently simulated support.
 
 ## Service and data executors
 

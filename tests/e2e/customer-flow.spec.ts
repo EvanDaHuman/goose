@@ -49,6 +49,7 @@ test("a customer completes assessment, verified delivery, test payment, support,
     "the reminder script must keep working exactly as today.");
   for (const c of ["keep_database", "keep_api", "keep_connections"]) await page.locator(`input[name=constraints][value=${c}]`).check();
   await page.getByRole("button", { name: "Upload a .zip instead" }).click();   // the sample isn't on GitHub
+  await page.getByLabel("Type of engineering work").selectOption("service");
   await page.locator("input[name=repository]").setInputFiles(clinicZip());
   await page.locator("input[name=database]").setInputFiles(path.join(CLINIC, "data", "clinic.db"));
   await page.locator("input[name=demo]").check();
@@ -239,7 +240,7 @@ test("a public inquiry links to a repository engineering assessment without chan
   await page.locator("input[name=authorized]").check();
   await page.getByRole("button", { name: "Begin migration" }).click();
   await expect(page).toHaveURL(/\/jobs\/GS-\d+\?t=/);
-  await expect(page.getByText(/Repository engineering needs the live Naive assessment team/).first()).toBeVisible({ timeout: 120_000 });
+  await expect(page.getByText(/Autonomous discovery requires live Naive/).first()).toBeVisible({ timeout: 120_000 });
   await expect(page.getByRole("button", { name: "Accept proposal" })).toHaveCount(0);
   const jobId = new URL(page.url()).pathname.split("/").pop()!;
   const ops = await context.newPage();
@@ -259,6 +260,7 @@ test("a Rust request keeps its explicit target and requests live execution in lo
   await page.getByLabel("Target runtime (optional)").selectOption("rust");
   await page.getByLabel("Requested data changes (optional)").fill("Add a customer tier with a standard default.");
   await page.getByRole("button", { name: "Upload a .zip instead" }).click();   // the sample isn't on GitHub
+  await page.getByLabel("Type of engineering work").selectOption("service");
   await page.locator("input[name=repository]").setInputFiles(clinicZip());
   await page.locator("input[name=database]").setInputFiles(path.join(CLINIC, "data", "clinic.db"));
   await page.locator("input[name=demo]").check();

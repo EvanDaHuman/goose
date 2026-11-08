@@ -14,13 +14,15 @@ Built for the [Naïve Autonomous Companies Hackathon](https://events.ycombinator
 | --- | --- |
 | Acquisition | Scheduled Naïve research, qualification and outreach drafts with public evidence and spending limits |
 | Intake and scoping | Inquiry form, source uploads, live assessment, executable contract, fixed-price proposal and customer approval |
-| General engineering | Agent-written repository changes with separate builds and preserved/new behavior checks |
+| General engineering | Naïve discovers and reproduces environments and tests for unfamiliar repositories, then implements and verifies changes |
 | Code and data migration | Service adapters for Python, Node and Rust; data continuity, new writes, restart and migration idempotency checks |
 | Robotics | Pinned ROS 1 exploration source, ROS 2 Jazzy build adapter and independent Gazebo/Nav2 harness; see `robotics/` |
 | Delivery | Frozen expectations, independent checks, bounded repairs, candidate hashes, source archive, report and runbook |
 | Business operations | Acceptance, invoices, Stripe Checkout/webhooks, AgentMail/custom email, support and capped follow-up jobs |
 | Continuing care | Scheduled delivery-integrity checks and follow-up change requests |
 | Accountability | Metered Naïve cost, labelled compute estimates, session provenance, approvals, founder interventions and job leases |
+
+Customers can use a GitHub link or ZIP. New repository jobs need no Goose-specific adapter: see [autonomous engineering](docs/autonomous-engineering.md).
 
 See [execution scope](docs/scope.md), [commerce setup](docs/commerce.md) and [demo guide](docs/demo.md). Production deployment and broad dependency monitoring are not implemented. A passing contract is evidence for its scope, not proof of all possible behavior.
 

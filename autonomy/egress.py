@@ -41,4 +41,4 @@ class Proxy(http.server.BaseHTTPRequestHandler):
         except Exception:self.send_error(403)
     do_HEAD=do_GET
 class Server(socketserver.ThreadingMixIn,http.server.HTTPServer):daemon_threads=True
-Server(('0.0.0.0',8080),Proxy).serve_forever()
+if __name__=='__main__':Server(('0.0.0.0',8080),Proxy).serve_forever()
