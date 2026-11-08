@@ -36,7 +36,7 @@ All current customers, approvals and payments in the demonstrations are syntheti
 
 The live ROS engagement `GS-1004` also completed delivery, acceptance and TEST settlement after two Naïve code repairs. Its final checks passed 14/14, including 111 algorithm checks and nine Gazebo checks. The robot travelled 3.798 metres. Repeated destination requests remain a documented exploration-quality limitation. See the [full workflow evidence and reproducible delivery](docs/evidence/ros-workflow.md).
 
-The [validation record](docs/evidence/build-validation.json) covers 67 integration tests, 35 engine tests, six browser workflows, seven robotics harness tests, production build and readiness checks. Integration and browser suites use disposable databases. Provider calls are mocked; live email and payment activation remains separate.
+The [autonomous engineering validation](docs/evidence/autonomous-validation.json) records 97 integration tests, five real Docker isolation/execution tests, six browser workflows, production build and readiness checks. Integration and browser suites use disposable databases and mocked external providers. The live Naïve repository engagements above are separate evidence. The [earlier validation record](docs/evidence/build-validation.json) retains the original engine and robotics checks. Live email and payment activation remains separate.
 
 ## Run locally
 

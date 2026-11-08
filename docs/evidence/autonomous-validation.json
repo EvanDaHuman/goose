@@ -1,0 +1,51 @@
+{
+  "recorded_at": "2026-11-08T02:54:30.552363+00:00",
+  "scope": "Repository-independent engineering upgrade and merged company workflow",
+  "checks": [
+    {
+      "command": "GOOSE_TEST_DOCKER=1 npm test",
+      "passed": 97,
+      "failed": 0,
+      "skipped": 0,
+      "includes": "Real Docker baseline, frozen acceptance, candidate verification, delivery integrity, GitHub intake, Naive retries and commerce/outreach integration contracts."
+    },
+    {
+      "command": "npm run test:autonomy",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "includes": "Container isolation, public dependency proxy, semantic negative control, refactored correct candidate, wrong candidate refusal, setup and preparation integrity, copied SQLite migration and writes."
+    },
+    {
+      "command": "npm run test:e2e",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "includes": "Disposable local-mode browser workflow. No real email, payment or live agent inference."
+    },
+    {
+      "command": "npm run typecheck",
+      "result": "passed"
+    },
+    {
+      "command": "npm run build",
+      "result": "passed"
+    },
+    {
+      "command": "npm run doctor",
+      "result": "Core, Docker Linux and all seven Naive roles ready; AgentMail and Stripe activation pending."
+    }
+  ],
+  "live_validation": {
+    "werkzeug": "autonomous-werkzeug-live.json",
+    "werkzeug_current_runner": "autonomous-werkzeug-revalidation.json",
+    "werkzeug_commerce": "autonomous-werkzeug-commerce.json"
+  },
+  "limits": [
+    "Live repository engagements and synthetic test suites are distinct evidence.",
+    "Passing discovered checks applies to their declared scope, not every upstream platform or behavior.",
+    "Public GitHub links work without customer credentials. Private GitHub App and real email/payment activation require provider keys.",
+    "The generic execution backend is Linux Docker. Unavailable hardware, private infrastructure and unsupported operating systems require additional access or infrastructure.",
+    "No production deployment, real customer or revenue is claimed."
+  ]
+}
