@@ -130,8 +130,11 @@ export function isOptOut(raw: string) {
 }
 
 /** Automated bounces and out-of-office notices: not a human reply, and a bounce suppresses the address. */
-export function autoReplyKind(from: string, subject: string): "bounce" | "auto" | null {
+export function autoReplyKind(from: string, subject: string, text = ""): "bounce" | "auto" | null {
   if (/mailer-daemon|postmaster/i.test(from) || /undeliverable|delivery status notification|delivery has failed|returned mail|failure notice/i.test(subject)) return "bounce";
-  if (/out of (the )?office|automatic reply|auto[- ]?reply|autoreply|on vacation/i.test(subject)) return "auto";
+  if (/out of (the )?office|automatic reply|auto[- ]?reply|autoreply|on vacation|we(?:'ve| have)? received your (?:request|message|email)|request received|ticket\s*(?:#|number|id)|\[(?:ticket|case|request)\s*#?\d+\]/i.test(subject)) return "auto";
+  // help-desk acknowledgements: a ticket system confirming receipt, not a person replying
+  const t = text.slice(0, 1500);
+  if (/we(?:'ve| have) received your (?:request|message|email|enquiry|inquiry)|this is an automat(?:ed|ic) (?:response|reply|message)|(?:ticket|case|request) (?:#|number|id)\s*:?\s*\w*\d|a member of our (?:support|team)[\s\S]{0,80}(?:get back to you|respond)/i.test(t)) return "auto";
   return null;
 }
