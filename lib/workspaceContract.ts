@@ -63,7 +63,7 @@ export function workspaceRepairFeedback(report: { summary: unknown; failed: any[
     // Compiler/runtime errors originate in the candidate, not the withheld baseline.
     const executionError = ["execution", "build"].includes(check.category) && typeof check.actual === "string" ? check.actual.slice(-3000) : undefined;
     return { ...failure, ...(executionError ? { execution_error: executionError } : {}),
-      ...(typeof check.actual?.stderr==="string" ? {candidate_error:check.actual.stderr.slice(-3000)} : {}),
+      ...(typeof check.actual?.stderr==="string" ? {candidate_error:check.actual.stderr.slice(0,8000)} : {}),
       ...(Number.isInteger(check.actual?.exit) ? { actual_exit_code: check.actual.exit } : {}) };
   }) };
 }

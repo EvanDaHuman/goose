@@ -1,0 +1,13 @@
+{
+  "version": 4,
+  "frozenAt": "2026-11-08T00:16:50.078245+00:00",
+  "reason": "Explicit strengthening after review: completion is independently counted from Nav2 bt_navigator action-status endpoint UUIDs, not candidate counters. Version 3 preserved as preliminary; generated candidate unchanged and full mission will be rerun.",
+  "files": {
+    "runner/baseline.py": "ad4c0fccbf2479cfafb8222ff4b3828b8083f1b5f100c873dc1c8c6750a479bd",
+    "runner/verify_core.py": "17bfb91d1c7208837f632af8ff932ce6b4f2baabc68a80999258f88cef0047f8",
+    "runner/candidate_rpc.py": "806fd0663f9a4f7febd16e95ee69f0421b9411012d8c8f9e8d651c5f50fc34e7",
+    "runner/simulate.py": "c643c9d93d1b7ca5dcb1fc0a6d916910c4eeef7011c5f0f8c9d3286d10fb3269",
+    "source/rrt_exploration/scripts/functions.py": "2437b790b266e1aa00f234bf99d010ee6b9405e8af4936aead14c9ec357dc43d",
+    "runner/nav_status.py": "381c35743f03a6787d2fe1b15af8c01750156c16696290cf396b21096cb227f1"
+  }
+}

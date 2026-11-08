@@ -1,0 +1,10 @@
+{
+  "kind": "read-only runtime diagnostic before v6 freeze",
+  "knownCompletedGoalResultStatus": 4,
+  "fabricatedGoalUuid": "ffffffffffffffffffffffffffffffff",
+  "fabricatedGoalResultStatus": 0,
+  "sentNavigationGoal": false,
+  "observedPublisher": "bt_navigator",
+  "messageInfo": "Jazzy dict omits publisher_gid; discovery endpoint has 16-byte GID",
+  "runNonce": "ba8382e776294626a673210bc5929bf2"
+}

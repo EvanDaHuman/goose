@@ -1,0 +1,68 @@
+{
+  "scope": "Development diagnostics, separate from customer job state machine. No human-written edits to generated migration source. Infrastructure adapter was corrected during development.",
+  "monolithicGeneration": {
+    "outcome": "context exhausted",
+    "recordedMicroUsd": 113092
+  },
+  "splitGeneration": {
+    "parts": 5,
+    "recordedMicroUsd": 559894
+  },
+  "naiveStartupRepair": {
+    "patches": 7,
+    "recordedMicroUsd": 46877
+  },
+  "infrastructureRetries": [
+    {
+      "name": "private-ipc",
+      "verdict": "fail",
+      "passed": 6,
+      "total": 9,
+      "reason": "DDS discovery/data did not cross container boundary"
+    },
+    {
+      "name": "loopback-udp",
+      "verdict": "fail",
+      "passed": 6,
+      "total": 9,
+      "reason": "DDS discovery remained limited to each container"
+    }
+  ],
+  "totalRecordedNaiveMicroUsd": 719863,
+  "preliminaryV3Mission": {
+    "nonce": "b32c68d5bc3b42aa92d277669fc62333",
+    "verifierVersion": 3,
+    "runtimeNetwork": "per-run Docker internal bridge, UDPv4, separate IPC/filesystems"
+  },
+  "acceptedMission": {
+    "nonce": "7100a64eb88e450bbe1f11f3eaa8fc07",
+    "verifierVersion": 7,
+    "verifierManifestSha256": "a2bad3e0113dd0b3e97396795666c10174be7a7109fb436577ff99a7e15635ab",
+    "verifierUnchangedDuringRun": true,
+    "completedGoals": 5,
+    "nav2SucceededGoalIds": [
+      "4ad56632f9d646498ee8f46a2526d205",
+      "5d84f408787f465f9544ebe5dfc7ddbc",
+      "6b5645da11c341eeb2356e35bdc6c518",
+      "99e4d6f461a1421d9b0b1011e97d69b2",
+      "a12e22e6483144be9d527f28ec3d6550"
+    ],
+    "nav2GetResultStatuses": {
+      "5d84f408787f465f9544ebe5dfc7ddbc": 4,
+      "99e4d6f461a1421d9b0b1011e97d69b2": 4,
+      "6b5645da11c341eeb2356e35bdc6c518": 4,
+      "4ad56632f9d646498ee8f46a2526d205": 4,
+      "a12e22e6483144be9d527f28ec3d6550": 4
+    },
+    "distanceMeters": 9.797,
+    "passed": 9,
+    "total": 9,
+    "verdict": "pass"
+  },
+  "earlierVerificationRuns": {
+    "v3": "preliminary candidate counter, retained in v3-preliminary",
+    "v4": "failed closed: MessageInfo dict/object mismatch",
+    "v5": "failed closed: Jazzy does not expose message publisher GID",
+    "v6": "explicitly cancelled before freezing host wrapper; no completed acceptance claim"
+  }
+}

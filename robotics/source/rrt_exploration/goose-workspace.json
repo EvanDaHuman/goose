@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "title": "ROS 1 frontier exploration to ROS 2 Jazzy with Nav2 simulation",
+  "source_build": [
+    {
+      "argv": [
+        "goose-ros2",
+        "baseline"
+      ],
+      "timeout_seconds": 60
+    }
+  ],
+  "target_build": [
+    {
+      "argv": [
+        "goose-ros2",
+        "build"
+      ],
+      "timeout_seconds": 600
+    }
+  ],
+  "checks": [
+    {
+      "id": "algorithm-parity",
+      "title": "Preserve pinned source algorithms and approved grid-boundary corrections",
+      "kind": "preserve",
+      "source": {
+        "argv": [
+          "goose-ros2",
+          "baseline"
+        ]
+      },
+      "target": {
+        "argv": [
+          "goose-ros2",
+          "verify"
+        ]
+      },
+      "compare": "exit",
+      "exit_code": 0
+    },
+    {
+      "id": "gazebo-mission",
+      "title": "Real Gazebo lidar, map, transform, frontier publication and completed Nav2 goal",
+      "kind": "requirement",
+      "target": {
+        "argv": [
+          "goose-ros2",
+          "simulate"
+        ],
+        "timeout_seconds": 360
+      },
+      "compare": "exit",
+      "exit_code": 0
+    }
+  ],
+  "deliverables": [
+    "package.xml",
+    "CMakeLists.txt",
+    "msg/PointArray.msg",
+    "src/rrt_detector.cpp",
+    "scripts/core.py",
+    "scripts/filter.py",
+    "scripts/assigner.py",
+    "launch/exploration.launch.py",
+    "README.md"
+  ],
+  "limitations": [
+    "Source baseline executes pinned ROS1 algorithms with Python2 division compatibility; no ROS1 simulator execution",
+    "One differential-drive robot in the official Nav2 Gazebo sandbox; no physical hardware verification",
+    "Existing Nav2, SLAM and Gazebo infrastructure is reused and is not authored by Goose",
+    "Supported source revision and fixture only; new ROS projects need their own executable acceptance contract"
+  ]
+}

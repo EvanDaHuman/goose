@@ -1,0 +1,5 @@
+{
+  "recordedAt": "2026-11-08T00:16:38.565759+00:00",
+  "assessment": "Preliminary only. Version 3 observed real motion and frontiers but relied on candidate-reported completed_goals for the completion check. Its 9/9 verdict is preserved verbatim as historical output, not an independently established Nav2 completion claim.",
+  "next": "Version 4 observes Nav2 action status UUIDs from bt_navigator independently. The generated candidate remains unchanged."
+}

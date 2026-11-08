@@ -1,0 +1,941 @@
+{
+  "kind": "source_algorithm_parity",
+  "baseline": "upstream Python2 functions executed with explicit integer-division compatibility",
+  "ros1RuntimeExecuted": false,
+  "sourceSha256": "2437b790b266e1aa00f234bf99d010ee6b9405e8af4936aead14c9ec357dc43d",
+  "candidateSha256": "c62ddcde709d0fc6e63d02f6a99b2b82be3c22c4eb5ee1c0e228f5f94ff62317",
+  "total": 111,
+  "passed": 111,
+  "failed": 0,
+  "verdict": "pass",
+  "checks": [
+    {
+      "name": "index parity 0",
+      "passed": true,
+      "expected": 169,
+      "actual": 169
+    },
+    {
+      "name": "cell coordinate parity 0",
+      "passed": true,
+      "expected": [
+        5.5,
+        10.0
+      ],
+      "actual": [
+        5.5,
+        10.0
+      ]
+    },
+    {
+      "name": "occupancy parity 0",
+      "passed": true,
+      "expected": -1,
+      "actual": -1
+    },
+    {
+      "name": "information gain parity 0",
+      "passed": true,
+      "expected": 6.0,
+      "actual": 6.0
+    },
+    {
+      "name": "discount parity 0",
+      "passed": true,
+      "expected": [
+        -2.0,
+        1.0
+      ],
+      "actual": [
+        -2.0,
+        1.0
+      ]
+    },
+    {
+      "name": "index parity 1",
+      "passed": true,
+      "expected": 85,
+      "actual": 85
+    },
+    {
+      "name": "cell coordinate parity 1",
+      "passed": true,
+      "expected": [
+        7.0,
+        5.0
+      ],
+      "actual": [
+        7.0,
+        5.0
+      ]
+    },
+    {
+      "name": "occupancy parity 1",
+      "passed": true,
+      "expected": -1,
+      "actual": -1
+    },
+    {
+      "name": "information gain parity 1",
+      "passed": true,
+      "expected": 8.0,
+      "actual": 8.0
+    },
+    {
+      "name": "discount parity 1",
+      "passed": true,
+      "expected": [
+        -4.0,
+        0.0
+      ],
+      "actual": [
+        -4.0,
+        0.0
+      ]
+    },
+    {
+      "name": "index parity 2",
+      "passed": true,
+      "expected": 179,
+      "actual": 179
+    },
+    {
+      "name": "cell coordinate parity 2",
+      "passed": true,
+      "expected": [
+        -2.0,
+        3.5
+      ],
+      "actual": [
+        -2.0,
+        3.5
+      ]
+    },
+    {
+      "name": "occupancy parity 2",
+      "passed": true,
+      "expected": 100,
+      "actual": 100
+    },
+    {
+      "name": "information gain parity 2",
+      "passed": true,
+      "expected": 0.75,
+      "actual": 0.75
+    },
+    {
+      "name": "discount parity 2",
+      "passed": true,
+      "expected": [
+        1.0,
+        2.0
+      ],
+      "actual": [
+        1.0,
+        2.0
+      ]
+    },
+    {
+      "name": "index parity 3",
+      "passed": true,
+      "expected": 101,
+      "actual": 101
+    },
+    {
+      "name": "cell coordinate parity 3",
+      "passed": true,
+      "expected": [
+        -1.0,
+        4.0
+      ],
+      "actual": [
+        -1.0,
+        4.0
+      ]
+    },
+    {
+      "name": "occupancy parity 3",
+      "passed": true,
+      "expected": -1,
+      "actual": -1
+    },
+    {
+      "name": "information gain parity 3",
+      "passed": true,
+      "expected": 1.5,
+      "actual": 1.5
+    },
+    {
+      "name": "discount parity 3",
+      "passed": true,
+      "expected": [
+        -2.0,
+        1.0
+      ],
+      "actual": [
+        -2.0,
+        1.0
+      ]
+    },
+    {
+      "name": "index parity 4",
+      "passed": true,
+      "expected": 86,
+      "actual": 86
+    },
+    {
+      "name": "cell coordinate parity 4",
+      "passed": true,
+      "expected": [
+        -2.0,
+        5.25
+      ],
+      "actual": [
+        -2.0,
+        5.25
+      ]
+    },
+    {
+      "name": "occupancy parity 4",
+      "passed": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "name": "information gain parity 4",
+      "passed": true,
+      "expected": 0.125,
+      "actual": 0.125
+    },
+    {
+      "name": "discount parity 4",
+      "passed": true,
+      "expected": [
+        2.0,
+        5.0
+      ],
+      "actual": [
+        2.0,
+        5.0
+      ]
+    },
+    {
+      "name": "index parity 5",
+      "passed": true,
+      "expected": 182,
+      "actual": 182
+    },
+    {
+      "name": "cell coordinate parity 5",
+      "passed": true,
+      "expected": [
+        3.5,
+        6.75
+      ],
+      "actual": [
+        3.5,
+        6.75
+      ]
+    },
+    {
+      "name": "occupancy parity 5",
+      "passed": true,
+      "expected": -1,
+      "actual": -1
+    },
+    {
+      "name": "information gain parity 5",
+      "passed": true,
+      "expected": 0.25,
+      "actual": 0.25
+    },
+    {
+      "name": "discount parity 5",
+      "passed": true,
+      "expected": [
+        0.0,
+        3.0
+      ],
+      "actual": [
+        0.0,
+        3.0
+      ]
+    },
+    {
+      "name": "index parity 6",
+      "passed": true,
+      "expected": 75,
+      "actual": 75
+    },
+    {
+      "name": "cell coordinate parity 6",
+      "passed": true,
+      "expected": [
+        2.0,
+        6.0
+      ],
+      "actual": [
+        2.0,
+        6.0
+      ]
+    },
+    {
+      "name": "occupancy parity 6",
+      "passed": true,
+      "expected": 100,
+      "actual": 100
+    },
+    {
+      "name": "information gain parity 6",
+      "passed": true,
+      "expected": 0.75,
+      "actual": 0.75
+    },
+    {
+      "name": "discount parity 6",
+      "passed": true,
+      "expected": [
+        1.0,
+        3.0
+      ],
+      "actual": [
+        1.0,
+        3.0
+      ]
+    },
+    {
+      "name": "index parity 7",
+      "passed": true,
+      "expected": 55,
+      "actual": 55
+    },
+    {
+      "name": "cell coordinate parity 7",
+      "passed": true,
+      "expected": [
+        3.5,
+        8.0
+      ],
+      "actual": [
+        3.5,
+        8.0
+      ]
+    },
+    {
+      "name": "occupancy parity 7",
+      "passed": true,
+      "expected": 100,
+      "actual": 100
+    },
+    {
+      "name": "information gain parity 7",
+      "passed": true,
+      "expected": 4.0,
+      "actual": 4.0
+    },
+    {
+      "name": "discount parity 7",
+      "passed": true,
+      "expected": [
+        0.0,
+        4.0
+      ],
+      "actual": [
+        0.0,
+        4.0
+      ]
+    },
+    {
+      "name": "index parity 8",
+      "passed": true,
+      "expected": 137,
+      "actual": 137
+    },
+    {
+      "name": "cell coordinate parity 8",
+      "passed": true,
+      "expected": [
+        11.0,
+        6.0
+      ],
+      "actual": [
+        11.0,
+        6.0
+      ]
+    },
+    {
+      "name": "occupancy parity 8",
+      "passed": true,
+      "expected": 100,
+      "actual": 100
+    },
+    {
+      "name": "information gain parity 8",
+      "passed": true,
+      "expected": 4.0,
+      "actual": 4.0
+    },
+    {
+      "name": "discount parity 8",
+      "passed": true,
+      "expected": [
+        0.0,
+        3.0
+      ],
+      "actual": [
+        0.0,
+        3.0
+      ]
+    },
+    {
+      "name": "index parity 9",
+      "passed": true,
+      "expected": 87,
+      "actual": 87
+    },
+    {
+      "name": "cell coordinate parity 9",
+      "passed": true,
+      "expected": [
+        -1.75,
+        1.25
+      ],
+      "actual": [
+        -1.75,
+        1.25
+      ]
+    },
+    {
+      "name": "occupancy parity 9",
+      "passed": true,
+      "expected": 100,
+      "actual": 100
+    },
+    {
+      "name": "information gain parity 9",
+      "passed": true,
+      "expected": 0.25,
+      "actual": 0.25
+    },
+    {
+      "name": "discount parity 9",
+      "passed": true,
+      "expected": [
+        0.0,
+        2.0
+      ],
+      "actual": [
+        0.0,
+        2.0
+      ]
+    },
+    {
+      "name": "index parity 10",
+      "passed": true,
+      "expected": 42,
+      "actual": 42
+    },
+    {
+      "name": "cell coordinate parity 10",
+      "passed": true,
+      "expected": [
+        -0.5,
+        1.5
+      ],
+      "actual": [
+        -0.5,
+        1.5
+      ]
+    },
+    {
+      "name": "occupancy parity 10",
+      "passed": true,
+      "expected": -1,
+      "actual": -1
+    },
+    {
+      "name": "information gain parity 10",
+      "passed": true,
+      "expected": 1.25,
+      "actual": 1.25
+    },
+    {
+      "name": "discount parity 10",
+      "passed": true,
+      "expected": [
+        -1.0,
+        1.0
+      ],
+      "actual": [
+        -1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "index parity 11",
+      "passed": true,
+      "expected": 179,
+      "actual": 179
+    },
+    {
+      "name": "cell coordinate parity 11",
+      "passed": true,
+      "expected": [
+        3.0,
+        9.0
+      ],
+      "actual": [
+        3.0,
+        9.0
+      ]
+    },
+    {
+      "name": "occupancy parity 11",
+      "passed": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "name": "information gain parity 11",
+      "passed": true,
+      "expected": 4.0,
+      "actual": 4.0
+    },
+    {
+      "name": "discount parity 11",
+      "passed": true,
+      "expected": [
+        0.0,
+        2.0
+      ],
+      "actual": [
+        0.0,
+        2.0
+      ]
+    },
+    {
+      "name": "index parity 12",
+      "passed": true,
+      "expected": 136,
+      "actual": 136
+    },
+    {
+      "name": "cell coordinate parity 12",
+      "passed": true,
+      "expected": [
+        10.0,
+        6.0
+      ],
+      "actual": [
+        10.0,
+        6.0
+      ]
+    },
+    {
+      "name": "occupancy parity 12",
+      "passed": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "name": "information gain parity 12",
+      "passed": true,
+      "expected": 5.0,
+      "actual": 5.0
+    },
+    {
+      "name": "discount parity 12",
+      "passed": true,
+      "expected": [
+        -1.0,
+        2.0
+      ],
+      "actual": [
+        -1.0,
+        2.0
+      ]
+    },
+    {
+      "name": "index parity 13",
+      "passed": true,
+      "expected": 53,
+      "actual": 53
+    },
+    {
+      "name": "cell coordinate parity 13",
+      "passed": true,
+      "expected": [
+        -2.25,
+        0.75
+      ],
+      "actual": [
+        -2.25,
+        0.75
+      ]
+    },
+    {
+      "name": "occupancy parity 13",
+      "passed": true,
+      "expected": -1,
+      "actual": -1
+    },
+    {
+      "name": "information gain parity 13",
+      "passed": true,
+      "expected": 0.25,
+      "actual": 0.25
+    },
+    {
+      "name": "discount parity 13",
+      "passed": true,
+      "expected": [
+        0.0,
+        2.0
+      ],
+      "actual": [
+        0.0,
+        2.0
+      ]
+    },
+    {
+      "name": "index parity 14",
+      "passed": true,
+      "expected": 174,
+      "actual": 174
+    },
+    {
+      "name": "cell coordinate parity 14",
+      "passed": true,
+      "expected": [
+        6.0,
+        14.0
+      ],
+      "actual": [
+        6.0,
+        14.0
+      ]
+    },
+    {
+      "name": "occupancy parity 14",
+      "passed": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "name": "information gain parity 14",
+      "passed": true,
+      "expected": 4.0,
+      "actual": 4.0
+    },
+    {
+      "name": "discount parity 14",
+      "passed": true,
+      "expected": [
+        0.0,
+        3.0
+      ],
+      "actual": [
+        0.0,
+        3.0
+      ]
+    },
+    {
+      "name": "index parity 15",
+      "passed": true,
+      "expected": 232,
+      "actual": 232
+    },
+    {
+      "name": "cell coordinate parity 15",
+      "passed": true,
+      "expected": [
+        12.0,
+        15.0
+      ],
+      "actual": [
+        12.0,
+        15.0
+      ]
+    },
+    {
+      "name": "occupancy parity 15",
+      "passed": true,
+      "expected": -1,
+      "actual": -1
+    },
+    {
+      "name": "information gain parity 15",
+      "passed": true,
+      "expected": 4.0,
+      "actual": 4.0
+    },
+    {
+      "name": "discount parity 15",
+      "passed": true,
+      "expected": [
+        0.0,
+        2.0
+      ],
+      "actual": [
+        0.0,
+        2.0
+      ]
+    },
+    {
+      "name": "index parity 16",
+      "passed": true,
+      "expected": 147,
+      "actual": 147
+    },
+    {
+      "name": "cell coordinate parity 16",
+      "passed": true,
+      "expected": [
+        -2.0,
+        2.5
+      ],
+      "actual": [
+        -2.0,
+        2.5
+      ]
+    },
+    {
+      "name": "occupancy parity 16",
+      "passed": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "name": "information gain parity 16",
+      "passed": true,
+      "expected": 1.5,
+      "actual": 1.5
+    },
+    {
+      "name": "discount parity 16",
+      "passed": true,
+      "expected": [
+        -2.0,
+        2.0
+      ],
+      "actual": [
+        -2.0,
+        2.0
+      ]
+    },
+    {
+      "name": "index parity 17",
+      "passed": true,
+      "expected": 67,
+      "actual": 67
+    },
+    {
+      "name": "cell coordinate parity 17",
+      "passed": true,
+      "expected": [
+        1.5,
+        0.0
+      ],
+      "actual": [
+        1.5,
+        0.0
+      ]
+    },
+    {
+      "name": "occupancy parity 17",
+      "passed": true,
+      "expected": -1,
+      "actual": -1
+    },
+    {
+      "name": "information gain parity 17",
+      "passed": true,
+      "expected": 1.0,
+      "actual": 1.0
+    },
+    {
+      "name": "discount parity 17",
+      "passed": true,
+      "expected": [
+        0.0,
+        3.0
+      ],
+      "actual": [
+        0.0,
+        3.0
+      ]
+    },
+    {
+      "name": "index parity 18",
+      "passed": true,
+      "expected": 64,
+      "actual": 64
+    },
+    {
+      "name": "cell coordinate parity 18",
+      "passed": true,
+      "expected": [
+        4.0,
+        9.0
+      ],
+      "actual": [
+        4.0,
+        9.0
+      ]
+    },
+    {
+      "name": "occupancy parity 18",
+      "passed": true,
+      "expected": 100,
+      "actual": 100
+    },
+    {
+      "name": "information gain parity 18",
+      "passed": true,
+      "expected": 6.0,
+      "actual": 6.0
+    },
+    {
+      "name": "discount parity 18",
+      "passed": true,
+      "expected": [
+        -2.0,
+        2.0
+      ],
+      "actual": [
+        -2.0,
+        2.0
+      ]
+    },
+    {
+      "name": "index parity 19",
+      "passed": true,
+      "expected": 68,
+      "actual": 68
+    },
+    {
+      "name": "cell coordinate parity 19",
+      "passed": true,
+      "expected": [
+        2.0,
+        5.25
+      ],
+      "actual": [
+        2.0,
+        5.25
+      ]
+    },
+    {
+      "name": "occupancy parity 19",
+      "passed": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "name": "information gain parity 19",
+      "passed": true,
+      "expected": 0.375,
+      "actual": 0.375
+    },
+    {
+      "name": "discount parity 19",
+      "passed": true,
+      "expected": [
+        -2.0,
+        1.0
+      ],
+      "actual": [
+        -2.0,
+        1.0
+      ]
+    },
+    {
+      "name": "authorized bounds guard 0",
+      "passed": true,
+      "expected": 100,
+      "actual": 100
+    },
+    {
+      "name": "authorized bounds guard 1",
+      "passed": true,
+      "expected": 100,
+      "actual": 100
+    },
+    {
+      "name": "authorized bounds guard 2",
+      "passed": true,
+      "expected": 100,
+      "actual": 100
+    },
+    {
+      "name": "authorized bounds guard 3",
+      "passed": true,
+      "expected": 100,
+      "actual": 100
+    },
+    {
+      "name": "authorized bounds guard 4",
+      "passed": true,
+      "expected": 100,
+      "actual": 100
+    },
+    {
+      "name": "empty frontier set",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "name": "occupied/outside frontier rejection",
+      "passed": true,
+      "expected": null,
+      "actual": null
+    },
+    {
+      "name": "goal scoring/hysteresis",
+      "passed": true,
+      "expected": [
+        1.5,
+        1.0
+      ],
+      "actual": [
+        1.5,
+        1.0
+      ]
+    },
+    {
+      "name": "path cost integer division",
+      "passed": true,
+      "expected": 4.0,
+      "actual": 4.0
+    },
+    {
+      "name": "empty path cost",
+      "passed": true,
+      "expected": "Infinity",
+      "actual": "Infinity"
+    },
+    {
+      "name": "negative control detects corrupted occupancy",
+      "passed": true
+    }
+  ],
+  "execution": {
+    "seconds": 1.033,
+    "isolation": "candidate-only container RPC; expected values and report writer remain in host verifier"
+  },
+  "candidateFiles": {
+    "CMakeLists.txt": "f85fe9449f4dce9ed372de24ac93190ccfa4fb07e75cbcfb23820b7d3f0ce23b",
+    "LICENSE.md": "8871685c97d69944d09fd0a870458e21739021a40bc576446898480a9fcc8287",
+    "README.md": "edf3d4a0cb8e792e1c2694b23b2f325fd644130f880b52b8a3e91ade31d8c8c9",
+    "launch/exploration.launch.py": "04a8a1a0dbf409a0b9d5c3c998db1255dabd40aae6062a06fa9b62e3eb932583",
+    "msg/PointArray.msg": "c420e81eec5f9692fed4c7fd2d16284a58e97483911692db717e00965f9ff89c",
+    "package.xml": "bcd9904671380fc8526f66224fddc872c56fc8b7ac28c44a758898eb713a190f",
+    "scripts/assigner.py": "3cd041971ae7e23e80bce090171fc42fa0dff98da834b89d3afc0416ed4f3d89",
+    "scripts/core.py": "c62ddcde709d0fc6e63d02f6a99b2b82be3c22c4eb5ee1c0e228f5f94ff62317",
+    "scripts/filter.py": "659ba074897b94421a1818b66014ee0ff92631b9fe4321b555f9d8d00a6f2827",
+    "src/rrt_detector.cpp": "b38cb467500c31bf173c8db3ceecb5ba602af8ea47eebcec9842718116c3837a"
+  },
+  "integrityUnchanged": true,
+  "verifierManifestSha256": "202484de1c698440a24b693c57b563f8174fca74d4090321d57568c7265658b6"
+}

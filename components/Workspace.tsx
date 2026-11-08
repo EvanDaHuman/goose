@@ -32,6 +32,7 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
   const open = questions.filter((x: any) => x.status === "open");
   const pkg = artifacts.find((a: any) => a.kind === "delivery_package");
   const reportArt = [...artifacts].reverse().find((a: any) => a.kind === "verification_report");
+  const mission = [...artifacts].reverse().find((a:any)=>a.kind==="robotics_mission");
   const delivered = ["delivered", "invoice", "follow_up", "closed"].includes(job.stage);
   const quote = proposal?.scope?.quote;
   const st = insp?.stack;
@@ -78,6 +79,11 @@ export function Workspace({ v, token, ops = false }: { v: any; token: string; op
           {job.status === "waiting_founder" && <span className="muted">Our founder is looking at something before work continues: {job.waiting_reason}</span>}
           {job.status === "rejected" && <span className="muted">This goal is outside what we can carry out and verify today. See the plan and the message below.</span>}</p>
       </div>
+
+      {mission&&<section className="card section"><div className="card-head"><h2>Recorded simulation</h2><span className="small muted">Actual Gazebo, SLAM and odometry telemetry</span></div>
+        <img src={`/api/jobs/${id}/artifacts/${mission.id}?${ops?"ops=1":`t=${encodeURIComponent(token)}`}&inline=1`} alt="Observed robot occupancy map and measured trajectory with independent acceptance results" style={{width:"100%",height:"auto",borderRadius:12}} />
+        <p className="small muted">One simulated robot. Physical hardware has not been validated. The source report and map are available with the verification artifacts.</p>
+      </section>}
 
       {open.length > 0 && (
         <section className="section card" style={{ borderColor: "var(--accent)" }}>

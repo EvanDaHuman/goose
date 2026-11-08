@@ -1,0 +1,16 @@
+{
+  "version": 7,
+  "frozenAt": "2026-11-08T00:24:27.420519+00:00",
+  "reason": "Final complete boundary: host run.py, all runner dependencies, source allowlist and container recipe frozen. Independent Nav2 GetResult confirmation required; candidate counters supplementary. Host verifies files and manifest unchanged after execution. Prior preliminary/failed/cancelled evidence retained.",
+  "files": {
+    "runner/baseline.py": "ad4c0fccbf2479cfafb8222ff4b3828b8083f1b5f100c873dc1c8c6750a479bd",
+    "runner/verify_core.py": "17bfb91d1c7208837f632af8ff932ce6b4f2baabc68a80999258f88cef0047f8",
+    "runner/candidate_rpc.py": "806fd0663f9a4f7febd16e95ee69f0421b9411012d8c8f9e8d651c5f50fc34e7",
+    "runner/simulate.py": "6cdd9b65e474d48e98fb2c20f516c55315bdd8fd7ad40479dd7fcfe9b5a9b348",
+    "source/rrt_exploration/scripts/functions.py": "2437b790b266e1aa00f234bf99d010ee6b9405e8af4936aead14c9ec357dc43d",
+    "runner/nav_status.py": "8f25100a17944497aada8d72f4f95706ca1ba9c28e6ba5bd7ff45c41e68507d3",
+    "run.py": "7a1ed82ae21a375012fcf0a144a53da86a1b610be6105590b74022e184239104",
+    "source/manifest.json": "5286042b81e8aba60c879dcdbac2b7c7297b398c210474ee81f818173e7c1029",
+    "Dockerfile": "1f83c27303679366034d9e15d553bd01f10b3b93294104e35b1f8f752f42b39a"
+  }
+}

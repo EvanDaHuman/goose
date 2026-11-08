@@ -1,0 +1,37 @@
+{
+  "scope": "Development diagnostics, separate from customer job state machine. No human-written edits to generated migration source. Infrastructure adapter was corrected during development.",
+  "monolithicGeneration": {
+    "outcome": "context exhausted",
+    "recordedMicroUsd": 113092
+  },
+  "splitGeneration": {
+    "parts": 5,
+    "recordedMicroUsd": 559894
+  },
+  "naiveStartupRepair": {
+    "patches": 7,
+    "recordedMicroUsd": 46877
+  },
+  "infrastructureRetries": [
+    {
+      "name": "private-ipc",
+      "verdict": "fail",
+      "passed": 6,
+      "total": 9,
+      "reason": "DDS discovery/data did not cross container boundary"
+    },
+    {
+      "name": "loopback-udp",
+      "verdict": "fail",
+      "passed": 6,
+      "total": 9,
+      "reason": "DDS discovery remained limited to each container"
+    }
+  ],
+  "acceptedMission": {
+    "nonce": "b32c68d5bc3b42aa92d277669fc62333",
+    "verifierVersion": 3,
+    "runtimeNetwork": "per-run Docker internal bridge, UDPv4, separate IPC/filesystems"
+  },
+  "totalRecordedNaiveMicroUsd": 719863
+}

@@ -1,0 +1,13 @@
+{
+  "version": 6,
+  "frozenAt": "2026-11-08T00:22:48.928689+00:00",
+  "reason": "Jazzy callback metadata lacks publisher GID. Require sole discovered bt_navigator status publisher (or exact GID when provided), then independently query actual Nav2 GetResult for each goal UUID and require SUCCEEDED. Live read-only diagnostic returned 4 for a real completed goal and 0 for a fabricated UUID. Candidate unchanged; v3 preliminary and v4/v5 failures preserved.",
+  "files": {
+    "runner/baseline.py": "ad4c0fccbf2479cfafb8222ff4b3828b8083f1b5f100c873dc1c8c6750a479bd",
+    "runner/verify_core.py": "17bfb91d1c7208837f632af8ff932ce6b4f2baabc68a80999258f88cef0047f8",
+    "runner/candidate_rpc.py": "806fd0663f9a4f7febd16e95ee69f0421b9411012d8c8f9e8d651c5f50fc34e7",
+    "runner/simulate.py": "6cdd9b65e474d48e98fb2c20f516c55315bdd8fd7ad40479dd7fcfe9b5a9b348",
+    "source/rrt_exploration/scripts/functions.py": "2437b790b266e1aa00f234bf99d010ee6b9405e8af4936aead14c9ec357dc43d",
+    "runner/nav_status.py": "8f25100a17944497aada8d72f4f95706ca1ba9c28e6ba5bd7ff45c41e68507d3"
+  }
+}

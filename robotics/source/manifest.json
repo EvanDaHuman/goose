@@ -1,0 +1,19 @@
+{
+  "repository": "https://github.com/hasauino/rrt_exploration",
+  "revision": "3ec97a78c09f0382364e4dd0d4b4b9e0096a4790",
+  "license": "MIT",
+  "files": {
+    "CMakeLists.txt": "3b979b4f9c253aa4bb77cc34d504afa1530d11cbaede4124c1b2a8f941faaa9e",
+    "LICENSE.md": "8871685c97d69944d09fd0a870458e21739021a40bc576446898480a9fcc8287",
+    "include/functions.h": "84f23ad7786cb7ad433fec13de4f834070c6281ff54d874f50c14a4cd2122b9d",
+    "launch/single.launch": "c81086cbe87f3d82c0f4af2eabe3ac6900fcbc9343d3b2de43d929ec80b82529",
+    "msg/PointArray.msg": "2da1fe957d60a6ace781bcb3ee76644bca0a606ab12926e0d2e8e624469f548a",
+    "package.xml": "ce795edb367af04cd9bbd7105225db50cc6f5d3c832272ca6e4e06b2544caf22",
+    "scripts/assigner.py": "c60e33765714558a509dae615485982f1432880a45c63bb0c9336c6589039263",
+    "scripts/filter.py": "90d5b2e61bef3470afe47688f7480bc1bfc4df592e7d4e0e7d45109b80074181",
+    "scripts/functions.py": "2437b790b266e1aa00f234bf99d010ee6b9405e8af4936aead14c9ec357dc43d",
+    "src/functions.cpp": "1bb39f3d76e8aa181f6dd1f62f184d0ea558d2c2fa25a82f8b80c60c6528b68f",
+    "src/global_rrt_detector.cpp": "c902c4ef687a16372e193045b93adc22c23799e9c3c056c3fe866a27a3249dcb",
+    "src/local_rrt_detector.cpp": "f73de97c1864144124bcf975b44053fcd34aa9a8a67a8310b7e26a66da770adb"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "verdict": "fail",
+  "error": "Simulation produced no report",
+  "checks": [
+    {
+      "name": "migrated package remained running",
+      "passed": true
+    }
+  ],
+  "total": 1,
+  "passed": 1,
+  "execution": {
+    "exitCode": 1,
+    "seconds": 71.294,
+    "log": "/Users/adhvaidhsunny_1/Documents/Codex/2026-11-06/pul/work/goose/var/robotics/runtime/simulation.log",
+    "isolation": "simulation/observer and candidate run in separate filesystem containers"
+  },
+  "candidateFiles": {
+    "CMakeLists.txt": "f85fe9449f4dce9ed372de24ac93190ccfa4fb07e75cbcfb23820b7d3f0ce23b",
+    "LICENSE.md": "8871685c97d69944d09fd0a870458e21739021a40bc576446898480a9fcc8287",
+    "README.md": "edf3d4a0cb8e792e1c2694b23b2f325fd644130f880b52b8a3e91ade31d8c8c9",
+    "launch/exploration.launch.py": "04a8a1a0dbf409a0b9d5c3c998db1255dabd40aae6062a06fa9b62e3eb932583",
+    "msg/PointArray.msg": "c420e81eec5f9692fed4c7fd2d16284a58e97483911692db717e00965f9ff89c",
+    "package.xml": "bcd9904671380fc8526f66224fddc872c56fc8b7ac28c44a758898eb713a190f",
+    "scripts/assigner.py": "3cd041971ae7e23e80bce090171fc42fa0dff98da834b89d3afc0416ed4f3d89",
+    "scripts/core.py": "c62ddcde709d0fc6e63d02f6a99b2b82be3c22c4eb5ee1c0e228f5f94ff62317",
+    "scripts/filter.py": "659ba074897b94421a1818b66014ee0ff92631b9fe4321b555f9d8d00a6f2827",
+    "src/rrt_detector.cpp": "b38cb467500c31bf173c8db3ceecb5ba602af8ea47eebcec9842718116c3837a"
+  },
+  "verifierManifestSha256": "ee7fa137cafd3e5a819e23f60e3f6ff916bfe1a6235815c5f5d3f66ccc66f1ac",
+  "verifierVersion": 6,
+  "trajectoryFrame": "odom",
+  "verifierUnchangedDuringRun": true
+}

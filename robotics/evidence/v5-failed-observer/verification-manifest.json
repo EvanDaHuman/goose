@@ -1,0 +1,13 @@
+{
+  "version": 5,
+  "frozenAt": "2026-11-08T00:18:52.064843+00:00",
+  "reason": "Version 4 failed closed because ROS2 Jazzy subscription MessageInfo is a dict. Version 5 supports tested dict and object publisher-GID metadata; same strengthened independent Nav2 completion criterion; generated candidate unchanged.",
+  "files": {
+    "runner/baseline.py": "ad4c0fccbf2479cfafb8222ff4b3828b8083f1b5f100c873dc1c8c6750a479bd",
+    "runner/verify_core.py": "17bfb91d1c7208837f632af8ff932ce6b4f2baabc68a80999258f88cef0047f8",
+    "runner/candidate_rpc.py": "806fd0663f9a4f7febd16e95ee69f0421b9411012d8c8f9e8d651c5f50fc34e7",
+    "runner/simulate.py": "f56ffb84f9750c1f792e126e148ab51f0bf477e0b71ca45ae36a71494fd31eb0",
+    "source/rrt_exploration/scripts/functions.py": "2437b790b266e1aa00f234bf99d010ee6b9405e8af4936aead14c9ec357dc43d",
+    "runner/nav_status.py": "950746a554abfbcb2fe65175005b50244b5db009ac6ffc96714aa866641fab7e"
+  }
+}

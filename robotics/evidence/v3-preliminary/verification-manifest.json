@@ -1,0 +1,12 @@
+{
+  "version": 3,
+  "frozenAt": "2026-11-07T23:54:51.384968+00:00",
+  "reason": "Host-owned algorithm verification plus separate Gazebo observer/candidate containers; no candidate accepted; simulation startup fixes verified independently",
+  "files": {
+    "runner/baseline.py": "ad4c0fccbf2479cfafb8222ff4b3828b8083f1b5f100c873dc1c8c6750a479bd",
+    "runner/verify_core.py": "17bfb91d1c7208837f632af8ff932ce6b4f2baabc68a80999258f88cef0047f8",
+    "runner/candidate_rpc.py": "806fd0663f9a4f7febd16e95ee69f0421b9411012d8c8f9e8d651c5f50fc34e7",
+    "runner/simulate.py": "d6a432fabc7a44264a99b710e56fbf56d4fce84f8a5799f2e05106e18c2419b3",
+    "source/rrt_exploration/scripts/functions.py": "2437b790b266e1aa00f234bf99d010ee6b9405e8af4936aead14c9ec357dc43d"
+  }
+}

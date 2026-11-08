@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import crypto from "node:crypto";
 import { createJob, jobById } from "../../lib/jobs";
 import { addUpload, answerQuestion } from "../../lib/actions";
 import { pool, q } from "../../lib/db";
@@ -82,4 +83,22 @@ test("workspace verification executes independently, refuses broken behavior and
   const tampered=await verifyWorkspace(job,1);assert.equal(tampered.status,"waiting_founder");assert.match(tampered.waiting!,/Frozen acceptance/);
   await q("INSERT INTO questions(job_id,key,asked_by,audience,prompt,blocking,status) VALUES($1,'founder-only','verification','founder','Resolve verifier integrity',true,'open')",[job.id]);
   await assert.rejects(answerQuestion(job.id,"founder-only",{ok:true},"Synthetic customer","customer"),/designated audience/);
+});
+
+test("a changed robotics verifier stops before running a build or asking agents to repair customer code",async()=>{
+  const archive=path.join(temporary,"verifier-input.zip");fs.writeFileSync(archive,"Synthetic fixture");
+  const created=await createJob({accountName:"Verifier amendment test",kind:"demo",title:"Verifier drift",slug:"verifier-drift",timezone:"UTC",repoZip:archive,workspaceRequest:true});jobs.push(created.id);
+  const job=(await jobById(created.id))!;
+  const vault=jobDir(job.id,"vault");fs.mkdirSync(vault,{recursive:true});
+  fs.writeFileSync(path.join(vault,"robotics-verifier.json"),JSON.stringify({version:-1,files:{}}));
+  const digest=(file:string)=>crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+  fs.writeFileSync(path.join(vault,"MANIFEST.json"),JSON.stringify({"robotics-verifier.json":digest(path.join(vault,"robotics-verifier.json"))}));
+  job.checks_manifest_sha=digest(path.join(vault,"MANIFEST.json"));
+  const result=await verifyWorkspace(job,1);
+  assert.equal(result.status,"waiting_founder");
+  const report=JSON.parse(fs.readFileSync(jobDir(job.id,"verify","attempt-1","report.json"),"utf8"));
+  assert.equal(report.integrity.ok,false);
+  assert.equal(report.checks.find((c:any)=>c.id==="verifier_version").status,"fail");
+  assert.equal(report.checks.some((c:any)=>c.id==="target_build"),false);
+  assert.equal(fs.existsSync(jobDir(job.id,"runtime","workspace-verify-1")),false);
 });
