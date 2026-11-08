@@ -146,13 +146,19 @@ export function draftByTemplate(p: { name: string; evidence?: Evidence[] | null;
       "We have no past customers to point to yet. Would an assessment of the public code be useful?", "", "[Founder name], Goose",
     ].join("\n")};
   }
+  // lead with what is outdated: pinned old versions, security fixes, end-of-life or unmaintained dependencies
+  const OUTDATED = /security|CVE|vulnerab|dependabot|end[- ]of[- ]life|\bEOL\b|unmaintained|deprecated|unsupported|pins?\b|==\s*\d|\b\d+\.\d+/i;
+  const score = (e: Evidence) => (/security|CVE|vulnerab|end[- ]of[- ]life|\bEOL\b/i.test(e.text) ? 2 : 0) + (OUTDATED.test(e.text) ? 1 : 0);
+  const outdated = [...(p.evidence ?? [])].map((e, i) => ({ e, i, s: score(e) })).filter((x) => x.s > 0)
+    .sort((a, b) => b.s - a.s || a.i - b.i).slice(0, 2).map((x) => x.e);
+  const lead = outdated.length ? outdated : ev ? [ev] : [];
   const blockers = q?.blockers?.length ? q.blockers : p.blockers ?? [];
   const what = q && q.recipe !== "none" ? RECIPES[q.recipe] : "verified changes to existing software, including runtime upgrades, language migrations and behavior-preserving engineering";
   const body = [
     "Hello,",
     "",
     `I came across ${p.name} while looking for business applications that run on older software versions.` +
-      (ev ? ` ${ev.text.replace(/\.$/, "")} (${ev.url}).` : ""),
+      (lead.length ? ` What stood out: ${lead.map((e) => `${e.text.replace(/\.$/, "")} (${e.url})`).join("; ")}.` : ""),
     "",
     `Goose is a new company run mostly by AI agents, with a founder reviewing exceptions. The work that would apply here: ${what}. ` +
       "Before anything changes we record how your current app behaves and freeze the checks the new one must pass; you get the code, " +

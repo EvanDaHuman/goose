@@ -49,3 +49,22 @@ test("host evidence outreach remains conditional and never claims a declared min
   const draft=draftByTemplate(p,{fit_score:"Medium",recipe:"django-lts-upgrade",scope_fit:"Potential Django assessment. Runtime fit is unverified.",blockers:["No purchasing intent confirmed"],reasons:p.evidence},1100);
   assert.match(draft.body,/current deployed version is unknown/);assert.match(draft.body,/depend on that assessment/);assert.equal(guardDraft(draft,p,null).ok,true);
 });
+
+test("with a token, discovery uses code search for end-of-life pins, keeps organisation repos and supplies the matched file",async()=>{
+  const before=process.env.GITHUB_TOKEN;process.env.GITHUB_TOKEN="ghp_fixture";
+  const sha="a".repeat(40),seen:{url:string;auth:unknown}[]=[];
+  try{
+    const data=await fetchPublicResearch([],["https://github.com/known/app"],(async(url:any,init:any)=>{const u=String(url);seen.push({url:u,auth:init.headers.Authorization});
+      if(u.includes("/search/code"))return Response.json({items:[
+        {html_url:`https://github.com/acme/app/blob/${sha}/requirements.txt`,path:"requirements.txt",repository:{html_url:"https://github.com/acme/app",full_name:"acme/app",private:false,fork:false,owner:{type:"Organization"}}},
+        {html_url:`https://github.com/jane/toy/blob/${sha}/requirements.txt`,path:"requirements.txt",repository:{html_url:"https://github.com/jane/toy",full_name:"jane/toy",private:false,fork:false,owner:{type:"User"}}},
+        {html_url:`https://github.com/known/app/blob/${sha}/requirements.txt`,path:"requirements.txt",repository:{html_url:"https://github.com/known/app",full_name:"known/app",private:false,fork:false,owner:{type:"Organization"}}}]});
+      if(u.includes("api.github.com/repos/"))return Response.json({private:false,html_url:"https://github.com/acme/app",default_branch:"main",description:"Acme orders"});
+      return new Response("Django==2.2.28\n");}) as typeof fetch);
+    assert.equal(data.discovery,"github_code_search");
+    assert.deepEqual(data.repositories.map(r=>r.url),["https://github.com/acme/app"]);
+    assert.ok(data.pages.some(p=>p.url===`https://raw.githubusercontent.com/acme/app/${sha}/requirements.txt`&&p.excerpt.includes("Django==2.2.28")));
+    assert.ok(seen.filter(s=>s.url.includes("api.github.com")).every(s=>s.auth==="Bearer ghp_fixture"));
+    assert.ok(seen.filter(s=>!s.url.includes("api.github.com")).every(s=>s.auth===undefined),"the token is sent only to api.github.com");
+  }finally{if(before===undefined)delete process.env.GITHUB_TOKEN;else process.env.GITHUB_TOKEN=before;}
+});

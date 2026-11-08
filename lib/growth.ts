@@ -108,7 +108,7 @@ async function researchFromPublicSources(ctx:Ctx,known:string[],recovery:string[
   const sources=await fetchPublicResearch(recovery,known);
   const evidencePath=path.join(config.varDir,"company","research",`public-sources-${ctx.cycle}.json`);
   fs.mkdirSync(path.dirname(evidencePath),{recursive:true});fs.writeFileSync(evidencePath,JSON.stringify(sources,null,2));
-  await logEvent(null,"research","status",`Naive web tools were rate limited; public GitHub retrieval collected ${sources.pages.length} bounded source documents without credentials.`,
+  await logEvent(null,"research","status",`Naive web tools were rate limited; public GitHub retrieval (${sources.discovery}) collected ${sources.pages.length} bounded read-only source documents.`,
     {retrieval:"host_public_github",discovery:sources.discovery,requests:sources.requests,errors:sources.errors,evidence_path:evidencePath,pages:sources.pages.map(({url,sha256,fetchedAt,bytes})=>({url,sha256,fetchedAt,bytes}))},{origin:"tool",originDetail:{tool:"publicResearch.fetchPublicResearch"}});
   if(!sources.pages.length)return 0;
   const schema=obj({prospects:{type:"array",items:obj({url:S,recipe:{type:"string",enum:Object.keys(RECIPES)},evidence:{type:"array",items:obj({url:S,quote:S})},blockers:{type:"array",items:S}})}});

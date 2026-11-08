@@ -82,7 +82,7 @@ export const ROLES = {
   },
   outreach: {
     name: "Outreach agent",
-    owns: "Writes a specific, honest outreach draft for each qualified prospect. Drafts are stored; nothing is sent.",
+    owns: "Writes a specific, honest outreach draft for each qualified prospect: what is outdated, how Goose would fix it, and a link to the site. Drafts are sent over AgentMail only with the founder's authorization or the outreach policy.",
   },
   // roles of the first version (jobs before plan-driven delivery); kept so history keeps its original labels
   commercial: {

@@ -9,6 +9,7 @@ import { logEvent } from "../lib/records";
 import { serviceShowrooms, stopAllShowrooms } from "../lib/showroom";
 import { IMPL_ALL as IMPL } from "../lib/pipeline";
 import { serviceGrowth } from "../lib/growth";
+import { serviceOutreach } from "../lib/outreach";
 import { runMaintenanceChecks, serviceCommerce } from "../lib/commerce";
 
 let stopping = false;
@@ -37,6 +38,7 @@ async function main() {
     }
     await serviceShowrooms().catch((e) => console.error("[worker] showroom", e.message));
     await serviceGrowth().catch((e) => console.error("[worker] growth", e.message));   // runs in the background; never blocks jobs
+    void serviceOutreach().catch((e) => console.error("[worker] outreach", e.message));   // contacts, policy sends, replies (self-throttled)
     const job = await claimJob();
     if (!job) {
       if (once && ++idle > 3) break;
